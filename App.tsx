@@ -1,20 +1,28 @@
+import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { AuthProvider } from './src/contexts/AuthContext';
+import { HotelProvider } from './src/contexts/HotelContext';
+import { RestaurantProvider } from './src/contexts/RestaurantContext';
+import { ReviewProvider } from './src/contexts/ReviewContext';
+import AppNavigator from './src/navigation/AppNavigator';
+import { initializeMockData } from './src/services/mockDataService';
 
 export default function App() {
+  useEffect(() => {
+    // Initialize mock data on app startup
+    initializeMockData();
+  }, []);
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <AuthProvider>
+      <HotelProvider>
+        <RestaurantProvider>
+          <ReviewProvider>
+            <AppNavigator />
+            <StatusBar style="auto" />
+          </ReviewProvider>
+        </RestaurantProvider>
+      </HotelProvider>
+    </AuthProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
