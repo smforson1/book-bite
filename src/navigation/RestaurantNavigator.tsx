@@ -1,12 +1,41 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
 import RestaurantDashboardScreen from '../screens/restaurant/RestaurantDashboardScreen';
 import RestaurantMenuScreen from '../screens/restaurant/RestaurantMenuScreen';
 import RestaurantOrdersScreen from '../screens/restaurant/RestaurantOrdersScreen';
 import RestaurantProfileScreen from '../screens/restaurant/RestaurantProfileScreen';
+import RestaurantMenuManagementScreen from '../screens/restaurant/RestaurantMenuManagementScreen';
 
 const Tab = createBottomTabNavigator();
+const Stack = createStackNavigator();
+
+// Stack Navigator for Dashboard and Menu Management
+const DashboardStack = () => {
+  return (
+    <Stack.Navigator 
+      screenOptions={{
+        headerShown: false
+      }}
+    >
+      <Stack.Screen 
+        name="RestaurantDashboard" 
+        component={RestaurantDashboardScreen}
+        options={{
+          headerShown: false
+        }}
+      />
+      <Stack.Screen 
+        name="RestaurantMenuManagement" 
+        component={RestaurantMenuManagementScreen}
+        options={{
+          headerShown: false
+        }}
+      />
+    </Stack.Navigator>
+  );
+};
 
 const RestaurantNavigator: React.FC = () => {
   return (
@@ -72,23 +101,67 @@ const RestaurantNavigator: React.FC = () => {
     >
       <Tab.Screen 
         name="Dashboard" 
-        component={RestaurantDashboardScreen}
-        options={{ title: 'Restaurant Dashboard' }}
+        component={DashboardStack}
+        options={{ 
+          title: 'Restaurant Dashboard',
+          headerShown: true,
+          headerStyle: {
+            backgroundColor: theme.colors.secondary[500],
+          },
+          headerTintColor: theme.colors.neutral[0],
+          headerTitleStyle: {
+            fontWeight: theme.typography.fontWeight.semiBold,
+            fontSize: theme.typography.fontSize.lg,
+          },
+        }}
       />
       <Tab.Screen 
         name="Menu" 
-        component={RestaurantMenuScreen}
-        options={{ title: 'Manage Menu' }}
+        component={RestaurantMenuManagementScreen}
+        options={{ 
+          title: 'Manage Menu',
+          headerShown: true,
+          headerStyle: {
+            backgroundColor: theme.colors.secondary[500],
+          },
+          headerTintColor: theme.colors.neutral[0],
+          headerTitleStyle: {
+            fontWeight: theme.typography.fontWeight.semiBold,
+            fontSize: theme.typography.fontSize.lg,
+          },
+        }}
       />
       <Tab.Screen 
         name="Orders" 
         component={RestaurantOrdersScreen}
-        options={{ title: 'Orders' }}
+        options={{ 
+          title: 'Orders',
+          headerShown: true,
+          headerStyle: {
+            backgroundColor: theme.colors.secondary[500],
+          },
+          headerTintColor: theme.colors.neutral[0],
+          headerTitleStyle: {
+            fontWeight: theme.typography.fontWeight.semiBold,
+            fontSize: theme.typography.fontSize.lg,
+          },
+        }}
       />
       <Tab.Screen 
         name="Profile" 
         component={RestaurantProfileScreen}
-        options={{ title: 'Restaurant Profile' }}
+        options={{ 
+          title: 'Restaurant Profile',
+          headerShown: true,
+          headerStyle: {
+            backgroundColor: theme.colors.secondary[500],
+          },
+          headerTintColor: theme.colors.neutral[0],
+          headerTitleStyle: {
+            fontWeight: theme.typography.fontWeight.semiBold,
+            fontSize: theme.typography.fontSize.lg,
+          },
+        }}
       />
     </Tab.Navigator>
   );

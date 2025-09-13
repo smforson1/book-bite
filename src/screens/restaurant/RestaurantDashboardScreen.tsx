@@ -12,9 +12,11 @@ import { Button, Card } from '../../components';
 import { theme } from '../../styles/theme';
 import { globalStyles } from '../../styles/globalStyles';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNavigation } from '@react-navigation/native';
 
 const RestaurantDashboardScreen: React.FC = () => {
   const { user } = useAuth();
+  const navigation = useNavigation();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -56,11 +58,23 @@ const RestaurantDashboardScreen: React.FC = () => {
         <View style={styles.section}>
           <Text style={[globalStyles.h4, styles.sectionTitle]}>Quick Actions</Text>
           <View style={styles.quickActions}>
-            <TouchableOpacity style={styles.actionButton}>
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={() => {
+                // @ts-ignore
+                navigation.navigate('Menu');
+              }}
+            >
               <Ionicons name="restaurant" size={20} color={theme.colors.secondary[500]} />
               <Text style={styles.actionText}>Manage Menu</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton}>
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={() => {
+                // @ts-ignore
+                navigation.navigate('Orders');
+              }}
+            >
               <Ionicons name="receipt" size={20} color={theme.colors.primary[500]} />
               <Text style={styles.actionText}>View Orders</Text>
             </TouchableOpacity>
@@ -152,7 +166,7 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     alignItems: 'center',
-    borderLeftWidth: 4,
+    borderLeftWidth: 2,
     paddingVertical: theme.spacing[4],
   },
   

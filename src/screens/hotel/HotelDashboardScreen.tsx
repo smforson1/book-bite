@@ -12,9 +12,11 @@ import { Button, Card } from '../../components';
 import { theme } from '../../styles/theme';
 import { globalStyles } from '../../styles/globalStyles';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNavigation } from '@react-navigation/native';
 
 const HotelDashboardScreen: React.FC = () => {
   const { user } = useAuth();
+  const navigation = useNavigation();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -56,11 +58,23 @@ const HotelDashboardScreen: React.FC = () => {
         <View style={styles.section}>
           <Text style={[globalStyles.h4, styles.sectionTitle]}>Quick Actions</Text>
           <View style={styles.quickActions}>
-            <TouchableOpacity style={styles.actionButton}>
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={() => {
+                // @ts-ignore
+                navigation.navigate('Rooms');
+              }}
+            >
               <Ionicons name="bed" size={20} color={theme.colors.success[500]} />
               <Text style={styles.actionText}>Manage Rooms</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton}>
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={() => {
+                // @ts-ignore
+                navigation.navigate('Bookings');
+              }}
+            >
               <Ionicons name="calendar" size={20} color={theme.colors.primary[500]} />
               <Text style={styles.actionText}>View Bookings</Text>
             </TouchableOpacity>

@@ -97,7 +97,7 @@ const ListItem: React.FC<ListItemProps> = ({
         <Image
           source={{ uri: image }}
           style={[styles.image, imageStyle]}
-          defaultSource={require('../assets/placeholder.png')}
+          onError={() => console.warn('Failed to load image:', image)}
         />
       );
     }

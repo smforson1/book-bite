@@ -73,8 +73,8 @@ const onboardingData: OnboardingItem[] = [
     subtitle: 'Excellence Awaits',
     description: 'Join our community of discerning travelers and food enthusiasts. Your extraordinary journey starts with a single tap.',
     icon: 'rocket',
-    gradientColors: [theme.colors.warning[400], theme.colors.warning[600], theme.colors.warning[800]],
-    particleColor: theme.colors.warning[300],
+    gradientColors: [theme.colors.error[400], theme.colors.error[600], theme.colors.error[800]], // Changed to error colors
+    particleColor: theme.colors.error[300], // Changed to error color
   },
 ];
 
@@ -277,94 +277,38 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
     'worklet';
     const { translationX, velocityX } = event.nativeEvent;
     
-    // Only process if there's significant movement (not just a tap)
-    if (Math.abs(translationX) < 30 && Math.abs(velocityX) < 300) {
-      return; // Ignore small movements/taps
-    }
-    
     // Determine swipe direction and distance
     const swipeThreshold = SCREEN_WIDTH / 4;
-    const velocityThreshold = 800; // Increased threshold for more intentional swipes
+    const velocityThreshold = 500;
     
     // Check for significant swipe or fast swipe
     const isLeftSwipe = translationX < -swipeThreshold || (translationX < -50 && velocityX < -velocityThreshold);
     const isRightSwipe = translationX > swipeThreshold || (translationX > 50 && velocityX > velocityThreshold);
     
-    console.log('Swipe detected:', {
-      translationX,
-      velocityX,
-      isLeftSwipe,
-      isRightSwipe,
-      currentIndex
-    });
-    
     if (isLeftSwipe && currentIndex < onboardingData.length - 1) {
-      console.log('Swiping to next screen');
       runOnJS(setCurrentIndex)(currentIndex + 1);
     } else if (isRightSwipe && currentIndex > 0) {
-      console.log('Swiping to previous screen');
       runOnJS(setCurrentIndex)(currentIndex - 1);
     }
   };
 
   const handleNext = () => {
-    console.log('=== HANDLE NEXT CALLED ===');
-    console.log('Current index:', currentIndex);
-    console.log('Total items:', onboardingData.length);
-    
     if (currentIndex < onboardingData.length - 1) {
-      const nextIndex = currentIndex + 1;
-      console.log('Moving to next index:', nextIndex);
-      setCurrentIndex(nextIndex);
+      setCurrentIndex(currentIndex + 1);
     } else {
-      console.log('=== COMPLETING ONBOARDING ===');
       onComplete();
     }
   };
 
   const handleSkip = () => {
-    console.log('=== SKIP BUTTON PRESSED ===');
     onComplete();
   };
 
-  const currentItem = onboardingData[currentIndex];
-
-  // Animated Progress Bar
-  const renderProgressBar = () => {
-    const animatedProgressStyle = useAnimatedStyle(() => {
-      const progressWidth = interpolate(
-        progress.value,
-        [0, 1],
-        [20, SCREEN_WIDTH - 40],
-        Extrapolate.CLAMP
-      );
-      
-      return {
-        width: withSpring(progressWidth, { damping: 15 }),
-        backgroundColor: interpolateColor(
-          progress.value,
-          [0, 0.33, 0.66, 1],
-          [
-            currentItem.gradientColors[0],
-            onboardingData[1].gradientColors[0],
-            onboardingData[2].gradientColors[0],
-            onboardingData[3].gradientColors[0],
-          ]
-        ),
-      };
-    });
-
-    return (
-      <View style={styles.progressContainer}>
-        <View style={styles.progressTrack}>
-          <Animated.View style={[styles.progressBar, animatedProgressStyle]} />
-        </View>
-        <Text style={styles.progressText}>
-          {currentIndex + 1} / {onboardingData.length}
-        </Text>
-      </View>
-    );
+  const handleDotPress = (index: number) => {
+    setCurrentIndex(index);
   };
+
+  const currentItem = onboardingData[currentIndex];
 
   // Animated Dots Indicator
   const renderDots = () => {
@@ -384,10 +328,15 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
           });
 
           return (
-            <Animated.View
+            <TouchableOpacity
               key={index}
-              style={[styles.dot, animatedDotStyle]}
-            />
+              onPress={() => handleDotPress(index)}
+              activeOpacity={0.7}
+            >
+              <Animated.View
+                style={[styles.dot, animatedDotStyle]}
+              />
+            </TouchableOpacity>
           );
         })}
       </View>
@@ -462,47 +411,47 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
         </View>
 
         <SafeAreaView style={styles.safeArea}>
-          {/* Progress Bar */}
+          {/* Progress Bar - REMOVED as per user request */}
+          {/* 
           <View style={styles.progressSection}>
             {renderProgressBar()}
           </View>
+          */}
 
-          {/* Main Content with Swipe Gesture - Only the icon and text area */}
-          <View style={styles.contentArea}>
-            <PanGestureHandler onEnded={gestureHandler}>
-              <Animated.View style={styles.swipeableContent}>
-                {/* Animated Icon */}
-                <View style={styles.iconSection}>
-                  <View style={styles.iconWrapper}>
-                    <AnimatedIcon
-                      icon={currentItem.icon}
-                      isActive={true}
-                      gradientColors={currentItem.gradientColors}
-                    />
+          {/* Main Content with Swipe Gesture */}
+          <PanGestureHandler onEnded={gestureHandler}>
+            <Animated.View style={styles.swipeableContent}>
+              {/* Animated Icon */}
+              <View style={styles.iconSection}>
+                <View style={styles.iconWrapper}>
+                  <AnimatedIcon
+                    icon={currentItem.icon}
+                    isActive={true}
+                    gradientColors={currentItem.gradientColors}
+                  />
+                </View>
+              </View>
+
+              {/* Animated Text Content */}
+              <View style={styles.textSection}>
+                <View style={styles.textContent}>
+                  <Animated.Text style={[styles.title, titleAnimatedStyle]}>
+                    {currentItem.title}
+                  </Animated.Text>
+                  
+                  <Animated.Text style={[styles.subtitle, subtitleAnimatedStyle]}>
+                    {currentItem.subtitle}
+                  </Animated.Text>
+                  
+                  <View style={styles.descriptionContainer}>
+                    <Animated.Text style={[styles.description, descriptionAnimatedStyle]}>
+                      {currentItem.description}
+                    </Animated.Text>
                   </View>
                 </View>
-
-                {/* Animated Text Content */}
-                <View style={styles.textSection}>
-                  <View style={styles.textContent}>
-                    <Animated.Text style={[styles.title, titleAnimatedStyle]}>
-                      {currentItem.title}
-                    </Animated.Text>
-                    
-                    <Animated.Text style={[styles.subtitle, subtitleAnimatedStyle]}>
-                      {currentItem.subtitle}
-                    </Animated.Text>
-                    
-                    <View style={styles.descriptionContainer}>
-                      <Animated.Text style={[styles.description, descriptionAnimatedStyle]}>
-                        {currentItem.description}
-                      </Animated.Text>
-                    </View>
-                  </View>
-                </View>
-              </Animated.View>
-            </PanGestureHandler>
-          </View>
+              </View>
+            </Animated.View>
+          </PanGestureHandler>
 
           {/* Navigation & Dots */}
           <View style={styles.navigationSection}>
@@ -516,42 +465,24 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
 
           {/* Action Buttons */}
           <View style={styles.footer}>
-            {/* Swipe Instructions */}
-            <View style={styles.swipeInstructions}>
-              <View style={styles.swipeIndicator}>
-                <Text style={styles.swipeText}>
-                  Swipe to explore • Tap to continue
-                </Text>
-              </View>
-            </View>
-            
             {/* Button Container */}
             <View style={styles.buttonContainer}>
               {/* Main Action Button */}
               <TouchableOpacity 
                 style={styles.mainActionButton}
-                activeOpacity={0.8}
-                onPress={() => {
-                  console.log('Main action button pressed!');
-                  handleNext();
-                }}
+                activeOpacity={0.7}
+                onPress={handleNext}
               >
-                <View style={styles.buttonContent}>
-                  <Text style={styles.mainButtonText}>
-                    {currentIndex === onboardingData.length - 1 ? 'Get Started' : 'Continue'}
-                  </Text>
-                  <Text style={styles.buttonIcon}>→</Text>
-                </View>
+                <Text style={styles.mainButtonText}>
+                  {currentIndex === onboardingData.length - 1 ? 'Get Started' : 'Continue'}
+                </Text>
               </TouchableOpacity>
               
               {/* Skip Button */}
               <TouchableOpacity 
                 style={styles.skipButton}
                 activeOpacity={0.7}
-                onPress={() => {
-                  console.log('Skip button pressed!');
-                  handleSkip();
-                }}
+                onPress={handleSkip}
               >
                 <Text style={styles.skipButtonText}>Skip for now</Text>
               </TouchableOpacity>
@@ -602,16 +533,8 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   
-  // Header
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
-    zIndex: 10,
-  },
-  
-  // Progress Bar
+  /*
+  // Progress Bar - REMOVED as per user request
   progressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -653,14 +576,9 @@ const styles = StyleSheet.create({
     minWidth: 45,
     textAlign: 'center',
   },
-  
+  */
+
   // Content
-  contentArea: {
-    flex: 1,
-    zIndex: 5,
-    paddingHorizontal: theme.spacing.md,
-  },
-  
   swipeableContent: {
     flex: 1,
     zIndex: 5,
@@ -796,10 +714,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.xl,
     paddingBottom: theme.spacing.xl,
     paddingTop: theme.spacing.md,
-    zIndex: 20,
-    backgroundColor: 'transparent',
+    alignItems: 'center',
   },
   
+  /*
   // Swipe Instructions
   swipeInstructions: {
     alignItems: 'center',
@@ -823,34 +741,27 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeight.medium,
     letterSpacing: 0.3,
   },
-  
+  */
   // Button Container
   buttonContainer: {
-    gap: theme.spacing.md,
+    gap: 20,
+    alignItems: 'center',
   },
   
   // Main Action Button
   mainActionButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    borderRadius: theme.borderRadius.xl,
-    paddingVertical: theme.spacing.lg,
-    paddingHorizontal: theme.spacing.xl,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 10,
-    zIndex: 25,
-  },
-  
-  buttonContent: {
-    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 50,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: theme.spacing.sm,
+    minWidth: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   
   mainButtonText: {
@@ -860,22 +771,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   
-  buttonIcon: {
-    color: theme.colors.text.inverse,
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.bold,
-  },
-  
   // Skip Button
   skipButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    paddingHorizontal: theme.spacing.xl,
-    paddingVertical: theme.spacing.md,
+    backgroundColor: 'transparent',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
     alignItems: 'center',
-    borderRadius: theme.borderRadius.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    zIndex: 25,
   },
   
   skipButtonText: {

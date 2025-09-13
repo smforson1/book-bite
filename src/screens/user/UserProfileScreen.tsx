@@ -336,6 +336,15 @@ const UserProfileScreen: React.FC = () => {
         </View>
         <Ionicons name="chevron-forward" size={20} color={theme.colors.danger[500]} />
       </TouchableOpacity>
+
+      <TouchableOpacity style={[styles.actionRow, styles.logoutAction]} onPress={handleLogout}>
+        <Ionicons name="log-out" size={24} color={theme.colors.primary[500]} />
+        <View style={styles.actionInfo}>
+          <Text style={[styles.actionLabel, { color: theme.colors.primary[500] }]}>Logout</Text>
+          <Text style={styles.actionDescription}>Sign out of your account</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={theme.colors.primary[500]} />
+      </TouchableOpacity>
     </Card>
   );
 
@@ -366,6 +375,7 @@ const UserProfileScreen: React.FC = () => {
             variant="outline"
             onPress={handleLogout}
             style={styles.logoutButton}
+            icon={<Ionicons name="log-out-outline" size={16} color={theme.colors.danger[500]} />}
           />
         </View>
       </ScrollView>
@@ -491,6 +501,11 @@ const styles = StyleSheet.create({
     color: theme.colors.text.secondary,
   },
   dangerAction: {
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border.light,
+  },
+  
+  logoutAction: {
     borderBottomWidth: 0,
   },
   logoutContainer: {

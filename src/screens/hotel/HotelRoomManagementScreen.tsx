@@ -29,7 +29,7 @@ interface Room {
   imageUrl?: string;
 }
 
-const HotelRoomsScreen: React.FC = () => {
+const HotelRoomManagementScreen: React.FC = () => {
   const { user } = useAuth();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -644,4 +644,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default HotelRoomsScreen;
+export default HotelRoomManagementScreen;

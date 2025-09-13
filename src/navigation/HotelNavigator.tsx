@@ -1,13 +1,42 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../styles/theme';
 import HotelDashboardScreen from '../screens/hotel/HotelDashboardScreen';
 import HotelRoomsScreen from '../screens/hotel/HotelRoomsScreen';
 import HotelBookingsScreen from '../screens/hotel/HotelBookingsScreen';
 import HotelProfileScreen from '../screens/hotel/HotelProfileScreen';
+import HotelRoomManagementScreen from '../screens/hotel/HotelRoomManagementScreen';
 
 const Tab = createBottomTabNavigator();
+const Stack = createStackNavigator();
+
+// Stack Navigator for Dashboard and Room Management
+const DashboardStack = () => {
+  return (
+    <Stack.Navigator 
+      screenOptions={{
+        headerShown: false
+      }}
+    >
+      <Stack.Screen 
+        name="HotelDashboard" 
+        component={HotelDashboardScreen}
+        options={{
+          headerShown: false
+        }}
+      />
+      <Stack.Screen 
+        name="HotelRoomManagement" 
+        component={HotelRoomManagementScreen}
+        options={{
+          headerShown: false
+        }}
+      />
+    </Stack.Navigator>
+  );
+};
 
 const HotelNavigator: React.FC = () => {
   return (
@@ -73,23 +102,67 @@ const HotelNavigator: React.FC = () => {
     >
       <Tab.Screen 
         name="Dashboard" 
-        component={HotelDashboardScreen}
-        options={{ title: 'Hotel Dashboard' }}
+        component={DashboardStack}
+        options={{ 
+          title: 'Hotel Dashboard',
+          headerShown: true,
+          headerStyle: {
+            backgroundColor: theme.colors.success[500],
+          },
+          headerTintColor: theme.colors.neutral[0],
+          headerTitleStyle: {
+            fontWeight: theme.typography.fontWeight.semiBold,
+            fontSize: theme.typography.fontSize.lg,
+          },
+        }}
       />
       <Tab.Screen 
         name="Rooms" 
         component={HotelRoomsScreen}
-        options={{ title: 'Manage Rooms' }}
+        options={{ 
+          title: 'Manage Rooms',
+          headerShown: true,
+          headerStyle: {
+            backgroundColor: theme.colors.success[500],
+          },
+          headerTintColor: theme.colors.neutral[0],
+          headerTitleStyle: {
+            fontWeight: theme.typography.fontWeight.semiBold,
+            fontSize: theme.typography.fontSize.lg,
+          },
+        }}
       />
       <Tab.Screen 
         name="Bookings" 
         component={HotelBookingsScreen}
-        options={{ title: 'Bookings' }}
+        options={{ 
+          title: 'Bookings',
+          headerShown: true,
+          headerStyle: {
+            backgroundColor: theme.colors.success[500],
+          },
+          headerTintColor: theme.colors.neutral[0],
+          headerTitleStyle: {
+            fontWeight: theme.typography.fontWeight.semiBold,
+            fontSize: theme.typography.fontSize.lg,
+          },
+        }}
       />
       <Tab.Screen 
         name="Profile" 
         component={HotelProfileScreen}
-        options={{ title: 'Hotel Profile' }}
+        options={{ 
+          title: 'Hotel Profile',
+          headerShown: true,
+          headerStyle: {
+            backgroundColor: theme.colors.success[500],
+          },
+          headerTintColor: theme.colors.neutral[0],
+          headerTitleStyle: {
+            fontWeight: theme.typography.fontWeight.semiBold,
+            fontSize: theme.typography.fontSize.lg,
+          },
+        }}
       />
     </Tab.Navigator>
   );

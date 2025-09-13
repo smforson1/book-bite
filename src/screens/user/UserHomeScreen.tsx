@@ -98,7 +98,12 @@ const UserHomeScreen: React.FC = () => {
             variant="minimal"
             spacing="xl"
           >
-            <View style={styles.quickActions}>
+            <ScrollView 
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.quickActionsContainer}
+              style={styles.quickActionsScroll}
+            >
               <ActionCard
                 variant="gradient"
                 style={styles.actionCard}
@@ -128,7 +133,7 @@ const UserHomeScreen: React.FC = () => {
                   <Text style={[globalStyles.bodySmall, styles.actionSubtitle, { color: theme.colors.text.inverse, opacity: 0.9 }]}>Delicious meals delivered</Text>
                 </View>
               </ActionCard>
-            </View>
+            </ScrollView>
           </Section>
 
         {/* Stats Section with Cards */}
@@ -146,8 +151,8 @@ const UserHomeScreen: React.FC = () => {
               onPress={handleViewBookings}
               activeOpacity={0.7}
             >
-              <Text style={[globalStyles.h3, { color: theme.colors.primary[500] }]}>5</Text>
-              <Text style={[globalStyles.bodySmall, styles.statLabel]}>Bookings</Text>
+              <Text style={[globalStyles.h3, { color: theme.colors.primary[500], fontSize: theme.typography.fontSize.xl }]}>5</Text>
+              <Text style={[globalStyles.bodySmall, styles.statLabel]} numberOfLines={1}>Bookings</Text>
               <Ionicons name="bed-outline" size={16} color={theme.colors.primary[500]} style={styles.statIcon} />
             </TouchableOpacity>
             
@@ -156,8 +161,8 @@ const UserHomeScreen: React.FC = () => {
               onPress={handleViewOrders}
               activeOpacity={0.7}
             >
-              <Text style={[globalStyles.h3, { color: theme.colors.secondary[500] }]}>12</Text>
-              <Text style={[globalStyles.bodySmall, styles.statLabel]}>Orders</Text>
+              <Text style={[globalStyles.h3, { color: theme.colors.secondary[500], fontSize: theme.typography.fontSize.xl }]}>12</Text>
+              <Text style={[globalStyles.bodySmall, styles.statLabel]} numberOfLines={1}>Orders</Text>
               <Ionicons name="restaurant-outline" size={16} color={theme.colors.secondary[500]} style={styles.statIcon} />
             </TouchableOpacity>
             
@@ -165,8 +170,8 @@ const UserHomeScreen: React.FC = () => {
               style={[styles.statCard, { borderLeftColor: theme.colors.success[500] }]}
               activeOpacity={0.7}
             >
-              <Text style={[globalStyles.h3, { color: theme.colors.success[500] }]}>$420</Text>
-              <Text style={[globalStyles.bodySmall, styles.statLabel]}>Saved</Text>
+              <Text style={[globalStyles.h3, { color: theme.colors.success[500], fontSize: theme.typography.fontSize.lg }]}>$420</Text>
+              <Text style={[globalStyles.bodySmall, styles.statLabel]} numberOfLines={1}>Saved</Text>
               <Ionicons name="wallet-outline" size={16} color={theme.colors.success[500]} style={styles.statIcon} />
             </TouchableOpacity>
           </View>
@@ -239,13 +244,23 @@ const styles = StyleSheet.create({
   },
   
   // Quick Actions
+  quickActionsScroll: {
+    marginHorizontal: -theme.spacing.lg,
+  },
+  
+  quickActionsContainer: {
+    paddingHorizontal: theme.spacing.lg,
+    gap: theme.spacing.lg,
+  },
+  
   quickActions: {
     flexDirection: 'row',
     gap: theme.spacing.lg,
   },
   
   actionCard: {
-    flex: 1,
+    width: SCREEN_WIDTH * 0.7, // Make cards wider for better scrolling
+    minWidth: 280, // Ensure minimum width
   },
   
   actionContent: {
@@ -275,25 +290,29 @@ const styles = StyleSheet.create({
   // Stats Section
   statsRow: {
     flexDirection: 'row',
-    gap: theme.spacing.md,
+    gap: theme.spacing.sm,
   },
   
   statCard: {
     flex: 1,
     backgroundColor: theme.colors.background.primary,
     borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.lg,
+    padding: theme.spacing.md,
     alignItems: 'center',
     borderLeftWidth: 4,
     ...theme.shadows.sm,
-    minHeight: 90,
-    justifyContent: 'center',
+    minHeight: 100,
+    maxHeight: 120,
+    aspectRatio: 1, // Make it more square
+    justifyContent: 'space-between',
   },
   
   statLabel: {
     marginTop: theme.spacing.xs,
     color: theme.colors.text.secondary,
     textAlign: 'center',
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.medium,
   },
   
   statIcon: {

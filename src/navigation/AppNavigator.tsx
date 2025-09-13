@@ -40,6 +40,7 @@ const AppNavigator: React.FC = () => {
     }
   };
 
+  // Always show onboarding for development purposes
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>

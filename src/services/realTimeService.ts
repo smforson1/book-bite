@@ -20,9 +20,35 @@ export interface BookingUpdate {
   timestamp: Date;
 }
 
+export interface MenuItemUpdate {
+  restaurantId: string;
+  menuItem: {
+    id: string;
+    name: string;
+    isAvailable: boolean;
+    isInStock: boolean;
+    price: number;
+  };
+  action: 'added' | 'updated' | 'removed';
+  timestamp: Date;
+}
+
+export interface RoomAvailabilityUpdate {
+  hotelId: string;
+  room: {
+    id: string;
+    roomNumber: string;
+    isAvailable: boolean;
+    isOccupied: boolean;
+    price: number;
+  };
+  action: 'added' | 'updated' | 'removed';
+  timestamp: Date;
+}
+
 export interface RealTimeMessage {
-  type: 'order_update' | 'booking_update' | 'notification' | 'driver_location';
-  data: OrderTrackingUpdate | BookingUpdate | any;
+  type: 'order_update' | 'booking_update' | 'notification' | 'driver_location' | 'menu_update' | 'room_update';
+  data: OrderTrackingUpdate | BookingUpdate | MenuItemUpdate | RoomAvailabilityUpdate | any;
   userId: string;
 }
 
@@ -160,6 +186,50 @@ class RealTimeService {
     }
   }
 
+  // Broadcast menu item changes (for restaurant owners)
+  broadcastMenuUpdate(menuItem: any, action: 'added' | 'updated' | 'removed') {
+    if (this.isConnected && this.ws) {
+      this.ws.send(JSON.stringify({
+        type: 'menu_update',
+        data: {
+          restaurantId: this.userId, // Assuming restaurant owner's userId is their restaurant ID
+          menuItem: {
+            id: menuItem.id,
+            name: menuItem.name,
+            isAvailable: menuItem.isAvailable,
+            isInStock: menuItem.isInStock,
+            price: menuItem.price
+          },
+          action: action,
+          timestamp: new Date()
+        },
+        userId: this.userId
+      }));
+    }
+  }
+
+  // Broadcast room availability changes (for hotel owners)
+  broadcastRoomUpdate(room: any, action: 'added' | 'updated' | 'removed') {
+    if (this.isConnected && this.ws) {
+      this.ws.send(JSON.stringify({
+        type: 'room_update',
+        data: {
+          hotelId: this.userId, // Assuming hotel owner's userId is their hotel ID
+          room: {
+            id: room.id,
+            roomNumber: room.roomNumber,
+            isAvailable: room.isAvailable,
+            isOccupied: room.isOccupied,
+            price: room.price
+          },
+          action: action,
+          timestamp: new Date()
+        },
+        userId: this.userId
+      }));
+    }
+  }
+
   // Handle incoming messages
   private handleMessage(message: RealTimeMessage) {
     const { type, data } = message;
@@ -189,6 +259,12 @@ class RealTimeService {
         break;
       case 'notification':
         this.handleNotification(data);
+        break;
+      case 'menu_update':
+        this.handleMenuUpdate(data as MenuItemUpdate);
+        break;
+      case 'room_update':
+        this.handleRoomUpdate(data as RoomAvailabilityUpdate);
         break;
     }
   }
@@ -247,6 +323,30 @@ class RealTimeService {
     );
   }
 
+  // Handle menu item updates
+  private handleMenuUpdate(update: MenuItemUpdate) {
+    console.log('Menu update received:', update);
+    
+    // Store update locally
+    this.storeMenuUpdate(update);
+    
+    // Show notification to users about menu changes
+    const message = `${update.menuItem.name} is now ${update.menuItem.isInStock ? 'available' : 'out of stock'}`;
+    this.showLocalNotification('Menu Update', message, 'menu_update');
+  }
+
+  // Handle room availability updates
+  private handleRoomUpdate(update: RoomAvailabilityUpdate) {
+    console.log('Room update received:', update);
+    
+    // Store update locally
+    this.storeRoomUpdate(update);
+    
+    // Show notification to users about room availability
+    const message = `Room ${update.room.roomNumber} is now ${update.room.isAvailable && !update.room.isOccupied ? 'available' : 'unavailable'}`;
+    this.showLocalNotification('Room Update', message, 'room_update');
+  }
+
   // Reconnection logic
   private handleDisconnection() {
     if (this.reconnectAttempts < this.maxReconnectAttempts && this.userId) {
@@ -298,6 +398,34 @@ class RealTimeService {
       await AsyncStorage.default.setItem(key, JSON.stringify(updates));
     } catch (error) {
       console.error('Error storing order update:', error);
+    }
+  }
+
+  // Store menu update locally
+  private async storeMenuUpdate(update: MenuItemUpdate) {
+    try {
+      const AsyncStorage = await import('@react-native-async-storage/async-storage');
+      const key = `menu_updates_${update.restaurantId}`;
+      const existing = await AsyncStorage.default.getItem(key);
+      const updates = existing ? JSON.parse(existing) : [];
+      updates.push(update);
+      await AsyncStorage.default.setItem(key, JSON.stringify(updates));
+    } catch (error) {
+      console.error('Error storing menu update:', error);
+    }
+  }
+
+  // Store room update locally
+  private async storeRoomUpdate(update: RoomAvailabilityUpdate) {
+    try {
+      const AsyncStorage = await import('@react-native-async-storage/async-storage');
+      const key = `room_updates_${update.hotelId}`;
+      const existing = await AsyncStorage.default.getItem(key);
+      const updates = existing ? JSON.parse(existing) : [];
+      updates.push(update);
+      await AsyncStorage.default.setItem(key, JSON.stringify(updates));
+    } catch (error) {
+      console.error('Error storing room update:', error);
     }
   }
 
