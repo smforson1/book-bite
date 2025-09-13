@@ -10,6 +10,7 @@ import AdminRestaurantsScreen from '../screens/admin/AdminRestaurantsScreen';
 import AdminBookingsScreen from '../screens/admin/AdminBookingsScreen';
 import AdminOrdersScreen from '../screens/admin/AdminOrdersScreen';
 import AdminAnalyticsScreen from '../screens/admin/AdminAnalyticsScreen';
+import AdminProfileScreen from '../screens/admin/AdminProfileScreen';
 
 const Tab = createBottomTabNavigator<AdminTabParamList>();
 
@@ -41,6 +42,9 @@ const AdminNavigator: React.FC = () => {
               break;
             case 'Analytics':
               iconName = focused ? 'analytics' : 'analytics-outline';
+              break;
+            case 'Profile':
+              iconName = focused ? 'person' : 'person-outline';
               break;
             default:
               iconName = 'help-outline';
@@ -118,6 +122,11 @@ const AdminNavigator: React.FC = () => {
         name="Analytics" 
         component={AdminAnalyticsScreen}
         options={{ title: 'Analytics' }}
+      />
+      <Tab.Screen 
+        name="Profile" 
+        component={AdminProfileScreen}
+        options={{ title: 'Admin Profile' }}
       />
     </Tab.Navigator>
   );

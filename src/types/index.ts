@@ -177,4 +177,5 @@ export type AdminTabParamList = {
   Bookings: undefined;
   Orders: undefined;
   Analytics: undefined;
+  Profile: undefined;
 };

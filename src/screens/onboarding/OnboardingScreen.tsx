@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   Dimensions,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +21,7 @@ import Animated, {
   interpolateColor,
   withRepeat,
 } from 'react-native-reanimated';
+import { PanGestureHandler, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Button } from '../../components';
 import { theme } from '../../styles/theme';
@@ -178,7 +180,7 @@ const AnimatedIcon: React.FC<{
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
-        <Ionicons name={icon} size={80} color={theme.colors.text.inverse} />
+        <Ionicons name={icon} size={90} color={theme.colors.text.inverse} />
       </LinearGradient>
     </Animated.View>
   );
@@ -273,37 +275,56 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
 
   const gestureHandler = (event: any) => {
     'worklet';
-    const { translationX } = event.nativeEvent;
-    const shouldGoNext = translationX < -SCREEN_WIDTH / 3 && currentIndex < onboardingData.length - 1;
-    const shouldGoPrev = translationX > SCREEN_WIDTH / 3 && currentIndex > 0;
+    const { translationX, velocityX } = event.nativeEvent;
     
-    if (shouldGoNext) {
+    // Only process if there's significant movement (not just a tap)
+    if (Math.abs(translationX) < 30 && Math.abs(velocityX) < 300) {
+      return; // Ignore small movements/taps
+    }
+    
+    // Determine swipe direction and distance
+    const swipeThreshold = SCREEN_WIDTH / 4;
+    const velocityThreshold = 800; // Increased threshold for more intentional swipes
+    
+    // Check for significant swipe or fast swipe
+    const isLeftSwipe = translationX < -swipeThreshold || (translationX < -50 && velocityX < -velocityThreshold);
+    const isRightSwipe = translationX > swipeThreshold || (translationX > 50 && velocityX > velocityThreshold);
+    
+    console.log('Swipe detected:', {
+      translationX,
+      velocityX,
+      isLeftSwipe,
+      isRightSwipe,
+      currentIndex
+    });
+    
+    if (isLeftSwipe && currentIndex < onboardingData.length - 1) {
+      console.log('Swiping to next screen');
       runOnJS(setCurrentIndex)(currentIndex + 1);
-    } else if (shouldGoPrev) {
+    } else if (isRightSwipe && currentIndex > 0) {
+      console.log('Swiping to previous screen');
       runOnJS(setCurrentIndex)(currentIndex - 1);
     }
   };
 
   const handleNext = () => {
+    console.log('=== HANDLE NEXT CALLED ===');
+    console.log('Current index:', currentIndex);
+    console.log('Total items:', onboardingData.length);
+    
     if (currentIndex < onboardingData.length - 1) {
-      buttonScale.value = withSequence(
-        withTiming(0.9, { duration: 100 }),
-        withTiming(1, { duration: 100 })
-      );
-      setCurrentIndex(currentIndex + 1);
+      const nextIndex = currentIndex + 1;
+      console.log('Moving to next index:', nextIndex);
+      setCurrentIndex(nextIndex);
     } else {
-      buttonScale.value = withSequence(
-        withTiming(0.9, { duration: 100 }),
-        withTiming(1.1, { duration: 200 }),
-        withTiming(0, { duration: 300 })
-      );
-      setTimeout(() => onComplete(), 600);
+      console.log('=== COMPLETING ONBOARDING ===');
+      onComplete();
     }
   };
 
   const handleSkip = () => {
-    skipButtonOpacity.value = withTiming(0, { duration: 300 });
-    setTimeout(() => onComplete(), 300);
+    console.log('=== SKIP BUTTON PRESSED ===');
+    onComplete();
   };
 
   const currentItem = onboardingData[currentIndex];
@@ -408,137 +429,137 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
   });
 
   return (
-    <View style={styles.container}>
-      {/* Animated Background */}
-      {onboardingData.map((item, index) => (
-        <AnimatedBackground
-          key={item.id}
-          gradientColors={item.gradientColors}
-          isActive={index === currentIndex}
-        />
-      ))}
-
-      {/* Floating Particles */}
-      <View style={styles.particlesContainer}>
-        {Array.from({ length: 15 }).map((_, index) => (
-          <View
-            key={index}
-            style={[
-              styles.particleWrapper,
-              {
-                left: Math.random() * SCREEN_WIDTH,
-                top: Math.random() * SCREEN_HEIGHT,
-              },
-            ]}
-          >
-            <FloatingParticle
-              delay={index * 200}
-              color={currentItem.particleColor}
-            />
-          </View>
+    <GestureHandlerRootView style={styles.container}>
+      <View style={styles.container}>
+        {/* Animated Background */}
+        {onboardingData.map((item, index) => (
+          <AnimatedBackground
+            key={item.id}
+            gradientColors={item.gradientColors}
+            isActive={index === currentIndex}
+          />
         ))}
-      </View>
 
-      <SafeAreaView style={styles.safeArea}>
-        {/* Header with Skip Button */}
-        <View style={styles.header}>
-          <Animated.View style={skipAnimatedStyle}>
-            <Button
-              title="Skip"
-              variant="ghost"
-              size="small"
-              onPress={handleSkip}
-              style={styles.skipButton}
-            />
-          </Animated.View>
-        </View>
-
-        {/* Progress Bar */}
-        {renderProgressBar()}
-
-        {/* Main Content */}
-        <Animated.View style={styles.contentContainer}>
-            {/* Animated Icon */}
-            <View style={styles.iconSection}>
-              <AnimatedIcon
-                icon={currentItem.icon}
-                isActive={true}
-                gradientColors={currentItem.gradientColors}
+        {/* Floating Particles */}
+        <View style={styles.particlesContainer}>
+          {Array.from({ length: 15 }).map((_, index) => (
+            <View
+              key={index}
+              style={[
+                styles.particleWrapper,
+                {
+                  left: Math.random() * SCREEN_WIDTH,
+                  top: Math.random() * SCREEN_HEIGHT,
+                },
+              ]}
+            >
+              <FloatingParticle
+                delay={index * 200}
+                color={currentItem.particleColor}
               />
             </View>
-
-            {/* Animated Text Content */}
-            <View style={styles.textSection}>
-              <Animated.Text style={[styles.title, titleAnimatedStyle]}>
-                {currentItem.title}
-              </Animated.Text>
-              
-              <Animated.Text style={[styles.subtitle, subtitleAnimatedStyle]}>
-                {currentItem.subtitle}
-              </Animated.Text>
-              
-              <Animated.Text style={[styles.description, descriptionAnimatedStyle]}>
-                {currentItem.description}
-              </Animated.Text>
-            </View>
-          </Animated.View>
-
-        {/* Animated Dots */}
-        {renderDots()}
-
-        {/* Action Buttons */}
-        <View style={styles.footer}>
-          <View style={styles.navigationContainer}>
-            {/* Previous Button */}
-            {currentIndex > 0 && (
-              <Animated.View style={[styles.navButton, buttonAnimatedStyle]}>
-                <Button
-                  title=""
-                  variant="ghost"
-                  size="medium"
-                  onPress={() => setCurrentIndex(currentIndex - 1)}
-                  style={styles.prevButton}
-                  icon={<Ionicons name="chevron-back" size={24} color={theme.colors.text.inverse} />}
-                />
-              </Animated.View>
-            )}
-            
-            {/* Main Action Button */}
-            <Animated.View style={[styles.buttonWrapper, buttonAnimatedStyle]}>
-              <LinearGradient
-                colors={currentItem.gradientColors}
-                style={styles.buttonGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <Button
-                  title={currentIndex === onboardingData.length - 1 ? 'Get Started' : 'Continue'}
-                  variant="primary"
-                  size="large"
-                  onPress={handleNext}
-                  style={styles.nextButton}
-                  textStyle={styles.buttonText}
-                />
-              </LinearGradient>
-            </Animated.View>
-            
-            {/* Next Preview Button */}
-            {currentIndex < onboardingData.length - 1 && (
-              <Animated.View style={[styles.navButton, buttonAnimatedStyle]}>
-                <Button
-                  title=""
-                  variant="ghost"
-                  size="medium"
-                  onPress={handleNext}
-                  style={styles.nextPreviewButton}
-                  icon={<Ionicons name="chevron-forward" size={24} color={theme.colors.text.inverse} />}
-                />
-              </Animated.View>
-            )}
-          </View>
+          ))}
         </View>
-      </SafeAreaView>
-    </View>
+
+        <SafeAreaView style={styles.safeArea}>
+          {/* Progress Bar */}
+          <View style={styles.progressSection}>
+            {renderProgressBar()}
+          </View>
+
+          {/* Main Content with Swipe Gesture - Only the icon and text area */}
+          <View style={styles.contentArea}>
+            <PanGestureHandler onEnded={gestureHandler}>
+              <Animated.View style={styles.swipeableContent}>
+                {/* Animated Icon */}
+                <View style={styles.iconSection}>
+                  <View style={styles.iconWrapper}>
+                    <AnimatedIcon
+                      icon={currentItem.icon}
+                      isActive={true}
+                      gradientColors={currentItem.gradientColors}
+                    />
+                  </View>
+                </View>
+
+                {/* Animated Text Content */}
+                <View style={styles.textSection}>
+                  <View style={styles.textContent}>
+                    <Animated.Text style={[styles.title, titleAnimatedStyle]}>
+                      {currentItem.title}
+                    </Animated.Text>
+                    
+                    <Animated.Text style={[styles.subtitle, subtitleAnimatedStyle]}>
+                      {currentItem.subtitle}
+                    </Animated.Text>
+                    
+                    <View style={styles.descriptionContainer}>
+                      <Animated.Text style={[styles.description, descriptionAnimatedStyle]}>
+                        {currentItem.description}
+                      </Animated.Text>
+                    </View>
+                  </View>
+                </View>
+              </Animated.View>
+            </PanGestureHandler>
+          </View>
+
+          {/* Navigation & Dots */}
+          <View style={styles.navigationSection}>
+            <View style={styles.dotsContainer}>
+              {renderDots()}
+              <Text style={styles.progressHint}>
+                {currentIndex + 1} of {onboardingData.length}
+              </Text>
+            </View>
+          </View>
+
+          {/* Action Buttons */}
+          <View style={styles.footer}>
+            {/* Swipe Instructions */}
+            <View style={styles.swipeInstructions}>
+              <View style={styles.swipeIndicator}>
+                <Text style={styles.swipeText}>
+                  Swipe to explore • Tap to continue
+                </Text>
+              </View>
+            </View>
+            
+            {/* Button Container */}
+            <View style={styles.buttonContainer}>
+              {/* Main Action Button */}
+              <TouchableOpacity 
+                style={styles.mainActionButton}
+                activeOpacity={0.8}
+                onPress={() => {
+                  console.log('Main action button pressed!');
+                  handleNext();
+                }}
+              >
+                <View style={styles.buttonContent}>
+                  <Text style={styles.mainButtonText}>
+                    {currentIndex === onboardingData.length - 1 ? 'Get Started' : 'Continue'}
+                  </Text>
+                  <Text style={styles.buttonIcon}>→</Text>
+                </View>
+              </TouchableOpacity>
+              
+              {/* Skip Button */}
+              <TouchableOpacity 
+                style={styles.skipButton}
+                activeOpacity={0.7}
+                onPress={() => {
+                  console.log('Skip button pressed!');
+                  handleSkip();
+                }}
+              >
+                <Text style={styles.skipButtonText}>Skip for now</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </SafeAreaView>
+      </View>
+    </GestureHandlerRootView>
   );
 };
 
@@ -550,6 +571,14 @@ const styles = StyleSheet.create({
   
   safeArea: {
     flex: 1,
+    paddingTop: theme.spacing.sm,
+  },
+  
+  // Progress Section
+  progressSection: {
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.lg,
+    zIndex: 15,
   },
   
   // Floating Particles
@@ -559,7 +588,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 1,
+    zIndex: 0,
+    pointerEvents: 'none',
   },
   
   particleWrapper: {
@@ -581,81 +611,112 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   
-  skipButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: theme.borderRadius.xl,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.sm,
-  },
-  
   // Progress Bar
   progressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.lg,
-    zIndex: 10,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+    zIndex: 15,
   },
   
   progressTrack: {
     flex: 1,
-    height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 2,
-    marginRight: theme.spacing.md,
+    height: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 3,
+    marginRight: theme.spacing.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   
   progressBar: {
-    height: 4,
-    borderRadius: 2,
+    height: 6,
+    borderRadius: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
   
   progressText: {
     color: theme.colors.text.inverse,
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.semiBold,
-    opacity: 0.8,
+    fontWeight: theme.typography.fontWeight.bold,
+    opacity: 0.9,
+    letterSpacing: 0.5,
+    minWidth: 45,
+    textAlign: 'center',
   },
   
   // Content
-  contentContainer: {
+  contentArea: {
     flex: 1,
-    zIndex: 10,
+    zIndex: 5,
+    paddingHorizontal: theme.spacing.md,
+  },
+  
+  swipeableContent: {
+    flex: 1,
+    zIndex: 5,
   },
   
   iconSection: {
-    flex: 0.4,
+    flex: 0.45,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: theme.spacing.xl,
+  },
+  
+  iconWrapper: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 15 },
+    shadowOpacity: 0.4,
+    shadowRadius: 30,
+    elevation: 25,
   },
   
   iconContainer: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.3,
-    shadowRadius: 25,
-    elevation: 20,
+    shadowOffset: { width: 0, height: 25 },
+    shadowOpacity: 0.4,
+    shadowRadius: 35,
+    elevation: 30,
   },
   
   iconGradient: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
     justifyContent: 'center',
     alignItems: 'center',
   },
   
   textSection: {
-    flex: 0.4,
-    paddingHorizontal: theme.spacing.xl,
-    justifyContent: 'center',
+    flex: 0.45,
+    justifyContent: 'flex-start',
     alignItems: 'center',
+    paddingHorizontal: theme.spacing.lg,
+  },
+  
+  textContent: {
+    alignItems: 'center',
+    maxWidth: '100%',
+  },
+  
+  descriptionContainer: {
+    marginTop: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.sm,
   },
   
   title: {
@@ -664,106 +725,164 @@ const styles = StyleSheet.create({
     color: theme.colors.text.inverse,
     textAlign: 'center',
     marginBottom: theme.spacing.md,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowOffset: { width: 0, height: 3 },
+    textShadowRadius: 6,
+    letterSpacing: 0.5,
   },
   
   subtitle: {
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.medium,
+    fontSize: theme.typography.fontSize.xl,
+    fontWeight: theme.typography.fontWeight.semiBold,
     color: theme.colors.text.inverse,
     textAlign: 'center',
-    marginBottom: theme.spacing.lg,
-    opacity: 0.9,
+    marginBottom: theme.spacing.sm,
+    opacity: 0.95,
+    letterSpacing: 0.3,
   },
   
   description: {
     fontSize: theme.typography.fontSize.md,
     color: theme.colors.text.inverse,
     textAlign: 'center',
-    lineHeight: theme.typography.lineHeight.lg,
-    opacity: 0.8,
-    paddingHorizontal: theme.spacing.md,
+    lineHeight: theme.typography.lineHeight.xl,
+    opacity: 0.85,
+    fontWeight: theme.typography.fontWeight.medium,
+    letterSpacing: 0.2,
   },
   
-  // Pagination
+  // Navigation Section
+  navigationSection: {
+    paddingVertical: theme.spacing.lg,
+    zIndex: 15,
+  },
+  
   pagination: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: theme.spacing.lg,
-    zIndex: 10,
+    paddingVertical: theme.spacing.md,
+  },
+  
+  dotsContainer: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing.md,
+    zIndex: 15,
+  },
+  
+  progressHint: {
+    color: theme.colors.text.inverse,
+    fontSize: theme.typography.fontSize.sm,
+    marginTop: theme.spacing.md,
+    opacity: 0.8,
+    fontWeight: theme.typography.fontWeight.medium,
+    letterSpacing: 0.5,
   },
   
   dot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginHorizontal: theme.spacing.xs,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    marginHorizontal: theme.spacing.sm,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
   
   // Footer
   footer: {
     paddingHorizontal: theme.spacing.xl,
     paddingBottom: theme.spacing.xl,
-    zIndex: 10,
+    paddingTop: theme.spacing.md,
+    zIndex: 20,
+    backgroundColor: 'transparent',
   },
   
-  navigationContainer: {
-    flexDirection: 'row',
+  // Swipe Instructions
+  swipeInstructions: {
     alignItems: 'center',
-    justifyContent: 'center',
+    marginBottom: theme.spacing.xl,
+  },
+  
+  swipeIndicator: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  
+  swipeText: {
+    color: theme.colors.text.inverse,
+    fontSize: theme.typography.fontSize.sm,
+    textAlign: 'center',
+    opacity: 0.9,
+    fontWeight: theme.typography.fontWeight.medium,
+    letterSpacing: 0.3,
+  },
+  
+  // Button Container
+  buttonContainer: {
     gap: theme.spacing.md,
   },
   
-  navButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    overflow: 'hidden',
-  },
-  
-  prevButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 24,
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  
-  nextPreviewButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 24,
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  
-  buttonWrapper: {
-    flex: 1,
+  // Main Action Button
+  mainActionButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     borderRadius: theme.borderRadius.xl,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  
-  buttonGradient: {
-    borderRadius: theme.borderRadius.xl,
-  },
-  
-  nextButton: {
-    backgroundColor: 'transparent',
-    shadowOpacity: 0,
-    elevation: 0,
     paddingVertical: theme.spacing.lg,
-    borderRadius: theme.borderRadius.xl,
+    paddingHorizontal: theme.spacing.xl,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 10,
+    zIndex: 25,
   },
   
-  buttonText: {
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+  },
+  
+  mainButtonText: {
+    color: theme.colors.text.inverse,
     fontSize: theme.typography.fontSize.lg,
     fontWeight: theme.typography.fontWeight.bold,
+    letterSpacing: 0.5,
+  },
+  
+  buttonIcon: {
     color: theme.colors.text.inverse,
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.bold,
+  },
+  
+  // Skip Button
+  skipButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.md,
+    alignItems: 'center',
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    zIndex: 25,
+  },
+  
+  skipButtonText: {
+    color: theme.colors.text.inverse,
+    fontSize: theme.typography.fontSize.md,
+    opacity: 0.9,
+    fontWeight: theme.typography.fontWeight.medium,
+    letterSpacing: 0.3,
   },
 });

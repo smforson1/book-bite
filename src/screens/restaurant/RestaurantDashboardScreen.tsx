@@ -14,11 +14,7 @@ import { globalStyles } from '../../styles/globalStyles';
 import { useAuth } from '../../contexts/AuthContext';
 
 const RestaurantDashboardScreen: React.FC = () => {
-  const { user, logout } = useAuth();
-
-  const handleLogout = async () => {
-    await logout();
-  };
+  const { user } = useAuth();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -91,18 +87,6 @@ const RestaurantDashboardScreen: React.FC = () => {
               <Text style={[globalStyles.bodySmall, styles.emptySubtext]}>Customer orders will appear here</Text>
             </View>
           </Card>
-        </View>
-
-        {/* Logout Button */}
-        <View style={styles.logoutSection}>
-          <Button
-            title="Logout"
-            variant="outline"
-            onPress={handleLogout}
-            icon={<Ionicons name="log-out-outline" size={16} color={theme.colors.error[500]} />}
-            style={StyleSheet.flatten([styles.logoutButton, { borderColor: theme.colors.error[500] }])}
-            textStyle={{ color: theme.colors.error[500] }}
-          />
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -234,18 +218,6 @@ const styles = StyleSheet.create({
   emptySubtext: {
     textAlign: 'center',
     color: theme.colors.text.secondary,
-  },
-  
-  // Logout Section
-  logoutSection: {
-    paddingHorizontal: theme.spacing[6],
-    paddingBottom: theme.spacing[8],
-  },
-  
-  logoutButton: {
-    backgroundColor: 'transparent',
-    shadowOpacity: 0,
-    elevation: 0,
   },
 });
 

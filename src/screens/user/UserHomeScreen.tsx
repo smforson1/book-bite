@@ -1,15 +1,24 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   Dimensions,
+  RefreshControl,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Button, Card, ActionCard, Header } from '../../components';
+import { 
+  Button, 
+  Card, 
+  ActionCard, 
+  Header,
+  Section,
+  LoadingState,
+  ListItem
+} from '../../components';
 import { theme } from '../../styles/theme';
 import { globalStyles } from '../../styles/globalStyles';
 import { useAuth } from '../../contexts/AuthContext';
@@ -17,12 +26,20 @@ import { useNavigation } from '@react-navigation/native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const UserHomeScreen: React.FC = () => {
-  const { user, logout } = useAuth();
-  const navigation = useNavigation();
+// UserHomeScreen component with enhanced UI
 
-  const handleLogout = async () => {
-    await logout();
+const UserHomeScreen: React.FC = () => {
+  const { user } = useAuth();
+  const navigation = useNavigation();
+  const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    // Simulate refresh delay
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 1000);
   };
 
   const handleBookHotel = () => {
@@ -35,136 +52,177 @@ const UserHomeScreen: React.FC = () => {
     navigation.navigate('Restaurants');
   };
 
+  const handleViewBookings = () => {
+    // @ts-ignore
+    navigation.navigate('Bookings');
+  };
+
+  const handleViewOrders = () => {
+    // @ts-ignore
+    navigation.navigate('Orders');
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* Enhanced Header */}
-      <Header
-        variant="profile"
-        userName={user?.name}
-        subtitle="What would you like to do today?"
-        showNotifications
-        notificationCount={3}
-        onNotificationPress={() => {}}
-        onProfilePress={() => {
-          // @ts-ignore
-          navigation.navigate('Profile');
-        }}
-      />
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={handleRefresh}
+            colors={[theme.colors.primary[500]]}
+            tintColor={theme.colors.primary[500]}
+          />
+        }
+      >
+        {/* Enhanced Header */}
+        <Header
+          variant="profile"
+          userName={user?.name}
+          subtitle="What would you like to do today?"
+          showNotifications
+          notificationCount={3}
+          onNotificationPress={() => {}}
+          onProfilePress={() => {
+            // @ts-ignore
+            navigation.navigate('Profile');
+          }}
+        />
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-
-        {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          <ActionCard
-            variant="gradient"
-            style={styles.actionCard}
-            onPress={handleBookHotel}
-            gradientColors={[theme.colors.primary[400], theme.colors.primary[600]]}
+        <LoadingState loading={loading}>
+          {/* Quick Actions Section */}
+          <Section 
+            title="Quick Actions"
+            subtitle="Choose what you'd like to do"
+            variant="minimal"
+            spacing="xl"
           >
-            <View style={styles.actionContent}>
-              <View style={[styles.actionIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                <Ionicons name="bed" size={32} color={theme.colors.text.inverse} />
-              </View>
-              <Text style={[globalStyles.h5, styles.actionTitle, { color: theme.colors.text.inverse }]}>Book a Hotel</Text>
-              <Text style={[globalStyles.bodySmall, styles.actionSubtitle, { color: theme.colors.text.inverse, opacity: 0.9 }]}>Find and book amazing stays</Text>
-            </View>
-          </ActionCard>
+            <View style={styles.quickActions}>
+              <ActionCard
+                variant="gradient"
+                style={styles.actionCard}
+                onPress={handleBookHotel}
+                gradientColors={[theme.colors.primary[400], theme.colors.primary[600]]}
+              >
+                <View style={styles.actionContent}>
+                  <View style={[styles.actionIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                    <Ionicons name="bed" size={32} color={theme.colors.text.inverse} />
+                  </View>
+                  <Text style={[globalStyles.h5, styles.actionTitle, { color: theme.colors.text.inverse }]}>Book a Hotel</Text>
+                  <Text style={[globalStyles.bodySmall, styles.actionSubtitle, { color: theme.colors.text.inverse, opacity: 0.9 }]}>Find and book amazing stays</Text>
+                </View>
+              </ActionCard>
 
-          <ActionCard
-            variant="gradient"
-            style={styles.actionCard}
-            onPress={handleOrderFood}
-            gradientColors={[theme.colors.secondary[400], theme.colors.secondary[600]]}
-          >
-            <View style={styles.actionContent}>
-              <View style={[styles.actionIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                <Ionicons name="restaurant" size={32} color={theme.colors.text.inverse} />
-              </View>
-              <Text style={[globalStyles.h5, styles.actionTitle, { color: theme.colors.text.inverse }]}>Order Food</Text>
-              <Text style={[globalStyles.bodySmall, styles.actionSubtitle, { color: theme.colors.text.inverse, opacity: 0.9 }]}>Delicious meals delivered</Text>
+              <ActionCard
+                variant="gradient"
+                style={styles.actionCard}
+                onPress={handleOrderFood}
+                gradientColors={[theme.colors.secondary[400], theme.colors.secondary[600]]}
+              >
+                <View style={styles.actionContent}>
+                  <View style={[styles.actionIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                    <Ionicons name="restaurant" size={32} color={theme.colors.text.inverse} />
+                  </View>
+                  <Text style={[globalStyles.h5, styles.actionTitle, { color: theme.colors.text.inverse }]}>Order Food</Text>
+                  <Text style={[globalStyles.bodySmall, styles.actionSubtitle, { color: theme.colors.text.inverse, opacity: 0.9 }]}>Delicious meals delivered</Text>
+                </View>
+              </ActionCard>
             </View>
-          </ActionCard>
-        </View>
+          </Section>
 
-        {/* Stats Cards */}
-        <View style={styles.statsSection}>
-          <Text style={[globalStyles.h4, styles.sectionTitle]}>Your Activity</Text>
+        {/* Stats Section with Cards */}
+        <Section 
+          title="Your Activity" 
+          subtitle="Track your bookings and savings"
+          variant="card"
+          actionText="View All"
+          actionIcon="chevron-forward"
+          onActionPress={() => {}}
+        >
           <View style={styles.statsRow}>
-            <Card style={StyleSheet.flatten([styles.statCard, { borderLeftColor: theme.colors.primary[500] }])}>
+            <TouchableOpacity 
+              style={[styles.statCard, { borderLeftColor: theme.colors.primary[500] }]}
+              onPress={handleViewBookings}
+              activeOpacity={0.7}
+            >
               <Text style={[globalStyles.h3, { color: theme.colors.primary[500] }]}>5</Text>
               <Text style={[globalStyles.bodySmall, styles.statLabel]}>Bookings</Text>
-            </Card>
+              <Ionicons name="bed-outline" size={16} color={theme.colors.primary[500]} style={styles.statIcon} />
+            </TouchableOpacity>
             
-            <Card style={StyleSheet.flatten([styles.statCard, { borderLeftColor: theme.colors.secondary[500] }])}>
+            <TouchableOpacity 
+              style={[styles.statCard, { borderLeftColor: theme.colors.secondary[500] }]}
+              onPress={handleViewOrders}
+              activeOpacity={0.7}
+            >
               <Text style={[globalStyles.h3, { color: theme.colors.secondary[500] }]}>12</Text>
               <Text style={[globalStyles.bodySmall, styles.statLabel]}>Orders</Text>
-            </Card>
+              <Ionicons name="restaurant-outline" size={16} color={theme.colors.secondary[500]} style={styles.statIcon} />
+            </TouchableOpacity>
             
-            <Card style={StyleSheet.flatten([styles.statCard, { borderLeftColor: theme.colors.success[500] }])}>
+            <TouchableOpacity 
+              style={[styles.statCard, { borderLeftColor: theme.colors.success[500] }]}
+              activeOpacity={0.7}
+            >
               <Text style={[globalStyles.h3, { color: theme.colors.success[500] }]}>$420</Text>
               <Text style={[globalStyles.bodySmall, styles.statLabel]}>Saved</Text>
-            </Card>
+              <Ionicons name="wallet-outline" size={16} color={theme.colors.success[500]} style={styles.statIcon} />
+            </TouchableOpacity>
           </View>
-        </View>
+        </Section>
 
-        {/* Recent Activity */}
-        <View style={styles.section}>
-          <Text style={[globalStyles.h4, styles.sectionTitle]}>Recent Activity</Text>
-          <Card style={styles.activityCard}>
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIcon}>
-                <Ionicons name="time-outline" size={48} color={theme.colors.text.tertiary} />
-              </View>
-              <Text style={[globalStyles.h5, styles.emptyText]}>No recent activity</Text>
-              <Text style={[globalStyles.bodySmall, styles.emptySubtext]}>Your bookings and orders will appear here</Text>
-            </View>
-          </Card>
-        </View>
-
-        {/* Popular This Week */}
-        <View style={styles.section}>
-          <Text style={[globalStyles.h4, styles.sectionTitle]}>Popular This Week</Text>
-          
-          <Card style={styles.popularItem}>
-            <View style={styles.popularContent}>
-              <View style={[styles.popularIcon, { backgroundColor: theme.colors.warning[100] }]}>
-                <Ionicons name="trending-up" size={24} color={theme.colors.warning[600]} />
-              </View>
-              <View style={styles.popularText}>
-                <Text style={[globalStyles.h5, styles.popularTitle]}>Luxury Hotels</Text>
-                <Text style={[globalStyles.bodySmall, styles.popularSubtitle]}>30% off this weekend</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={theme.colors.text.tertiary} />
-            </View>
-          </Card>
-          
-          <Card style={styles.popularItem}>
-            <View style={styles.popularContent}>
-              <View style={[styles.popularIcon, { backgroundColor: theme.colors.error[100] }]}>
-                <Ionicons name="restaurant-outline" size={24} color={theme.colors.error[600]} />
-              </View>
-              <View style={styles.popularText}>
-                <Text style={[globalStyles.h5, styles.popularTitle]}>Fast Food Delivery</Text>
-                <Text style={[globalStyles.bodySmall, styles.popularSubtitle]}>Free delivery on orders over $25</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={theme.colors.text.tertiary} />
-            </View>
-          </Card>
-        </View>
-
-        {/* Logout Button */}
-        <View style={styles.logoutSection}>
-          <Button
-            title="Logout"
-            variant="outline"
-            onPress={handleLogout}
-            icon={<Ionicons name="log-out-outline" size={16} color={theme.colors.error[500]} />}
-            style={StyleSheet.flatten([styles.logoutButton, { borderColor: theme.colors.error[500] }])}
-            textStyle={{ color: theme.colors.error[500] }}
+        {/* Recent Activity Enhanced */}
+        <Section 
+          title="Recent Activity" 
+          subtitle="Your latest bookings and orders"
+          variant="minimal"
+        >
+          <LoadingState 
+            empty={true}
+            emptyTitle="No recent activity"
+            emptySubtitle="Your bookings and orders will appear here"
+            emptyIcon="time-outline"
+            variant="card"
           />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+        </Section>
+
+        {/* Popular This Week Enhanced */}
+        <Section 
+          title="Popular This Week" 
+          subtitle="Trending offers and deals"
+          variant="minimal"
+          actionText="View All"
+          actionIcon="chevron-forward"
+          onActionPress={() => {}}
+        >
+          <ListItem
+            title="Luxury Hotels"
+            subtitle="30% off this weekend"
+            description="Book premium accommodations with exclusive discounts"
+            leftIcon="trending-up"
+            rightIcon="chevron-forward"
+            badge="Hot"
+            badgeColor={theme.colors.warning[500]}
+            onPress={() => handleBookHotel()}
+            variant="card"
+          />
+          
+          <ListItem
+            title="Fast Food Delivery"
+            subtitle="Free delivery on orders over $25"
+            description="Quick meals delivered to your doorstep"
+            leftIcon="restaurant-outline"
+            rightIcon="chevron-forward"
+            badge="New"
+            badgeColor={theme.colors.error[500]}
+            onPress={() => handleOrderFood()}
+            variant="card"
+          />
+        </Section>
+      </LoadingState>
+    </ScrollView>
+  </SafeAreaView>
   );
 };
 
@@ -174,15 +232,16 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background.secondary,
   },
   
-  content: {
-    flex: 1,
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
   },
   
   // Quick Actions
   quickActions: {
     flexDirection: 'row',
-    padding: theme.spacing[6],
-    gap: theme.spacing[4],
+    gap: theme.spacing.lg,
   },
   
   actionCard: {
@@ -199,12 +258,12 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: theme.spacing[3],
+    marginBottom: theme.spacing.md,
   },
   
   actionTitle: {
     textAlign: 'center',
-    marginBottom: theme.spacing[1],
+    marginBottom: theme.spacing.xs,
     color: theme.colors.text.primary,
   },
   
@@ -214,111 +273,31 @@ const styles = StyleSheet.create({
   },
   
   // Stats Section
-  statsSection: {
-    paddingHorizontal: theme.spacing[6],
-    marginBottom: theme.spacing[6],
-  },
-  
-  sectionTitle: {
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing[4],
-  },
-  
   statsRow: {
     flexDirection: 'row',
-    gap: theme.spacing[3],
+    gap: theme.spacing.md,
   },
   
   statCard: {
     flex: 1,
+    backgroundColor: theme.colors.background.primary,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
     alignItems: 'center',
     borderLeftWidth: 4,
-    paddingVertical: theme.spacing[4],
+    ...theme.shadows.sm,
+    minHeight: 90,
+    justifyContent: 'center',
   },
   
   statLabel: {
-    marginTop: theme.spacing[1],
+    marginTop: theme.spacing.xs,
     color: theme.colors.text.secondary,
-  },
-  
-  // Sections
-  section: {
-    paddingHorizontal: theme.spacing[6],
-    marginBottom: theme.spacing[6],
-  },
-  
-  // Recent Activity
-  activityCard: {
-    padding: theme.spacing[8],
-  },
-  
-  emptyState: {
-    alignItems: 'center',
-  },
-  
-  emptyIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: theme.colors.background.secondary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: theme.spacing[4],
-  },
-  
-  emptyText: {
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing[1],
-  },
-  
-  emptySubtext: {
     textAlign: 'center',
-    color: theme.colors.text.secondary,
   },
   
-  // Popular Items
-  popularItem: {
-    marginBottom: theme.spacing[3],
-  },
-  
-  popularContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: theme.spacing[4],
-  },
-  
-  popularIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: theme.spacing[3],
-  },
-  
-  popularText: {
-    flex: 1,
-  },
-  
-  popularTitle: {
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing[1],
-  },
-  
-  popularSubtitle: {
-    color: theme.colors.text.secondary,
-  },
-  
-  // Logout Section
-  logoutSection: {
-    paddingHorizontal: theme.spacing[6],
-    paddingBottom: theme.spacing[8],
-  },
-  
-  logoutButton: {
-    backgroundColor: 'transparent',
-    shadowOpacity: 0,
-    elevation: 0,
+  statIcon: {
+    marginTop: theme.spacing.xs,
   },
 });
 

@@ -13,12 +13,8 @@ import { theme } from '../../styles/theme';
 import { useAuth } from '../../contexts/AuthContext';
 
 const AdminDashboardScreen: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-
-  const handleLogout = async () => {
-    await logout();
-  };
 
   const statsData = [
     { label: 'Total Users', value: '1,248', icon: 'people', color: theme.colors.primary[500] },
@@ -144,11 +140,6 @@ const AdminDashboardScreen: React.FC = () => {
             ))}
           </View>
         </View>
-
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={20} color={theme.colors.error[500]} />
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -253,23 +244,6 @@ const styles = StyleSheet.create({
   activityTime: {
     fontSize: theme.typography.fontSize.xs,
     color: theme.colors.text.tertiary,
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.background.primary,
-    margin: theme.spacing.lg,
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.error[500],
-    ...theme.shadows.sm,
-  },
-  logoutText: {
-    color: theme.colors.error[500],
-    fontWeight: theme.typography.fontWeight.medium,
-    marginLeft: theme.spacing.sm,
   },
 });
 
