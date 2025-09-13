@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,22 +8,25 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Header, ActionCard, SkeletonCard } from '../../components';
+import { theme } from '../../styles/theme';
 import { useAuth } from '../../contexts/AuthContext';
 
 const AdminDashboardScreen: React.FC = () => {
   const { user, logout } = useAuth();
+  const [loading, setLoading] = useState(false);
 
   const handleLogout = async () => {
     await logout();
   };
 
   const statsData = [
-    { label: 'Total Users', value: '1,248', icon: 'people', color: '#007AFF' },
-    { label: 'Active Hotels', value: '87', icon: 'bed', color: '#4CAF50' },
-    { label: 'Restaurants', value: '156', icon: 'restaurant', color: '#FF9500' },
-    { label: 'Today\'s Bookings', value: '23', icon: 'calendar', color: '#9C27B0' },
-    { label: 'Today\'s Orders', value: '142', icon: 'receipt', color: '#FF5722' },
-    { label: 'Revenue Today', value: '$12,450', icon: 'cash', color: '#795548' },
+    { label: 'Total Users', value: '1,248', icon: 'people', color: theme.colors.primary[500] },
+    { label: 'Active Hotels', value: '87', icon: 'bed', color: theme.colors.success[500] },
+    { label: 'Restaurants', value: '156', icon: 'restaurant', color: theme.colors.secondary[500] },
+    { label: 'Today\'s Bookings', value: '23', icon: 'calendar', color: theme.colors.warning[500] },
+    { label: 'Today\'s Orders', value: '142', icon: 'receipt', color: theme.colors.error[500] },
+    { label: 'Revenue Today', value: '$12,450', icon: 'cash', color: theme.colors.info[500] },
   ];
 
   const recentActivities = [
@@ -47,46 +50,81 @@ const AdminDashboardScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.greeting}>Welcome back, Admin!</Text>
-          <Text style={styles.subtitle}>Here's what's happening on BookBite</Text>
-        </View>
+      {/* Enhanced Header */}
+      <Header
+        variant="gradient"
+        title="Admin Dashboard"
+        subtitle="Platform Overview & Management"
+        showNotifications
+        notificationCount={5}
+        onNotificationPress={() => {}}
+      />
 
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.statsContainer}>
           <Text style={styles.sectionTitle}>Platform Overview</Text>
           <View style={styles.statsGrid}>
-            {statsData.map((stat, index) => (
-              <View key={index} style={styles.statCard}>
-                <View style={[styles.statIcon, { backgroundColor: stat.color }]}>
-                  <Ionicons name={stat.icon as any} size={24} color="#fff" />
-                </View>
-                <Text style={styles.statValue}>{stat.value}</Text>
-                <Text style={styles.statLabel}>{stat.label}</Text>
-              </View>
-            ))}
+            {loading ? (
+              Array.from({ length: 6 }).map((_, index) => (
+                <SkeletonCard key={index} style={styles.statCard} />
+              ))
+            ) : (
+              statsData.map((stat, index) => (
+                <ActionCard
+                  key={index}
+                  variant="primary"
+                  style={styles.statCard}
+                  enableHover={false}
+                >
+                  <View style={[styles.statIcon, { backgroundColor: `${stat.color}20` }]}>
+                    <Ionicons name={stat.icon as any} size={24} color={stat.color} />
+                  </View>
+                  <Text style={[styles.statValue, { color: stat.color }]}>{stat.value}</Text>
+                  <Text style={styles.statLabel}>{stat.label}</Text>
+                </ActionCard>
+              ))
+            )}
           </View>
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.quickActions}>
-            <TouchableOpacity style={styles.actionButton}>
-              <Ionicons name="person-add" size={20} color="#007AFF" />
-              <Text style={styles.actionText}>Add User</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton}>
-              <Ionicons name="business" size={20} color="#4CAF50" />
-              <Text style={styles.actionText}>Add Hotel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton}>
-              <Ionicons name="restaurant" size={20} color="#FF9500" />
-              <Text style={styles.actionText}>Add Restaurant</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton}>
-              <Ionicons name="settings" size={20} color="#9C27B0" />
-              <Text style={styles.actionText}>Settings</Text>
-            </TouchableOpacity>
+            <ActionCard
+              variant="primary"
+              style={styles.actionButton}
+              onPress={() => {}}
+            >
+              <Ionicons name="person-add" size={20} color={theme.colors.primary[500]} />
+              <Text style={[styles.actionText, { color: theme.colors.primary[500] }]}>Add User</Text>
+            </ActionCard>
+            
+            <ActionCard
+              variant="success"
+              style={styles.actionButton}
+              onPress={() => {}}
+            >
+              <Ionicons name="business" size={20} color={theme.colors.success[500]} />
+              <Text style={[styles.actionText, { color: theme.colors.success[500] }]}>Add Hotel</Text>
+            </ActionCard>
+            
+            <ActionCard
+              variant="secondary"
+              style={styles.actionButton}
+              onPress={() => {}}
+            >
+              <Ionicons name="restaurant" size={20} color={theme.colors.secondary[500]} />
+              <Text style={[styles.actionText, { color: theme.colors.secondary[500] }]}>Add Restaurant</Text>
+            </ActionCard>
+            
+            <ActionCard
+              variant="warning"
+              style={styles.actionButton}
+              onPress={() => {}}
+            >
+              <Ionicons name="settings" size={20} color={theme.colors.warning[600]} />
+              <Text style={[styles.actionText, { color: theme.colors.warning[600] }]}>Settings</Text>
+            </ActionCard>
           </View>
         </View>
 
@@ -96,7 +134,7 @@ const AdminDashboardScreen: React.FC = () => {
             {recentActivities.map((activity, index) => (
               <View key={index} style={styles.activityItem}>
                 <View style={styles.activityIcon}>
-                  <Ionicons name={getActivityIcon(activity.type) as any} size={16} color="#666" />
+                  <Ionicons name={getActivityIcon(activity.type) as any} size={16} color={theme.colors.text.secondary} />
                 </View>
                 <View style={styles.activityContent}>
                   <Text style={styles.activityText}>{activity.text}</Text>
@@ -108,7 +146,7 @@ const AdminDashboardScreen: React.FC = () => {
         </View>
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={20} color="#FF3B30" />
+          <Ionicons name="log-out-outline" size={20} color={theme.colors.error[500]} />
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -119,55 +157,34 @@ const AdminDashboardScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: theme.colors.background.secondary,
   },
   content: {
     flex: 1,
   },
-  header: {
-    padding: 24,
-    backgroundColor: '#fff',
-  },
-  greeting: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-  },
   section: {
-    margin: 24,
+    margin: theme.spacing.lg,
     marginTop: 0,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 16,
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.semiBold,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.md,
   },
   statsContainer: {
-    margin: 24,
+    margin: theme.spacing.lg,
     marginTop: 0,
   },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 16,
+    gap: theme.spacing.md,
   },
   statCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
     width: '47%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    alignItems: 'center',
+    paddingVertical: theme.spacing.lg,
   },
   statIcon: {
     width: 48,
@@ -175,90 +192,84 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: theme.spacing.sm,
   },
   statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
+    fontSize: theme.typography.fontSize['2xl'],
+    fontWeight: theme.typography.fontWeight.bold,
+    marginBottom: theme.spacing.xs,
   },
   statLabel: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.secondary,
     textAlign: 'center',
   },
   quickActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: theme.spacing.sm,
   },
   actionButton: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
+    width: '47%',
     flexDirection: 'row',
     alignItems: 'center',
-    width: '47%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.md,
+    gap: theme.spacing.sm,
   },
   actionText: {
-    marginLeft: 8,
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#333',
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: theme.typography.fontWeight.medium,
   },
   activityList: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
+    backgroundColor: theme.colors.background.primary,
+    borderRadius: theme.borderRadius.lg,
     overflow: 'hidden',
+    ...theme.shadows.sm,
   },
   activityItem: {
     flexDirection: 'row',
-    padding: 16,
+    padding: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: theme.colors.border.light,
   },
   activityIcon: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: theme.colors.background.secondary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: theme.spacing.sm,
   },
   activityContent: {
     flex: 1,
   },
   activityText: {
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 2,
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.xs,
   },
   activityTime: {
-    fontSize: 12,
-    color: '#999',
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.text.tertiary,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
-    margin: 24,
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: theme.colors.background.primary,
+    margin: theme.spacing.lg,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: '#FF3B30',
+    borderColor: theme.colors.error[500],
+    ...theme.shadows.sm,
   },
   logoutText: {
-    color: '#FF3B30',
-    fontWeight: '500',
-    marginLeft: 8,
+    color: theme.colors.error[500],
+    fontWeight: theme.typography.fontWeight.medium,
+    marginLeft: theme.spacing.sm,
   },
 });
 

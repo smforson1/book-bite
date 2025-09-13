@@ -6,16 +6,19 @@ import {
   FlatList,
   TouchableOpacity,
   Image,
-  TextInput,
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Card, RestaurantFilterModal } from '../../components';
+import { Card, RestaurantFilterModal, Header, SkeletonList } from '../../components';
 import { theme } from '../../styles/theme';
 import { globalStyles } from '../../styles/globalStyles';
 import { useRestaurant } from '../../contexts/RestaurantContext';
 import { Restaurant } from '../../types';
+import { googleMapsService } from '../../services/googleMapsService';
+import { ghanaPromotionService, GhanaPromotion } from '../../services/ghanaPromotionService';
+import { locationService } from '../../services/locationService';
+import { useListing } from '../../hooks';
 
 interface RestaurantsScreenProps {
   navigation: any;
@@ -30,28 +33,6 @@ interface RestaurantFilters {
 }
 
 const RestaurantsScreen: React.FC<RestaurantsScreenProps> = ({ navigation }) => {
-  const { restaurants, loading, getRestaurants, searchRestaurants } = useRestaurant();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filteredRestaurants, setFilteredRestaurants] = useState<Restaurant[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
-  const [showFilterModal, setShowFilterModal] = useState(false);
-  const [activeFilters, setActiveFilters] = useState<RestaurantFilters>({});
-
-  useEffect(() => {
-    loadRestaurants();
-  }, []);
-
-  useEffect(() => {
-    if (searchQuery.trim()) {
-      const searchResults = searchRestaurants(searchQuery, activeFilters);
-      setFilteredRestaurants(searchResults);
-    } else {
-      // Apply filters without search
-      const filtered = applyFiltersToRestaurants(restaurants, activeFilters);
-      setFilteredRestaurants(filtered);
-    }
-  }, [searchQuery, restaurants, activeFilters]);
-
   const applyFiltersToRestaurants = (restaurantList: Restaurant[], filters: RestaurantFilters) => {
     let filtered = [...restaurantList];
 
@@ -82,74 +63,136 @@ const RestaurantsScreen: React.FC<RestaurantsScreenProps> = ({ navigation }) => 
     return filtered;
   };
 
-  const handleApplyFilters = (filters: RestaurantFilters) => {
-    setActiveFilters(filters);
-  };
+  const { restaurants, getRestaurants, searchRestaurants } = useRestaurant();
+  const {
+    loading,
+    searchQuery,
+    setSearchQuery,
+    filteredItems: filteredRestaurants,
+    refreshing,
+    handleRefresh,
+    showFilterModal,
+    setShowFilterModal,
+    activeFilters,
+    handleApplyFilters,
+    getActiveFilterCount,
+    userLocation,
+    promotions,
+    setFilteredItems,
+  } = useListing<Restaurant>({
+    fetcher: getRestaurants,
+    searcher: (query: string) => searchRestaurants(query),
+    filterApplier: applyFiltersToRestaurants,
+  });
 
-  const getActiveFilterCount = () => {
-    let count = 0;
-    if (activeFilters.minRating) count++;
-    if (activeFilters.cuisine && activeFilters.cuisine.length > 0) count++;
-    if (activeFilters.maxDeliveryFee !== undefined) count++;
-    if (activeFilters.maxDeliveryTime) count++;
-    return count;
-  };
-
-  const loadRestaurants = async () => {
-    try {
-      await getRestaurants();
-    } catch (error) {
-      console.error('Error loading restaurants:', error);
+  // Apply filters whenever activeFilters change
+  useEffect(() => {
+    if (Object.keys(activeFilters).length > 0) {
+      const filtered = applyFiltersToRestaurants(restaurants, activeFilters);
+      setFilteredItems(filtered);
     }
-  };
+  }, [activeFilters, restaurants, setFilteredItems]);
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await loadRestaurants();
-    setRefreshing(false);
+  const [deliveryEstimates, setDeliveryEstimates] = useState<{ [restaurantId: string]: string }>({});
+
+  useEffect(() => {
+    if (userLocation && filteredRestaurants.length > 0) {
+      updateDeliveryEstimates();
+    }
+  }, [userLocation, filteredRestaurants]);
+  
+  const updateDeliveryEstimates = async () => {
+    if (!userLocation) return;
+    
+    const estimates: { [restaurantId: string]: string } = {};
+    
+    for (const restaurant of filteredRestaurants.slice(0, 10)) {
+      try {
+        const restaurantLocation = await googleMapsService.geocodeAddress(restaurant.address);
+        const userLocationCoords = await googleMapsService.geocodeAddress(
+          `${userLocation.city}, ${userLocation.region}, Ghana`
+        );
+        
+        if (restaurantLocation && userLocationCoords) {
+          const estimate = await googleMapsService.calculateDeliveryEstimate(
+            restaurantLocation,
+            userLocationCoords
+          );
+          estimates[restaurant.id] = estimate.estimatedTime;
+        }
+      } catch (error) {
+        console.error(`Error calculating delivery estimate for ${restaurant.name}:`, error);
+      }
+    }
+    
+    setDeliveryEstimates(estimates);
   };
 
   const handleRestaurantPress = (restaurant: Restaurant) => {
     navigation.navigate('RestaurantDetail', { restaurant });
   };
 
-  const renderRestaurant = ({ item: restaurant }: { item: Restaurant }) => (
-    <TouchableOpacity
-      style={styles.restaurantCard}
-      onPress={() => handleRestaurantPress(restaurant)}
-      activeOpacity={0.7}
-    >
-      <Image source={{ uri: restaurant.images[0] }} style={styles.restaurantImage} />
-      <View style={styles.restaurantInfo}>
-        <Text style={styles.restaurantName}>{restaurant.name}</Text>
-        <View style={styles.ratingRow}>
-          <Ionicons name="star" size={14} color={theme.colors.warning[500]} />
-          <Text style={styles.rating}>{restaurant.rating}</Text>
-          <Text style={styles.cuisineText}> • {restaurant.cuisine.join(', ')}</Text>
+  const renderRestaurant = ({ item: restaurant }: { item: Restaurant }) => {
+    const hasActivePromo = promotions.some((promo: GhanaPromotion) => 
+      userLocation?.city && promo.applicableCities.includes(userLocation.city) &&
+      (promo.targetAudience === 'all' || promo.targetAudience === 'returning_users')
+    );
+    
+    return (
+      <TouchableOpacity
+        style={styles.restaurantCard}
+        onPress={() => handleRestaurantPress(restaurant)}
+        activeOpacity={0.7}
+      >
+        <Image source={{ uri: restaurant.images[0] }} style={styles.restaurantImage} />
+        
+        {hasActivePromo && (
+          <View style={styles.promoTag}>
+            <Text style={styles.promoTagText}>PROMO</Text>
+          </View>
+        )}
+        
+        <View style={styles.restaurantInfo}>
+          <Text style={styles.restaurantName}>{restaurant.name}</Text>
+          <View style={styles.ratingRow}>
+            <Ionicons name="star" size={14} color={theme.colors.warning[500]} />
+            <Text style={styles.rating}>{restaurant.rating}</Text>
+            <Text style={styles.cuisineText}> • {restaurant.cuisine.join(', ')}</Text>
+          </View>
+          <Text style={styles.address} numberOfLines={1}>
+            {restaurant.address}
+          </Text>
+          <View style={styles.deliveryInfo}>
+            <View style={styles.deliveryItem}>
+              <Ionicons name="time" size={12} color={theme.colors.text.tertiary} />
+              <Text style={styles.deliveryText}>
+                {deliveryEstimates[restaurant.id] || restaurant.deliveryTime}
+              </Text>
+            </View>
+            <View style={styles.deliveryItem}>
+              <Ionicons name="car" size={12} color={theme.colors.text.tertiary} />
+              <Text style={styles.deliveryText}>₵{restaurant.deliveryFee.toFixed(2)}</Text>
+            </View>
+            <View style={styles.deliveryItem}>
+              <Ionicons name="card" size={12} color={theme.colors.text.tertiary} />
+              <Text style={styles.deliveryText}>₵{restaurant.minimumOrder} min</Text>
+            </View>
+            {userLocation && locationService.isLocationInGhana({ 
+              latitude: 5.6037, 
+              longitude: -0.1870 
+            }) && (
+              <View style={styles.ghanaFlag}>
+                <Text style={styles.ghanaFlagText}>🇬🇭</Text>
+              </View>
+            )}
+          </View>
         </View>
-        <Text style={styles.address} numberOfLines={1}>
-          {restaurant.address}
-        </Text>
-        <View style={styles.deliveryInfo}>
-          <View style={styles.deliveryItem}>
-            <Ionicons name="time" size={12} color={theme.colors.text.tertiary} />
-            <Text style={styles.deliveryText}>{restaurant.deliveryTime}</Text>
-          </View>
-          <View style={styles.deliveryItem}>
-            <Ionicons name="car" size={12} color={theme.colors.text.tertiary} />
-            <Text style={styles.deliveryText}>${restaurant.deliveryFee.toFixed(2)}</Text>
-          </View>
-          <View style={styles.deliveryItem}>
-            <Ionicons name="card" size={12} color={theme.colors.text.tertiary} />
-            <Text style={styles.deliveryText}>${restaurant.minimumOrder} min</Text>
-          </View>
+        <View style={styles.chevronContainer}>
+          <Ionicons name="chevron-forward" size={20} color={theme.colors.text.tertiary} />
         </View>
-      </View>
-      <View style={styles.chevronContainer}>
-        <Ionicons name="chevron-forward" size={20} color={theme.colors.text.tertiary} />
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
@@ -167,52 +210,79 @@ const RestaurantsScreen: React.FC<RestaurantsScreenProps> = ({ navigation }) => 
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Search Header */}
-      <View style={styles.searchContainer}>
-        <View style={styles.searchInputContainer}>
-          <Ionicons name="search" size={20} color={theme.colors.text.tertiary} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search restaurants, cuisine..."
-            placeholderTextColor={theme.colors.text.tertiary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color={theme.colors.text.tertiary} />
-            </TouchableOpacity>
-          )}
-        </View>
-        <TouchableOpacity 
-          style={[styles.filterButton, getActiveFilterCount() > 0 && styles.activeFilterButton]} 
-          onPress={() => setShowFilterModal(true)}
-        >
-          <Ionicons name="options" size={20} color={getActiveFilterCount() > 0 ? theme.colors.primary[500] : theme.colors.text.tertiary} />
-          {getActiveFilterCount() > 0 && (
-            <View style={styles.filterBadge}>
-              <Text style={styles.filterBadgeText}>{getActiveFilterCount()}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      {/* Restaurants List */}
-      <FlatList
-        data={filteredRestaurants}
-        renderItem={renderRestaurant}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={theme.colors.primary[500]}
-          />
+      {/* Enhanced Header with Search */}
+      <Header
+        title="Restaurants"
+        variant="search"
+        searchQuery={searchQuery}
+        searchPlaceholder="Search restaurants, cuisine..."
+        onSearchChange={setSearchQuery}
+        rightActions={
+          <TouchableOpacity 
+            style={[styles.filterButton, getActiveFilterCount > 0 && styles.activeFilterButton]} 
+            onPress={() => setShowFilterModal(true)}
+          >
+            <Ionicons name="options" size={20} color={getActiveFilterCount > 0 ? theme.colors.primary[500] : theme.colors.text.tertiary} />
+            {getActiveFilterCount > 0 && (
+              <View style={styles.filterBadge}>
+                <Text style={styles.filterBadgeText}>{getActiveFilterCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
         }
-        ListEmptyComponent={renderEmptyState}
       />
+
+      {/* Location Header */}
+      {userLocation && (
+        <View style={styles.locationHeader}>
+          <Ionicons name="location" size={16} color={theme.colors.primary[500]} />
+          <Text style={styles.locationText}>Delivering to {userLocation.city}</Text>
+        </View>
+      )}
+      
+      {/* Promotions Banner */}
+      {promotions.length > 0 && (
+        <View style={styles.promotionsBanner}>
+          <FlatList
+            horizontal
+            data={promotions.slice(0, 3)}
+            renderItem={({ item: promo }) => (
+              <View style={[styles.promoCard, { backgroundColor: promo.backgroundColor }]}>
+                <Text style={[styles.promoTitle, { color: promo.textColor }]}>
+                  {promo.title}
+                </Text>
+                <Text style={[styles.promoDescription, { color: promo.textColor }]}>
+                  {promo.description}
+                </Text>
+              </View>
+            )}
+            keyExtractor={(item) => item.id}
+            showsHorizontalScrollIndicator={false}
+            style={styles.promoBanner}
+          />
+        </View>
+      )}
+      
+      {/* Restaurants List */}
+      {loading ? (
+        <SkeletonList count={6} style={styles.listContainer} />
+      ) : (
+        <FlatList
+          data={filteredRestaurants}
+          renderItem={renderRestaurant}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={theme.colors.primary[500]}
+            />
+          }
+          ListEmptyComponent={renderEmptyState}
+        />
+      )}
 
       {/* Filter Modal */}
       <RestaurantFilterModal
@@ -373,6 +443,61 @@ const styles = StyleSheet.create({
     color: theme.colors.neutral[0],
     fontSize: theme.typography.fontSize.xs,
     fontWeight: theme.typography.fontWeight.bold as '700',
+  },
+  locationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.primary[50],
+  },
+  locationText: {
+    marginLeft: theme.spacing.xs,
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.primary[600],
+    fontWeight: theme.typography.fontWeight.medium as '500',
+  },
+  promotionsBanner: {
+    paddingVertical: theme.spacing.md,
+  },
+  promoBanner: {
+    paddingLeft: theme.spacing.lg,
+  },
+  promoCard: {
+    width: 280,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    marginRight: theme.spacing.md,
+  },
+  promoTitle: {
+    fontSize: theme.typography.fontSize.md,
+    fontWeight: theme.typography.fontWeight.semiBold as '600',
+    marginBottom: theme.spacing.xs,
+  },
+  promoDescription: {
+    fontSize: theme.typography.fontSize.sm,
+    opacity: 0.9,
+  },
+  promoTag: {
+    position: 'absolute',
+    top: theme.spacing.sm,
+    right: theme.spacing.sm,
+    backgroundColor: theme.colors.success[500],
+    paddingHorizontal: theme.spacing.xs,
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.sm,
+    zIndex: 1,
+  },
+  promoTagText: {
+    color: theme.colors.neutral[0],
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.bold as '700',
+  },
+  ghanaFlag: {
+    marginLeft: theme.spacing.xs,
+  },
+  ghanaFlagText: {
+    fontSize: 12,
   },
 });
 

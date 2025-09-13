@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { storageService } from '../services/storageService';
 import { Hotel, Room, Booking } from '../types';
+import { apiService } from '../services/apiService';
+import { notificationService } from '../services/notificationService';
 
 interface HotelContextType {
   hotels: Hotel[];
@@ -97,7 +99,27 @@ export const HotelProvider: React.FC<HotelProviderProps> = ({ children }) => {
   }, [hotels, rooms, bookings, loading]);
 
   const getHotels = async (): Promise<Hotel[]> => {
-    return hotels;
+    try {
+      setLoading(true);
+      const response = await apiService.getHotels();
+      
+      if (response.success && response.data) {
+        setHotels(response.data);
+        // Cache locally for offline access
+        await AsyncStorage.setItem('hotels', JSON.stringify(response.data));
+        return response.data;
+      } else {
+        console.error('Failed to fetch hotels:', response.error);
+        // Return cached data if API fails
+        return hotels;
+      }
+    } catch (error) {
+      console.error('Error fetching hotels:', error);
+      // Return cached data if API fails
+      return hotels;
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getHotelById = (id: string): Hotel | null => {
@@ -138,14 +160,47 @@ export const HotelProvider: React.FC<HotelProviderProps> = ({ children }) => {
   };
 
   const createBooking = async (bookingData: Omit<Booking, 'id' | 'createdAt'>): Promise<Booking> => {
-    const newBooking: Booking = {
-      ...bookingData,
-      id: Date.now().toString(),
-      createdAt: new Date(),
-    };
-
-    setBookings(prev => [...prev, newBooking]);
-    return newBooking;
+    try {
+      setLoading(true);
+      const response = await apiService.createBooking(bookingData);
+      
+      if (response.success && response.data) {
+        const newBooking = response.data;
+        setBookings(prev => [...prev, newBooking]);
+        
+        // Send booking confirmation notification
+        await notificationService.sendBookingNotification({
+          bookingId: newBooking.id,
+          userId: newBooking.userId,
+          hotelId: newBooking.hotelId,
+          type: 'booking_confirmed',
+          title: 'Booking Confirmed!',
+          message: `Your booking at ${getHotelById(newBooking.hotelId)?.name || 'hotel'} has been confirmed.`,
+          data: { bookingId: newBooking.id }
+        });
+        
+        return newBooking;
+      } else {
+        throw new Error(response.error || 'Failed to create booking');
+      }
+    } catch (error) {
+      console.error('Error creating booking:', error);
+      // Fallback to local booking creation
+      const newBooking: Booking = {
+        ...bookingData,
+        id: `local_${Date.now()}`,
+        createdAt: new Date(),
+        status: 'pending'
+      };
+      setBookings(prev => [...prev, newBooking]);
+      
+      // Queue for retry when connection is restored
+      await AsyncStorage.setItem(`pending_booking_${newBooking.id}`, JSON.stringify(newBooking));
+      
+      return newBooking;
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getUserBookings = (userId: string): Booking[] => {
@@ -153,12 +208,52 @@ export const HotelProvider: React.FC<HotelProviderProps> = ({ children }) => {
   };
 
   const updateBookingStatus = async (bookingId: string, status: Booking['status']): Promise<boolean> => {
-    setBookings(prev =>
-      prev.map(booking =>
-        booking.id === bookingId ? { ...booking, status } : booking
-      )
-    );
-    return true;
+    try {
+      const response = await apiService.updateBookingStatus(bookingId, status);
+      
+      if (response.success) {
+        setBookings(prev =>
+          prev.map(booking =>
+            booking.id === bookingId ? { ...booking, status } : booking
+          )
+        );
+        
+        // Send status update notification
+        const booking = bookings.find(b => b.id === bookingId);
+        if (booking) {
+          const statusMessages: { [key in Booking['status']]: string } = {
+            pending: 'Your booking is pending confirmation',
+            confirmed: 'Your booking has been confirmed',
+            cancelled: 'Your booking has been cancelled',
+            completed: 'Your booking has been completed. Thank you for staying with us!'
+          };
+          
+          await notificationService.sendBookingNotification({
+            bookingId,
+            userId: booking.userId,
+            hotelId: booking.hotelId,
+            type: 'booking_status_update',
+            title: 'Booking Update',
+            message: statusMessages[status] || `Booking status updated to ${status}`,
+            data: { bookingId, status }
+          });
+        }
+        
+        return true;
+      } else {
+        console.error('Failed to update booking status:', response.error);
+        return false;
+      }
+    } catch (error) {
+      console.error('Error updating booking status:', error);
+      // Update locally even if API fails
+      setBookings(prev =>
+        prev.map(booking =>
+          booking.id === bookingId ? { ...booking, status } : booking
+        )
+      );
+      return false;
+    }
   };
 
   const cancelBooking = async (bookingId: string): Promise<boolean> => {
@@ -166,33 +261,77 @@ export const HotelProvider: React.FC<HotelProviderProps> = ({ children }) => {
   };
 
   const addHotel = async (hotelData: Omit<Hotel, 'id' | 'createdAt'>): Promise<Hotel> => {
-    const newHotel: Hotel = {
-      ...hotelData,
-      id: Date.now().toString(),
-      createdAt: new Date(),
-    };
-
-    setHotels(prev => [...prev, newHotel]);
-    return newHotel;
+    try {
+      const response = await apiService.createHotel(hotelData);
+      
+      if (response.success && response.data) {
+        const newHotel = response.data;
+        setHotels(prev => [...prev, newHotel]);
+        return newHotel;
+      } else {
+        throw new Error(response.error || 'Failed to create hotel');
+      }
+    } catch (error) {
+      console.error('Error creating hotel:', error);
+      // Fallback to local creation
+      const newHotel: Hotel = {
+        ...hotelData,
+        id: `local_${Date.now()}`,
+        createdAt: new Date(),
+      };
+      setHotels(prev => [...prev, newHotel]);
+      return newHotel;
+    }
   };
 
   const updateHotel = async (hotelId: string, updates: Partial<Hotel>): Promise<boolean> => {
-    setHotels(prev =>
-      prev.map(hotel =>
-        hotel.id === hotelId ? { ...hotel, ...updates } : hotel
-      )
-    );
-    return true;
+    try {
+      const response = await apiService.updateHotel(hotelId, updates);
+      
+      if (response.success) {
+        setHotels(prev =>
+          prev.map(hotel =>
+            hotel.id === hotelId ? { ...hotel, ...updates } : hotel
+          )
+        );
+        return true;
+      } else {
+        console.error('Failed to update hotel:', response.error);
+        return false;
+      }
+    } catch (error) {
+      console.error('Error updating hotel:', error);
+      // Update locally even if API fails
+      setHotels(prev =>
+        prev.map(hotel =>
+          hotel.id === hotelId ? { ...hotel, ...updates } : hotel
+        )
+      );
+      return false;
+    }
   };
 
   const addRoom = async (roomData: Omit<Room, 'id'>): Promise<Room> => {
-    const newRoom: Room = {
-      ...roomData,
-      id: Date.now().toString(),
-    };
-
-    setRooms(prev => [...prev, newRoom]);
-    return newRoom;
+    try {
+      const response = await apiService.createRoom(roomData);
+      
+      if (response.success && response.data) {
+        const newRoom = response.data;
+        setRooms(prev => [...prev, newRoom]);
+        return newRoom;
+      } else {
+        throw new Error(response.error || 'Failed to create room');
+      }
+    } catch (error) {
+      console.error('Error creating room:', error);
+      // Fallback to local creation
+      const newRoom: Room = {
+        ...roomData,
+        id: `local_${Date.now()}`,
+      };
+      setRooms(prev => [...prev, newRoom]);
+      return newRoom;
+    }
   };
 
   const updateRoom = async (roomId: string, updates: Partial<Room>): Promise<boolean> => {

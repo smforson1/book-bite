@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Restaurant, MenuItem, Order, OrderItem } from '../types';
+import { apiService } from '../services/apiService';
+import { notificationService } from '../services/notificationService';
 
 interface RestaurantContextType {
   restaurants: Restaurant[];
@@ -117,7 +119,27 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
   }, [restaurants, menuItems, orders, cart, loading]);
 
   const getRestaurants = async (): Promise<Restaurant[]> => {
-    return restaurants;
+    try {
+      setLoading(true);
+      const response = await apiService.getRestaurants();
+      
+      if (response.success && response.data) {
+        setRestaurants(response.data);
+        // Cache locally for offline access
+        await AsyncStorage.setItem('restaurants', JSON.stringify(response.data));
+        return response.data;
+      } else {
+        console.error('Failed to fetch restaurants:', response.error);
+        // Return cached data if API fails
+        return restaurants;
+      }
+    } catch (error) {
+      console.error('Error fetching restaurants:', error);
+      // Return cached data if API fails
+      return restaurants;
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getRestaurantById = (id: string): Restaurant | null => {
@@ -204,14 +226,53 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
   };
 
   const createOrder = async (orderData: Omit<Order, 'id' | 'createdAt'>): Promise<Order> => {
-    const newOrder: Order = {
-      ...orderData,
-      id: Date.now().toString(),
-      createdAt: new Date(),
-    };
-
-    setOrders(prev => [...prev, newOrder]);
-    return newOrder;
+    try {
+      setLoading(true);
+      const response = await apiService.createOrder({
+        ...orderData,
+        estimatedDeliveryTime: orderData.estimatedDeliveryTime || new Date(Date.now() + 45 * 60 * 1000) // 45 mins default
+      });
+      
+      if (response.success && response.data) {
+        const newOrder = response.data;
+        setOrders(prev => [...prev, newOrder]);
+        
+        // Clear cart after successful order
+        clearCart();
+        
+        // Send order confirmation notification
+        await notificationService.sendOrderNotification({
+          orderId: newOrder.id,
+          userId: newOrder.userId,
+          restaurantId: newOrder.restaurantId,
+          type: 'order_placed',
+          title: 'Order Confirmed!',
+          message: `Your order from ${getRestaurantById(newOrder.restaurantId)?.name || 'restaurant'} has been confirmed.`,
+          data: { orderId: newOrder.id }
+        });
+        
+        return newOrder;
+      } else {
+        throw new Error(response.error || 'Failed to create order');
+      }
+    } catch (error) {
+      console.error('Error creating order:', error);
+      // Fallback to local order creation
+      const newOrder: Order = {
+        ...orderData,
+        id: `local_${Date.now()}`,
+        createdAt: new Date(),
+        status: 'pending'
+      };
+      setOrders(prev => [...prev, newOrder]);
+      
+      // Queue for retry when connection is restored
+      await AsyncStorage.setItem(`pending_order_${newOrder.id}`, JSON.stringify(newOrder));
+      
+      return newOrder;
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getUserOrders = (userId: string): Order[] => {
@@ -219,12 +280,56 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
   };
 
   const updateOrderStatus = async (orderId: string, status: Order['status']): Promise<boolean> => {
-    setOrders(prev =>
-      prev.map(order =>
-        order.id === orderId ? { ...order, status } : order
-      )
-    );
-    return true;
+    try {
+      const response = await apiService.updateOrderStatus(orderId, status);
+      
+      if (response.success) {
+        setOrders(prev =>
+          prev.map(order =>
+            order.id === orderId ? { ...order, status } : order
+          )
+        );
+        
+        // Send status update notification
+        const order = orders.find(o => o.id === orderId);
+        if (order) {
+          const statusMessages = {
+            pending: 'Your order is pending confirmation',
+            confirmed: 'Your order has been confirmed and is being prepared',
+            preparing: 'Your order is being prepared',
+            ready: 'Your order is ready for pickup/delivery',
+            picked_up: 'Your order has been picked up by the delivery driver',
+            on_the_way: 'Your order is on the way to you',
+            delivered: 'Your order has been delivered. Enjoy your meal!',
+            cancelled: 'Your order has been cancelled'
+          };
+          
+          await notificationService.sendOrderNotification({
+            orderId,
+            userId: order.userId,
+            restaurantId: order.restaurantId,
+            type: 'order_status_update',
+            title: 'Order Update',
+            message: statusMessages[status] || `Order status updated to ${status}`,
+            data: { orderId, status }
+          });
+        }
+        
+        return true;
+      } else {
+        console.error('Failed to update order status:', response.error);
+        return false;
+      }
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      // Update locally even if API fails
+      setOrders(prev =>
+        prev.map(order =>
+          order.id === orderId ? { ...order, status } : order
+        )
+      );
+      return false;
+    }
   };
 
   const cancelOrder = async (orderId: string): Promise<boolean> => {
@@ -232,33 +337,77 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
   };
 
   const addRestaurant = async (restaurantData: Omit<Restaurant, 'id' | 'createdAt'>): Promise<Restaurant> => {
-    const newRestaurant: Restaurant = {
-      ...restaurantData,
-      id: Date.now().toString(),
-      createdAt: new Date(),
-    };
-
-    setRestaurants(prev => [...prev, newRestaurant]);
-    return newRestaurant;
+    try {
+      const response = await apiService.createRestaurant(restaurantData);
+      
+      if (response.success && response.data) {
+        const newRestaurant = response.data;
+        setRestaurants(prev => [...prev, newRestaurant]);
+        return newRestaurant;
+      } else {
+        throw new Error(response.error || 'Failed to create restaurant');
+      }
+    } catch (error) {
+      console.error('Error creating restaurant:', error);
+      // Fallback to local creation
+      const newRestaurant: Restaurant = {
+        ...restaurantData,
+        id: `local_${Date.now()}`,
+        createdAt: new Date(),
+      };
+      setRestaurants(prev => [...prev, newRestaurant]);
+      return newRestaurant;
+    }
   };
 
   const updateRestaurant = async (restaurantId: string, updates: Partial<Restaurant>): Promise<boolean> => {
-    setRestaurants(prev =>
-      prev.map(restaurant =>
-        restaurant.id === restaurantId ? { ...restaurant, ...updates } : restaurant
-      )
-    );
-    return true;
+    try {
+      const response = await apiService.updateRestaurant(restaurantId, updates);
+      
+      if (response.success) {
+        setRestaurants(prev =>
+          prev.map(restaurant =>
+            restaurant.id === restaurantId ? { ...restaurant, ...updates } : restaurant
+          )
+        );
+        return true;
+      } else {
+        console.error('Failed to update restaurant:', response.error);
+        return false;
+      }
+    } catch (error) {
+      console.error('Error updating restaurant:', error);
+      // Update locally even if API fails
+      setRestaurants(prev =>
+        prev.map(restaurant =>
+          restaurant.id === restaurantId ? { ...restaurant, ...updates } : restaurant
+        )
+      );
+      return false;
+    }
   };
 
   const addMenuItem = async (menuItemData: Omit<MenuItem, 'id'>): Promise<MenuItem> => {
-    const newMenuItem: MenuItem = {
-      ...menuItemData,
-      id: Date.now().toString(),
-    };
-
-    setMenuItems(prev => [...prev, newMenuItem]);
-    return newMenuItem;
+    try {
+      const response = await apiService.createMenuItem(menuItemData);
+      
+      if (response.success && response.data) {
+        const newMenuItem = response.data;
+        setMenuItems(prev => [...prev, newMenuItem]);
+        return newMenuItem;
+      } else {
+        throw new Error(response.error || 'Failed to create menu item');
+      }
+    } catch (error) {
+      console.error('Error creating menu item:', error);
+      // Fallback to local creation
+      const newMenuItem: MenuItem = {
+        ...menuItemData,
+        id: `local_${Date.now()}`,
+      };
+      setMenuItems(prev => [...prev, newMenuItem]);
+      return newMenuItem;
+    }
   };
 
   const updateMenuItem = async (menuItemId: string, updates: Partial<MenuItem>): Promise<boolean> => {

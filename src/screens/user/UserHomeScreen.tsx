@@ -9,62 +9,79 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Button, Card, ActionCard } from '../../components';
+import { Button, Card, ActionCard, Header } from '../../components';
 import { theme } from '../../styles/theme';
 import { globalStyles } from '../../styles/globalStyles';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNavigation } from '@react-navigation/native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const UserHomeScreen: React.FC = () => {
   const { user, logout } = useAuth();
+  const navigation = useNavigation();
 
   const handleLogout = async () => {
     await logout();
   };
 
+  const handleBookHotel = () => {
+    // @ts-ignore
+    navigation.navigate('Hotels');
+  };
+
+  const handleOrderFood = () => {
+    // @ts-ignore
+    navigation.navigate('Restaurants');
+  };
+
   return (
     <SafeAreaView style={styles.container}>
+      {/* Enhanced Header */}
+      <Header
+        variant="profile"
+        userName={user?.name}
+        subtitle="What would you like to do today?"
+        showNotifications
+        notificationCount={3}
+        onNotificationPress={() => {}}
+        onProfilePress={() => {
+          // @ts-ignore
+          navigation.navigate('Profile');
+        }}
+      />
+
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Header Section */}
-        <View style={styles.header}>
-          <View style={styles.welcomeSection}>
-            <Text style={[globalStyles.h2, styles.greeting]}>Hello, {user?.name}! 👋</Text>
-            <Text style={[globalStyles.bodyLarge, styles.subtitle]}>What would you like to do today?</Text>
-          </View>
-          
-          <View style={styles.profileIcon}>
-            <Ionicons name="person-circle" size={48} color={theme.colors.primary[500]} />
-          </View>
-        </View>
 
         {/* Quick Actions */}
         <View style={styles.quickActions}>
           <ActionCard
-            variant="success"
+            variant="gradient"
             style={styles.actionCard}
-            onPress={() => {}}
+            onPress={handleBookHotel}
+            gradientColors={[theme.colors.primary[400], theme.colors.primary[600]]}
           >
             <View style={styles.actionContent}>
-              <View style={[styles.actionIcon, { backgroundColor: theme.colors.success[100] }]}>
-                <Ionicons name="bed" size={32} color={theme.colors.success[600]} />
+              <View style={[styles.actionIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                <Ionicons name="bed" size={32} color={theme.colors.text.inverse} />
               </View>
-              <Text style={[globalStyles.h5, styles.actionTitle]}>Book a Hotel</Text>
-              <Text style={[globalStyles.bodySmall, styles.actionSubtitle]}>Find and book amazing stays</Text>
+              <Text style={[globalStyles.h5, styles.actionTitle, { color: theme.colors.text.inverse }]}>Book a Hotel</Text>
+              <Text style={[globalStyles.bodySmall, styles.actionSubtitle, { color: theme.colors.text.inverse, opacity: 0.9 }]}>Find and book amazing stays</Text>
             </View>
           </ActionCard>
 
           <ActionCard
-            variant="secondary"
+            variant="gradient"
             style={styles.actionCard}
-            onPress={() => {}}
+            onPress={handleOrderFood}
+            gradientColors={[theme.colors.secondary[400], theme.colors.secondary[600]]}
           >
             <View style={styles.actionContent}>
-              <View style={[styles.actionIcon, { backgroundColor: theme.colors.secondary[100] }]}>
-                <Ionicons name="restaurant" size={32} color={theme.colors.secondary[600]} />
+              <View style={[styles.actionIcon, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                <Ionicons name="restaurant" size={32} color={theme.colors.text.inverse} />
               </View>
-              <Text style={[globalStyles.h5, styles.actionTitle]}>Order Food</Text>
-              <Text style={[globalStyles.bodySmall, styles.actionSubtitle]}>Delicious meals delivered</Text>
+              <Text style={[globalStyles.h5, styles.actionTitle, { color: theme.colors.text.inverse }]}>Order Food</Text>
+              <Text style={[globalStyles.bodySmall, styles.actionSubtitle, { color: theme.colors.text.inverse, opacity: 0.9 }]}>Delicious meals delivered</Text>
             </View>
           </ActionCard>
         </View>
@@ -159,35 +176,6 @@ const styles = StyleSheet.create({
   
   content: {
     flex: 1,
-  },
-  
-  // Header Section
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: theme.spacing[6],
-    backgroundColor: theme.colors.background.primary,
-    borderBottomLeftRadius: theme.borderRadius['2xl'],
-    borderBottomRightRadius: theme.borderRadius['2xl'],
-    ...theme.shadows.sm,
-  },
-  
-  welcomeSection: {
-    flex: 1,
-  },
-  
-  greeting: {
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing[1],
-  },
-  
-  subtitle: {
-    color: theme.colors.text.secondary,
-  },
-  
-  profileIcon: {
-    marginLeft: theme.spacing[4],
   },
   
   // Quick Actions

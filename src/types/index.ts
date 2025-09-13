@@ -96,7 +96,7 @@ export interface Order {
   items: OrderItem[];
   totalPrice: number;
   deliveryAddress: string;
-  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'picked_up' | 'on_the_way' | 'delivered' | 'cancelled';
   paymentStatus: 'pending' | 'paid' | 'refunded';
   paymentMethod?: string;
   transactionId?: string;

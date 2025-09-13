@@ -6,16 +6,19 @@ import {
   FlatList,
   TouchableOpacity,
   Image,
-  TextInput,
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Card, HotelFilterModal } from '../../components';
+import { Card, HotelFilterModal, Header, Skeleton, SkeletonList } from '../../components';
 import { theme } from '../../styles/theme';
 import { globalStyles } from '../../styles/globalStyles';
 import { useHotel } from '../../contexts/HotelContext';
 import { Hotel } from '../../types';
+import { googleMapsService } from '../../services/googleMapsService';
+import ghanaPromotionService, { GhanaPromotion } from '../../services/ghanaPromotionService';
+import { locationService } from '../../services/locationService';
+import { useListing } from '../../hooks';
 
 interface HotelsScreenProps {
   navigation: any;
@@ -30,28 +33,6 @@ interface HotelFilters {
 }
 
 const HotelsScreen: React.FC<HotelsScreenProps> = ({ navigation }) => {
-  const { hotels, loading, getHotels, searchHotels } = useHotel();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filteredHotels, setFilteredHotels] = useState<Hotel[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
-  const [showFilterModal, setShowFilterModal] = useState(false);
-  const [activeFilters, setActiveFilters] = useState<HotelFilters>({});
-
-  useEffect(() => {
-    loadHotels();
-  }, []);
-
-  useEffect(() => {
-    if (searchQuery.trim()) {
-      const searchResults = searchHotels(searchQuery, activeFilters);
-      setFilteredHotels(searchResults);
-    } else {
-      // Apply filters without search
-      const filtered = applyFiltersToHotels(hotels, activeFilters);
-      setFilteredHotels(filtered);
-    }
-  }, [searchQuery, hotels, activeFilters]);
-
   const applyFiltersToHotels = (hotelList: Hotel[], filters: HotelFilters) => {
     let filtered = [...hotelList];
 
@@ -78,68 +59,138 @@ const HotelsScreen: React.FC<HotelsScreenProps> = ({ navigation }) => {
     return filtered;
   };
 
-  const handleApplyFilters = (filters: HotelFilters) => {
-    setActiveFilters(filters);
-  };
+  const { hotels, getHotels, searchHotels } = useHotel();
+  const {
+    loading,
+    searchQuery,
+    setSearchQuery,
+    filteredItems: filteredHotels,
+    refreshing,
+    handleRefresh,
+    showFilterModal,
+    setShowFilterModal,
+    activeFilters,
+    handleApplyFilters,
+    getActiveFilterCount,
+    userLocation,
+    promotions,
+    setFilteredItems,
+  } = useListing<Hotel>({
+    fetcher: getHotels,
+    searcher: (query: string) => searchHotels(query),
+    filterApplier: applyFiltersToHotels,
+  });
 
-  const getActiveFilterCount = () => {
-    let count = 0;
-    if (activeFilters.rating) count++;
-    if (activeFilters.amenities && activeFilters.amenities.length > 0) count++;
-    if (activeFilters.minPrice || activeFilters.maxPrice) count++;
-    return count;
-  };
-
-  const loadHotels = async () => {
-    try {
-      await getHotels();
-    } catch (error) {
-      console.error('Error loading hotels:', error);
+  // Apply filters whenever activeFilters change
+  useEffect(() => {
+    if (Object.keys(activeFilters).length > 0) {
+      const filtered = applyFiltersToHotels(hotels, activeFilters);
+      setFilteredItems(filtered);
     }
-  };
+  }, [activeFilters, hotels, setFilteredItems]);
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await loadHotels();
-    setRefreshing(false);
+  const [hotelDistances, setHotelDistances] = useState<{ [hotelId: string]: string }>({});
+
+  const hotelPromotions = promotions.filter((promo: GhanaPromotion) => 
+    promo.title.toLowerCase().includes('hotel') || 
+    promo.description.toLowerCase().includes('booking')
+  ).slice(0, 3);
+
+  useEffect(() => {
+    if (userLocation && filteredHotels.length > 0) {
+      updateHotelDistances();
+    }
+  }, [userLocation, filteredHotels]);
+  
+  const updateHotelDistances = async () => {
+    if (!userLocation) return;
+    
+    const distances: { [hotelId: string]: string } = {};
+    
+    // Calculate distances for visible hotels
+    for (const hotel of filteredHotels.slice(0, 10)) {
+      try {
+        const hotelLocation = await googleMapsService.geocodeAddress(hotel.address);
+        const userLocationCoords = await googleMapsService.geocodeAddress(
+          `${userLocation.city}, ${userLocation.region}, Ghana`
+        );
+        
+        if (hotelLocation && userLocationCoords) {
+          const route = await googleMapsService.getRoute(userLocationCoords, hotelLocation);
+          if (route) {
+            distances[hotel.id] = route.distance;
+          }
+        }
+      } catch (error) {
+        console.error(`Error calculating distance for ${hotel.name}:`, error);
+      }
+    }
+    
+    setHotelDistances(distances);
   };
 
   const handleHotelPress = (hotel: Hotel) => {
     navigation.navigate('HotelDetail', { hotel });
   };
 
-  const renderHotel = ({ item: hotel }: { item: Hotel }) => (
-    <TouchableOpacity
-      style={styles.hotelCard}
-      onPress={() => handleHotelPress(hotel)}
-      activeOpacity={0.7}
-    >
-      <Image source={{ uri: hotel.images[0] }} style={styles.hotelImage} />
-      <View style={styles.hotelInfo}>
-        <Text style={styles.hotelName}>{hotel.name}</Text>
-        <View style={styles.ratingRow}>
-          <Ionicons name="star" size={14} color={theme.colors.warning[500]} />
-          <Text style={styles.rating}>{hotel.rating}</Text>
+  const renderHotel = ({ item: hotel }: { item: Hotel }) => {
+    const hasActivePromo = promotions.some((promo: GhanaPromotion) => 
+      userLocation?.city && promo.applicableCities.includes(userLocation.city)
+    );
+    
+    return (
+      <TouchableOpacity
+        style={styles.hotelCard}
+        onPress={() => handleHotelPress(hotel)}
+        activeOpacity={0.7}
+      >
+        <Image source={{ uri: hotel.images[0] }} style={styles.hotelImage} />
+        
+        {hasActivePromo && (
+          <View style={styles.promoTag}>
+            <Text style={styles.promoTagText}>OFFER</Text>
+          </View>
+        )}
+        
+        <View style={styles.hotelInfo}>
+          <Text style={styles.hotelName}>{hotel.name}</Text>
+          <View style={styles.ratingRow}>
+            <Ionicons name="star" size={14} color={theme.colors.warning[500]} />
+            <Text style={styles.rating}>{hotel.rating}</Text>
+            {hotelDistances[hotel.id] && (
+              <>
+                <Text style={styles.distanceText}> • {hotelDistances[hotel.id]} away</Text>
+              </>
+            )}
+          </View>
+          <Text style={styles.address} numberOfLines={2}>
+            {hotel.address}
+          </Text>
+          <View style={styles.amenitiesRow}>
+            {hotel.amenities.slice(0, 3).map((amenity, index) => (
+              <View key={index} style={styles.amenityTag}>
+                <Text style={styles.amenityText}>{amenity}</Text>
+              </View>
+            ))}
+            {hotel.amenities.length > 3 && (
+              <Text style={styles.moreAmenities}>+{hotel.amenities.length - 3}</Text>
+            )}
+            {userLocation && locationService.isLocationInGhana({ 
+              latitude: 5.6037, 
+              longitude: -0.1870 
+            }) && (
+              <View style={styles.ghanaFlag}>
+                <Text style={styles.ghanaFlagText}>🇬🇭</Text>
+              </View>
+            )}
+          </View>
         </View>
-        <Text style={styles.address} numberOfLines={2}>
-          {hotel.address}
-        </Text>
-        <View style={styles.amenitiesRow}>
-          {hotel.amenities.slice(0, 3).map((amenity, index) => (
-            <View key={index} style={styles.amenityTag}>
-              <Text style={styles.amenityText}>{amenity}</Text>
-            </View>
-          ))}
-          {hotel.amenities.length > 3 && (
-            <Text style={styles.moreAmenities}>+{hotel.amenities.length - 3}</Text>
-          )}
+        <View style={styles.chevronContainer}>
+          <Ionicons name="chevron-forward" size={20} color={theme.colors.text.tertiary} />
         </View>
-      </View>
-      <View style={styles.chevronContainer}>
-        <Ionicons name="chevron-forward" size={20} color={theme.colors.text.tertiary} />
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
@@ -157,52 +208,79 @@ const HotelsScreen: React.FC<HotelsScreenProps> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Search Header */}
-      <View style={styles.searchContainer}>
-        <View style={styles.searchInputContainer}>
-          <Ionicons name="search" size={20} color={theme.colors.text.tertiary} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search hotels..."
-            placeholderTextColor={theme.colors.text.tertiary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color={theme.colors.text.tertiary} />
-            </TouchableOpacity>
-          )}
-        </View>
-        <TouchableOpacity 
-          style={[styles.filterButton, getActiveFilterCount() > 0 && styles.activeFilterButton]} 
-          onPress={() => setShowFilterModal(true)}
-        >
-          <Ionicons name="options" size={20} color={getActiveFilterCount() > 0 ? theme.colors.primary[500] : theme.colors.text.tertiary} />
-          {getActiveFilterCount() > 0 && (
-            <View style={styles.filterBadge}>
-              <Text style={styles.filterBadgeText}>{getActiveFilterCount()}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      {/* Hotels List */}
-      <FlatList
-        data={filteredHotels}
-        renderItem={renderHotel}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={theme.colors.primary[500]}
-          />
+      {/* Enhanced Header with Search */}
+      <Header
+        title="Hotels"
+        variant="search"
+        searchQuery={searchQuery}
+        searchPlaceholder="Search hotels..."
+        onSearchChange={setSearchQuery}
+        rightActions={
+          <TouchableOpacity 
+            style={[styles.filterButton, getActiveFilterCount > 0 && styles.activeFilterButton]} 
+            onPress={() => setShowFilterModal(true)}
+          >
+            <Ionicons name="options" size={20} color={getActiveFilterCount > 0 ? theme.colors.primary[500] : theme.colors.text.tertiary} />
+            {getActiveFilterCount > 0 && (
+              <View style={styles.filterBadge}>
+                <Text style={styles.filterBadgeText}>{getActiveFilterCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
         }
-        ListEmptyComponent={renderEmptyState}
       />
+
+      {/* Location Header */}
+      {userLocation && (
+        <View style={styles.locationHeader}>
+          <Ionicons name="location" size={16} color={theme.colors.primary[500]} />
+          <Text style={styles.locationText}>Hotels in {userLocation.city}</Text>
+        </View>
+      )}
+      
+      {/* Hotel Promotions Banner */}
+      {hotelPromotions.length > 0 && (
+        <View style={styles.promotionsBanner}>
+          <FlatList
+            horizontal
+            data={hotelPromotions}
+            renderItem={({ item: promo }) => (
+              <View style={[styles.promoCard, { backgroundColor: promo.backgroundColor }]}>
+                <Text style={[styles.promoTitle, { color: promo.textColor }]}>
+                  {promo.title}
+                </Text>
+                <Text style={[styles.promoDescription, { color: promo.textColor }]}>
+                  {promo.description}
+                </Text>
+              </View>
+            )}
+            keyExtractor={(item) => item.id}
+            showsHorizontalScrollIndicator={false}
+            style={styles.promoBanner}
+          />
+        </View>
+      )}
+      
+      {/* Hotels List */}
+      {loading ? (
+        <SkeletonList count={6} style={styles.listContainer} />
+      ) : (
+        <FlatList
+          data={filteredHotels}
+          renderItem={renderHotel}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={theme.colors.primary[500]}
+            />
+          }
+          ListEmptyComponent={renderEmptyState}
+        />
+      )}
 
       {/* Filter Modal */}
       <HotelFilterModal
@@ -219,30 +297,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.primary,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: theme.spacing.lg,
-    backgroundColor: theme.colors.background.primary,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.light,
-  },
-  searchInputContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.background.secondary,
-    borderRadius: theme.borderRadius.lg,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    marginRight: theme.spacing.md,
-  },
-  searchInput: {
-    flex: 1,
-    marginLeft: theme.spacing.sm,
-    fontSize: theme.typography.fontSize.md,
-    color: theme.colors.text.primary,
   },
   listContainer: {
     padding: theme.spacing.lg,
@@ -367,6 +421,66 @@ const styles = StyleSheet.create({
     color: theme.colors.neutral[0],
     fontSize: theme.typography.fontSize.xs,
     fontWeight: theme.typography.fontWeight.bold as '700',
+  },
+  locationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.primary[50],
+  },
+  locationText: {
+    marginLeft: theme.spacing.xs,
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.primary[600],
+    fontWeight: theme.typography.fontWeight.medium as '500',
+  },
+  promotionsBanner: {
+    paddingVertical: theme.spacing.md,
+  },
+  promoBanner: {
+    paddingLeft: theme.spacing.lg,
+  },
+  promoCard: {
+    width: 280,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    marginRight: theme.spacing.md,
+  },
+  promoTitle: {
+    fontSize: theme.typography.fontSize.md,
+    fontWeight: theme.typography.fontWeight.semiBold as '600',
+    marginBottom: theme.spacing.xs,
+  },
+  promoDescription: {
+    fontSize: theme.typography.fontSize.sm,
+    opacity: 0.9,
+  },
+  promoTag: {
+    position: 'absolute',
+    top: theme.spacing.sm,
+    right: theme.spacing.sm,
+    backgroundColor: theme.colors.primary[500],
+    paddingHorizontal: theme.spacing.xs,
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.sm,
+    zIndex: 1,
+  },
+  promoTagText: {
+    color: theme.colors.neutral[0],
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.bold as '700',
+  },
+  distanceText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.secondary,
+    fontStyle: 'italic',
+  },
+  ghanaFlag: {
+    marginLeft: theme.spacing.xs,
+  },
+  ghanaFlagText: {
+    fontSize: 12,
   },
 });
 
