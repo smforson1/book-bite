@@ -125,7 +125,7 @@ const LoginScreen: React.FC = () => {
               variant="outline"
               onPress={() => setShowConnectionTest(true)}
               fullWidth
-              style={[styles.demoButton, { marginTop: 8 }]}
+              style={{ marginTop: 8 }}
               icon={<Ionicons name="server-outline" size={16} color={theme.colors.primary[500]} />}
             />
           </View>

@@ -167,7 +167,7 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
       'Your payment could not be processed. Would you like to try again?',
       [
         { text: 'Cancel', onPress: () => navigation.goBack() },
-        { text: 'Try Again', onPress: handleBooking }
+        { text: 'Try Again', onPress: handleAddToBookingCart }
       ]
     );
   };

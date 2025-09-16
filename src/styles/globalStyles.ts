@@ -1,8 +1,8 @@
 import { StyleSheet } from 'react-native';
-import { theme } from './theme';
+import { lightTheme as theme } from './theme';
 
-// Global utility styles
-export const globalStyles = StyleSheet.create({
+// We'll create a function to get styles based on the current theme
+export const createGlobalStyles = (theme: any) => StyleSheet.create({
   // Container styles
   container: {
     flex: 1,
@@ -232,3 +232,6 @@ export const globalStyles = StyleSheet.create({
 export const getSpacing = (size: keyof typeof theme.spacing) => theme.spacing[size];
 export const getColor = (color: string) => color;
 export const getBorderRadius = (size: keyof typeof theme.borderRadius) => theme.borderRadius[size];
+
+// Create default global styles
+export const globalStyles = createGlobalStyles(theme);

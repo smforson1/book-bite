@@ -615,9 +615,9 @@ export const initializeMockData = async () => {
     const existingHotels = await AsyncStorage.default.getItem('hotels');
     const existingRestaurants = await AsyncStorage.default.getItem('restaurants');
     
-    // Only initialize mock data if no real data exists
-    if (!existingHotels || !existingRestaurants) {
-      console.log('No existing data found, initializing with mock data...');
+    // Only initialize mock data if we're in development mode
+    if (__DEV__) {
+      console.log('Development mode: initializing with mock data...');
       
       // Set mock data only for missing items
       const promises = [];
@@ -637,12 +637,30 @@ export const initializeMockData = async () => {
       await Promise.all(promises);
       console.log('Mock data initialized successfully');
     } else {
-      console.log('Existing data found, skipping mock data initialization');
+      // In production mode, ensure we have empty arrays if no data exists
+      console.log('Production mode: ensuring empty data initialization...');
+      
+      const promises = [];
+      
+      if (!existingHotels) {
+        promises.push(AsyncStorage.default.setItem('hotels', JSON.stringify([])));
+        promises.push(AsyncStorage.default.setItem('rooms', JSON.stringify([])));
+        promises.push(AsyncStorage.default.setItem('bookings', JSON.stringify([])));
+      }
+      
+      if (!existingRestaurants) {
+        promises.push(AsyncStorage.default.setItem('restaurants', JSON.stringify([])));
+        promises.push(AsyncStorage.default.setItem('menuItems', JSON.stringify([])));
+        promises.push(AsyncStorage.default.setItem('orders', JSON.stringify([])));
+      }
+      
+      await Promise.all(promises);
+      console.log('Empty data initialized for production');
     }
     
     return true;
   } catch (error) {
-    console.error('Error initializing mock data:', error);
+    console.error('Error initializing data:', error);
     return false;
   }
 };

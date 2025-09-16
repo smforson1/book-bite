@@ -12,12 +12,14 @@ interface HotelContextType {
   loading: boolean;
   // Hotel management
   getHotels: () => Promise<Hotel[]>;
+  getMyHotels: () => Promise<Hotel[]>;
   getHotelById: (id: string) => Hotel | null;
   getRoomsByHotelId: (hotelId: string) => Room[];
   searchHotels: (query: string, filters?: HotelFilters) => Hotel[];
   // Booking management
   createBooking: (bookingData: Omit<Booking, 'id' | 'createdAt'>) => Promise<Booking>;
   getUserBookings: (userId: string) => Booking[];
+  getMyBookings: () => Promise<Booking[]>;
   updateBookingStatus: (bookingId: string, status: Booking['status']) => Promise<boolean>;
   cancelBooking: (bookingId: string) => Promise<boolean>;
   // Admin functions
@@ -90,35 +92,19 @@ export const HotelProvider: React.FC<HotelProviderProps> = ({ children }) => {
         
         console.log(`✅ Loaded ${backendResponse.data.length} hotels from backend`);
       } else {
-        // Fallback to stored data if backend fails
-        console.log('⚠️ Backend unavailable, loading stored data...');
-        const [storedHotels, storedRooms, storedBookings] = await Promise.all([
-          AsyncStorage.getItem('hotels'),
-          AsyncStorage.getItem('rooms'),
-          AsyncStorage.getItem('bookings'),
-        ]);
-
-        if (storedHotels) setHotels(JSON.parse(storedHotels));
-        if (storedRooms) setRooms(JSON.parse(storedRooms));
-        if (storedBookings) setBookings(JSON.parse(storedBookings));
+        // If backend returns no data, show empty state instead of mock data
+        console.log('⚠️ Backend returned no data, showing empty state');
+        setHotels([]);
+        setRooms([]);
+        setBookings([]);
       }
     } catch (error) {
       console.error('Error loading hotel data:', error);
       
-      // Fallback to stored data on error
-      try {
-        const [storedHotels, storedRooms, storedBookings] = await Promise.all([
-          AsyncStorage.getItem('hotels'),
-          AsyncStorage.getItem('rooms'),
-          AsyncStorage.getItem('bookings'),
-        ]);
-
-        if (storedHotels) setHotels(JSON.parse(storedHotels));
-        if (storedRooms) setRooms(JSON.parse(storedRooms));
-        if (storedBookings) setBookings(JSON.parse(storedBookings));
-      } catch (fallbackError) {
-        console.error('Error loading fallback data:', fallbackError);
-      }
+      // Show empty state on error instead of mock data
+      setHotels([]);
+      setRooms([]);
+      setBookings([]);
     } finally {
       setLoading(false);
     }
@@ -154,13 +140,37 @@ export const HotelProvider: React.FC<HotelProviderProps> = ({ children }) => {
         return response.data;
       } else {
         console.error('Failed to fetch hotels:', response.error);
-        // Return cached data if API fails
-        return hotels;
+        // Return empty array if API fails
+        return [];
       }
     } catch (error) {
       console.error('Error fetching hotels:', error);
-      // Return cached data if API fails
-      return hotels;
+      // Return empty array if API fails
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getMyHotels = async (): Promise<Hotel[]> => {
+    try {
+      setLoading(true);
+      const response = await apiService.getMyHotels();
+      
+      if (response.success && response.data) {
+        setHotels(response.data);
+        // Cache locally for offline access
+        await AsyncStorage.setItem('hotels', JSON.stringify(response.data));
+        return response.data;
+      } else {
+        console.error('Failed to fetch my hotels:', response.error);
+        // Return empty array if API fails
+        return [];
+      }
+    } catch (error) {
+      console.error('Error fetching my hotels:', error);
+      // Return empty array if API fails
+      return [];
     } finally {
       setLoading(false);
     }
@@ -249,6 +259,30 @@ export const HotelProvider: React.FC<HotelProviderProps> = ({ children }) => {
 
   const getUserBookings = (userId: string): Booking[] => {
     return bookings.filter(booking => booking.userId === userId);
+  };
+
+  const getMyBookings = async (): Promise<Booking[]> => {
+    try {
+      setLoading(true);
+      const response = await apiService.getMyBookings();
+      
+      if (response.success && response.data) {
+        setBookings(response.data);
+        // Cache locally for offline access
+        await AsyncStorage.setItem('bookings', JSON.stringify(response.data));
+        return response.data;
+      } else {
+        console.error('Failed to fetch my bookings:', response.error);
+        // Return empty array if API fails
+        return [];
+      }
+    } catch (error) {
+      console.error('Error fetching my bookings:', error);
+      // Return empty array if API fails
+      return [];
+    } finally {
+      setLoading(false);
+    }
   };
 
   const updateBookingStatus = async (bookingId: string, status: Booking['status']): Promise<boolean> => {
@@ -396,17 +430,19 @@ export const HotelProvider: React.FC<HotelProviderProps> = ({ children }) => {
     return true;
   };
 
-  const value: HotelContextType = {
+  const value = {
     hotels,
     rooms,
     bookings,
     loading,
     getHotels,
+    getMyHotels,
     getHotelById,
     getRoomsByHotelId,
     searchHotels,
     createBooking,
     getUserBookings,
+    getMyBookings,
     updateBookingStatus,
     cancelBooking,
     addHotel,

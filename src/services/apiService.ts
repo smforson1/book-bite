@@ -3,7 +3,8 @@ import { User, Hotel, Room, Restaurant, MenuItem, Booking, Order, Review } from 
 
 // API Configuration
 const API_CONFIG = {
-  baseURL: __DEV__ ? 'http://localhost:3000/api/v1' : 'https://api.bookbite.com/api/v1',
+  // TODO: Update this to your actual backend URL in production
+  baseURL: __DEV__ ? 'http://localhost:3000/api/v1' : 'http://UPDATE-THIS-TO-YOUR-ACTUAL-BACKEND-URL/api/v1',
   timeout: 10000,
   retryAttempts: 3,
 };
@@ -128,8 +129,16 @@ class ApiService {
     return this.makeRequest(`/hotels/${id}`);
   }
 
+  async getMyHotels(): Promise<ApiResponse<Hotel[]>> {
+    return this.makeRequest(`/hotels/owner/my-hotels`);
+  }
+
   async getRoomsByHotelId(hotelId: string): Promise<ApiResponse<Room[]>> {
     return this.makeRequest(`/hotels/${hotelId}/rooms`);
+  }
+
+  async getMyRooms(): Promise<ApiResponse<Room[]>> {
+    return this.makeRequest(`/rooms/owner/my-rooms`);
   }
 
   async createBooking(bookingData: Omit<Booking, 'id' | 'createdAt'>): Promise<ApiResponse<Booking>> {
@@ -138,6 +147,10 @@ class ApiService {
 
   async getUserBookings(): Promise<ApiResponse<Booking[]>> {
     return this.makeRequest('/bookings/user');
+  }
+
+  async getMyBookings(): Promise<ApiResponse<Booking[]>> {
+    return this.makeRequest('/bookings');
   }
 
   async updateBookingStatus(bookingId: string, status: Booking['status']): Promise<ApiResponse<Booking>> {
@@ -154,8 +167,16 @@ class ApiService {
     return this.makeRequest(`/restaurants/${id}`);
   }
 
+  async getMyRestaurants(): Promise<ApiResponse<Restaurant[]>> {
+    return this.makeRequest(`/restaurants/owner/my-restaurants`);
+  }
+
   async getMenuByRestaurantId(restaurantId: string): Promise<ApiResponse<MenuItem[]>> {
     return this.makeRequest(`/restaurants/${restaurantId}/menu`);
+  }
+
+  async getMyMenuItems(): Promise<ApiResponse<MenuItem[]>> {
+    return this.makeRequest(`/menu-items/owner/my-items`);
   }
 
   async createOrder(orderData: Omit<Order, 'id' | 'createdAt'>): Promise<ApiResponse<Order>> {
@@ -164,6 +185,10 @@ class ApiService {
 
   async getUserOrders(): Promise<ApiResponse<Order[]>> {
     return this.makeRequest('/orders/user');
+  }
+
+  async getMyOrders(): Promise<ApiResponse<Order[]>> {
+    return this.makeRequest('/orders');
   }
 
   async updateOrderStatus(orderId: string, status: Order['status']): Promise<ApiResponse<Order>> {
@@ -190,24 +215,20 @@ class ApiService {
   }
 
   // Review APIs
-  async getReviews(targetId: string, targetType: 'hotel' | 'restaurant'): Promise<ApiResponse<Review[]>> {
+  async getReviews(targetId: string, targetType: 'hotel' | 'restaurant' = 'restaurant'): Promise<ApiResponse<Review[]>> {
     return this.makeRequest(`/reviews?targetId=${targetId}&targetType=${targetType}`);
   }
 
-  async updateUserProfile(userId: string, userData: any): Promise<ApiResponse<User>> {
-    return this.makeRequest(`/users/${userId}`, 'PUT', userData);
+  async createReview(reviewData: Omit<Review, 'id' | 'createdAt'>): Promise<ApiResponse<Review>> {
+    return this.makeRequest('/reviews', 'POST', reviewData);
   }
 
-  async createHotel(hotelData: Omit<Hotel, 'id' | 'createdAt'>): Promise<ApiResponse<Hotel>> {
-    return this.makeRequest('/hotels', 'POST', hotelData);
+  async updateReview(reviewId: string, updates: Partial<Review>): Promise<ApiResponse<Review>> {
+    return this.makeRequest(`/reviews/${reviewId}`, 'PUT', updates);
   }
 
-  async updateHotel(hotelId: string, updates: Partial<Hotel>): Promise<ApiResponse<Hotel>> {
-    return this.makeRequest(`/hotels/${hotelId}`, 'PUT', updates);
-  }
-
-  async createRoom(roomData: Omit<Room, 'id'>): Promise<ApiResponse<Room>> {
-    return this.makeRequest('/rooms', 'POST', roomData);
+  async deleteReview(reviewId: string): Promise<ApiResponse<void>> {
+    return this.makeRequest(`/reviews/${reviewId}`, 'DELETE');
   }
 
   // File upload
@@ -288,6 +309,32 @@ class ApiService {
   async createMenuItem(menuItemData: Omit<MenuItem, 'id'>): Promise<ApiResponse<MenuItem>> {
     return this.makeRequest('/menu-items', 'POST', menuItemData);
   }
+
+  async updateMenuItem(menuItemId: string, updates: Partial<MenuItem>): Promise<ApiResponse<MenuItem>> {
+    return this.makeRequest(`/menu-items/${menuItemId}`, 'PUT', updates);
+  }
+
+  async updateRoom(roomId: string, updates: Partial<Room>): Promise<ApiResponse<Room>> {
+    return this.makeRequest(`/rooms/${roomId}`, 'PUT', updates);
+  }
+
+  async updateUserProfile(userId: string, updates: Partial<User>): Promise<ApiResponse<User>> {
+    return this.makeRequest(`/auth/profile`, 'PUT', updates);
+  }
+
+  // Hotel management APIs
+  async createHotel(hotelData: Omit<Hotel, 'id' | 'createdAt'>): Promise<ApiResponse<Hotel>> {
+    return this.makeRequest('/hotels', 'POST', hotelData);
+  }
+
+  async updateHotel(hotelId: string, updates: Partial<Hotel>): Promise<ApiResponse<Hotel>> {
+    return this.makeRequest(`/hotels/${hotelId}`, 'PUT', updates);
+  }
+
+  async createRoom(roomData: Omit<Room, 'id'>): Promise<ApiResponse<Room>> {
+    return this.makeRequest('/rooms', 'POST', roomData);
+  }
+
 }
 
 export const apiService = new ApiService();

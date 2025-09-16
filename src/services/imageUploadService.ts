@@ -180,15 +180,6 @@ class ImageUploadService {
     const uploadId = `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     try {
-      // Check file size (limit for Ghana's internet - 5MB max)
-      const fileInfo = await FileSystem.getInfoAsync(uri);
-      if (fileInfo.exists && fileInfo.size && fileInfo.size > 5 * 1024 * 1024) {
-        return {
-          success: false,
-          error: 'File size too large. Maximum 5MB allowed.'
-        };
-      }
-
       // Add to upload queue
       this.uploadQueue.set(uploadId, {
         uploadId,

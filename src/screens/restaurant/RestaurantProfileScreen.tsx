@@ -1,22 +1,33 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, Card } from '../../components';
+import ImageUpload from '../../components/ImageUpload';
 import { theme } from '../../styles/theme';
 import { globalStyles } from '../../styles/globalStyles';
 import { useAuth } from '../../contexts/AuthContext';
+import { useRestaurant } from '../../contexts/RestaurantContext';
 
 const RestaurantProfileScreen: React.FC = () => {
   const { user, logout } = useAuth();
+  const { updateRestaurant } = useRestaurant();
+  const [restaurantImages, setRestaurantImages] = useState<string[]>([]);
 
   const handleLogout = async () => {
     await logout();
+  };
+
+  const handleImagesUploaded = async (imageUrls: string[]) => {
+    setRestaurantImages(imageUrls);
+    // In a real app, we would update the restaurant with the new images
+    // await updateRestaurant(user?.id || '', { images: imageUrls });
   };
 
   return (
@@ -29,6 +40,32 @@ const RestaurantProfileScreen: React.FC = () => {
           </View>
           <Text style={[globalStyles.h2, styles.title]}>Restaurant Profile</Text>
           <Text style={[globalStyles.bodyLarge, styles.subtitle]}>Manage your restaurant information</Text>
+        </View>
+
+        {/* Restaurant Images */}
+        <View style={styles.section}>
+          <Text style={[globalStyles.h4, styles.sectionTitle]}>Restaurant Images</Text>
+          <ImageUpload
+            onImagesUploaded={handleImagesUploaded}
+            maxImages={10}
+            allowMultiple={true}
+            title="Upload Restaurant Photos"
+            subtitle="Add photos of your restaurant interior, food, and dining area"
+            existingImages={restaurantImages}
+          />
+          
+          {/* Image Preview */}
+          {restaurantImages.length > 0 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imagePreviewContainer}>
+              {restaurantImages.map((image, index) => (
+                <Image
+                  key={index}
+                  source={{ uri: image }}
+                  style={styles.restaurantImagePreview}
+                />
+              ))}
+            </ScrollView>
+          )}
         </View>
 
         {/* Restaurant Information */}
@@ -146,6 +183,18 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: theme.colors.text.primary,
     marginBottom: theme.spacing[4],
+  },
+  
+  imagePreviewContainer: {
+    flexDirection: 'row',
+    marginVertical: theme.spacing.md,
+  },
+  
+  restaurantImagePreview: {
+    width: 100,
+    height: 100,
+    borderRadius: theme.borderRadius.md,
+    marginRight: theme.spacing.sm,
   },
   
   // Info Card

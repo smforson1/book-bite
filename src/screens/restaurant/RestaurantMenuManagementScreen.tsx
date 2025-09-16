@@ -8,13 +8,16 @@ import {
   Alert,
   Modal,
   Switch,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, Card, Input } from '../../components';
+import ImageUpload from '../../components/ImageUpload';
 import { theme } from '../../styles/theme';
 import { globalStyles } from '../../styles/globalStyles';
 import { useAuth } from '../../contexts/AuthContext';
+import { useRestaurant } from '../../contexts/RestaurantContext';
 
 interface MenuItem {
   id: string;
@@ -25,11 +28,12 @@ interface MenuItem {
   isAvailable: boolean;
   isInStock: boolean;
   preparationTime: number; // in minutes
-  imageUrl?: string;
+  images: string[]; // Updated to store multiple images
 }
 
 const RestaurantMenuManagementScreen: React.FC = () => {
   const { user } = useAuth();
+  const { addMenuItem, updateMenuItem } = useRestaurant();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
@@ -41,6 +45,7 @@ const RestaurantMenuManagementScreen: React.FC = () => {
     isAvailable: true,
     isInStock: true,
     preparationTime: 15,
+    images: [],
   });
 
   useEffect(() => {
@@ -59,6 +64,9 @@ const RestaurantMenuManagementScreen: React.FC = () => {
         isAvailable: true,
         isInStock: true,
         preparationTime: 30,
+        images: [
+          'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800'
+        ],
       },
       {
         id: '2',
@@ -69,6 +77,9 @@ const RestaurantMenuManagementScreen: React.FC = () => {
         isAvailable: true,
         isInStock: false,
         preparationTime: 25,
+        images: [
+          'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800'
+        ],
       },
       {
         id: '3',
@@ -79,40 +90,58 @@ const RestaurantMenuManagementScreen: React.FC = () => {
         isAvailable: true,
         isInStock: true,
         preparationTime: 10,
+        images: [
+          'https://images.unsplash.com/photo-1567620832903-9fc6debc209f?w=800'
+        ],
       },
     ];
     setMenuItems(mockItems);
   };
 
-  const handleAddItem = () => {
+  const handleImagesUploaded = (imageUrls: string[]) => {
+    setNewItem({ ...newItem, images: imageUrls });
+  };
+
+  const handleAddItem = async () => {
     if (!newItem.name || !newItem.description || !newItem.price) {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
 
-    const item: MenuItem = {
-      id: Date.now().toString(),
-      name: newItem.name!,
-      description: newItem.description!,
-      price: newItem.price!,
-      category: newItem.category || 'Main Course',
-      isAvailable: newItem.isAvailable ?? true,
-      isInStock: newItem.isInStock ?? true,
-      preparationTime: newItem.preparationTime || 15,
-    };
+    try {
+      const itemData = {
+        ...newItem,
+        id: Date.now().toString(),
+        name: newItem.name!,
+        description: newItem.description!,
+        price: newItem.price!,
+        category: newItem.category || 'Main Course',
+        isAvailable: newItem.isAvailable ?? true,
+        isInStock: newItem.isInStock ?? true,
+        preparationTime: newItem.preparationTime || 15,
+        images: newItem.images || [],
+        restaurantId: user?.id || '', // Associate with restaurant owner
+      };
 
-    setMenuItems([...menuItems, item]);
-    setNewItem({
-      name: '',
-      description: '',
-      price: 0,
-      category: 'Main Course',
-      isAvailable: true,
-      isInStock: true,
-      preparationTime: 15,
-    });
-    setShowAddModal(false);
-    Alert.alert('Success', 'Menu item added successfully!');
+      // In a real app, we would call addMenuItem from the context
+      // await addMenuItem(itemData);
+      
+      setMenuItems([...menuItems, itemData as MenuItem]);
+      setNewItem({
+        name: '',
+        description: '',
+        price: 0,
+        category: 'Main Course',
+        isAvailable: true,
+        isInStock: true,
+        preparationTime: 15,
+        images: [],
+      });
+      setShowAddModal(false);
+      Alert.alert('Success', 'Menu item added successfully!');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to add menu item. Please try again.');
+    }
   };
 
   const handleEditItem = (item: MenuItem) => {
@@ -121,28 +150,39 @@ const RestaurantMenuManagementScreen: React.FC = () => {
     setShowAddModal(true);
   };
 
-  const handleUpdateItem = () => {
+  const handleUpdateItem = async () => {
     if (!editingItem) return;
 
-    const updatedItems = menuItems.map(item =>
-      item.id === editingItem.id
-        ? { ...item, ...newItem }
-        : item
-    );
+    try {
+      const updatedItem = {
+        ...editingItem,
+        ...newItem,
+      };
 
-    setMenuItems(updatedItems);
-    setEditingItem(null);
-    setNewItem({
-      name: '',
-      description: '',
-      price: 0,
-      category: 'Main Course',
-      isAvailable: true,
-      isInStock: true,
-      preparationTime: 15,
-    });
-    setShowAddModal(false);
-    Alert.alert('Success', 'Menu item updated successfully!');
+      // In a real app, we would call updateMenuItem from the context
+      // await updateMenuItem(updatedItem.id, updatedItem);
+      
+      const updatedItems = menuItems.map(item =>
+        item.id === editingItem.id ? updatedItem : item
+      );
+
+      setMenuItems(updatedItems);
+      setEditingItem(null);
+      setNewItem({
+        name: '',
+        description: '',
+        price: 0,
+        category: 'Main Course',
+        isAvailable: true,
+        isInStock: true,
+        preparationTime: 15,
+        images: [],
+      });
+      setShowAddModal(false);
+      Alert.alert('Success', 'Menu item updated successfully!');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update menu item. Please try again.');
+    }
   };
 
   const handleDeleteItem = (id: string) => {
@@ -155,6 +195,7 @@ const RestaurantMenuManagementScreen: React.FC = () => {
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
+            // In a real app, we would call a delete function from the context
             setMenuItems(menuItems.filter(item => item.id !== id));
             Alert.alert('Success', 'Menu item deleted successfully!');
           },
@@ -205,6 +246,24 @@ const RestaurantMenuManagementScreen: React.FC = () => {
           </View>
         </View>
       </View>
+
+      {/* Image Preview */}
+      {item.images && item.images.length > 0 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imagePreviewContainer}>
+          {item.images.slice(0, 3).map((image, index) => (
+            <Image
+              key={index}
+              source={{ uri: image }}
+              style={styles.itemImagePreview}
+            />
+          ))}
+          {item.images.length > 3 && (
+            <View style={[styles.itemImagePreview, styles.moreImagesOverlay]}>
+              <Text style={styles.moreImagesText}>+{item.images.length - 3}</Text>
+            </View>
+          )}
+        </ScrollView>
+      )}
 
       <View style={styles.itemControls}>
         <View style={styles.controlRow}>
@@ -257,6 +316,7 @@ const RestaurantMenuManagementScreen: React.FC = () => {
                 isAvailable: true,
                 isInStock: true,
                 preparationTime: 15,
+                images: [],
               });
             }}
           >
@@ -306,6 +366,16 @@ const RestaurantMenuManagementScreen: React.FC = () => {
             value={newItem.preparationTime?.toString() || ''}
             onChangeText={(text) => setNewItem({ ...newItem, preparationTime: parseInt(text) || 15 })}
             keyboardType="numeric"
+          />
+
+          {/* Image Upload Component */}
+          <ImageUpload
+            onImagesUploaded={handleImagesUploaded}
+            maxImages={3}
+            allowMultiple={true}
+            title="Item Images"
+            subtitle="Add photos of this menu item"
+            existingImages={newItem.images || []}
           />
 
           <View style={styles.switchRow}>
@@ -489,6 +559,29 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.error[50],
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.sm,
+  },
+  
+  imagePreviewContainer: {
+    flexDirection: 'row',
+    marginBottom: theme.spacing.md,
+  },
+  
+  itemImagePreview: {
+    width: 80,
+    height: 80,
+    borderRadius: theme.borderRadius.md,
+    marginRight: theme.spacing.sm,
+  },
+  
+  moreImagesOverlay: {
+    backgroundColor: theme.colors.background.secondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  
+  moreImagesText: {
+    color: theme.colors.text.primary,
+    fontWeight: theme.typography.fontWeight.bold,
   },
   
   itemControls: {

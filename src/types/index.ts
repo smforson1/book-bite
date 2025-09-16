@@ -48,6 +48,7 @@ export interface Booking {
   checkOut: Date;
   guests: number;
   totalPrice: number;
+  originalPrice?: number;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
   paymentStatus: 'pending' | 'paid' | 'refunded';
   paymentMethod?: string;
@@ -95,6 +96,7 @@ export interface Order {
   restaurantId: string;
   items: OrderItem[];
   totalPrice: number;
+  originalPrice?: number;
   deliveryAddress: string;
   status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'picked_up' | 'on_the_way' | 'delivered' | 'cancelled';
   paymentStatus: 'pending' | 'paid' | 'refunded';
@@ -163,7 +165,17 @@ export type AuthStackParamList = {
 export type UserTabParamList = {
   Home: undefined;
   Hotels: undefined;
-  Restaurants: undefined;
+  Restaurants: {
+    screen?: 'RestaurantsList' | 'RestaurantDetail' | 'Payment' | 'PaymentConfirmation';
+    params?: {
+      amount?: number;
+      currency?: string;
+      paymentFor?: 'booking' | 'order';
+      referenceId?: string;
+      paymentMethod?: string;
+      transactionId?: string;
+    };
+  };
   Bookings: undefined;
   Orders: undefined;
   Profile: undefined;

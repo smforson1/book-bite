@@ -18,6 +18,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Order, MenuItem } from '../../types';
+import { UserTabParamList } from '../../types';
 
 export type OrdersStackParamList = {
   Orders: undefined;
@@ -42,7 +43,7 @@ const OrdersScreen: React.FC = () => {
   const { orders, getRestaurantById, getMenuItemById, updateOrderStatus } = useRestaurant();
   const [userOrders, setUserOrders] = useState<Order[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const navigation = useNavigation<StackNavigationProp<OrdersStackParamList, 'Orders'>>();
+  const navigation = useNavigation<StackNavigationProp<UserTabParamList, 'Orders'>>();
 
   useEffect(() => {
     if (user) {
@@ -204,7 +205,7 @@ const OrdersScreen: React.FC = () => {
             <Button
               title="Pay Now"
               onPress={() => {
-                // Navigate to Restaurants stack, then to Payment
+                // Navigate to the Restaurants tab and then to the Payment screen
                 navigation.navigate('Restaurants', {
                   screen: 'Payment',
                   params: {
@@ -217,6 +218,7 @@ const OrdersScreen: React.FC = () => {
               }}
               style={styles.payButton}
             />
+
           </View>
         )}
       </Card>

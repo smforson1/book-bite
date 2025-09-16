@@ -4,6 +4,7 @@ import { AuthProvider } from './src/contexts/AuthContext';
 import { HotelProvider } from './src/contexts/HotelContext';
 import { RestaurantProvider } from './src/contexts/RestaurantContext';
 import { ReviewProvider } from './src/contexts/ReviewContext';
+import { ThemeProvider } from './src/contexts/ThemeContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { initializeMockData } from './src/services/mockDataService';
 import { ErrorBoundary, OfflineIndicator } from './src/components/ErrorBoundary';
@@ -15,8 +16,10 @@ export default function App() {
     // Initialize app services
     const initializeApp = async () => {
       try {
-        // Initialize mock data
-        await initializeMockData();
+        // Initialize mock data only in development mode
+        if (__DEV__) {
+          await initializeMockData();
+        }
         
         // Track app startup
         await ghanaAnalyticsService.trackEvent({
@@ -65,17 +68,19 @@ export default function App() {
         });
       }}
     >
-      <AuthProvider>
-        <HotelProvider>
-          <RestaurantProvider>
-            <ReviewProvider>
-              <AppNavigator />
-              <OfflineIndicator />
-              <StatusBar style="auto" />
-            </ReviewProvider>
-          </RestaurantProvider>
-        </HotelProvider>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <HotelProvider>
+            <RestaurantProvider>
+              <ReviewProvider>
+                <AppNavigator />
+                <OfflineIndicator />
+                <StatusBar style="auto" />
+              </ReviewProvider>
+            </RestaurantProvider>
+          </HotelProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

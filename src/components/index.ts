@@ -16,3 +16,5 @@ export { default as Container, type ContainerProps } from './Container';
 export { default as Section, type SectionProps } from './Section';
 export { default as LoadingState, type LoadingStateProps } from './LoadingState';
 export { default as ListItem, type ListItemProps } from './ListItem';
+export { default as ImageUpload, type ImageUploadProps } from './ImageUpload';
+export { default as ThemeToggle } from './ThemeToggle';

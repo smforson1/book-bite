@@ -63,9 +63,9 @@ export const ConnectionTest: React.FC<ConnectionTestProps> = ({ onClose }) => {
 
   const getStatusColor = () => {
     switch (status) {
-      case 'connected': return theme.colors.success;
-      case 'disconnected': return theme.colors.error;
-      default: return theme.colors.warning;
+      case 'connected': return theme.colors.success[500];
+      case 'disconnected': return theme.colors.error[500];
+      default: return theme.colors.warning[500];
     }
   };
 
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 20,
-    color: theme.colors.text,
+    color: theme.colors.text.primary,
   },
   statusContainer: {
     padding: 15,
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   infoContainer: {
-    backgroundColor: theme.colors.background,
+    backgroundColor: theme.colors.background.primary,
     padding: 15,
     borderRadius: 8,
     marginBottom: 20,
@@ -164,34 +164,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     marginBottom: 8,
-    color: theme.colors.text,
+    color: theme.colors.text.primary,
   },
   infoText: {
     fontSize: 12,
-    color: theme.colors.textSecondary,
+    color: theme.colors.text.secondary,
     marginBottom: 4,
   },
   buttonContainer: {
     gap: 10,
   },
   testButton: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: theme.colors.primary[500],
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',
   },
   buttonText: {
-    color: 'white',
+    color: theme.colors.text.inverse,
     fontWeight: '600',
   },
   closeButton: {
-    backgroundColor: theme.colors.textSecondary,
+    backgroundColor: theme.colors.text.secondary,
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',
   },
   closeButtonText: {
-    color: 'white',
+    color: theme.colors.text.inverse,
     fontWeight: '600',
   },
 });

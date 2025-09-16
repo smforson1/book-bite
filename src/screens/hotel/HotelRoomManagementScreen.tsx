@@ -8,13 +8,16 @@ import {
   Alert,
   Modal,
   Switch,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, Card, Input } from '../../components';
+import ImageUpload from '../../components/ImageUpload';
 import { theme } from '../../styles/theme';
 import { globalStyles } from '../../styles/globalStyles';
 import { useAuth } from '../../contexts/AuthContext';
+import { useHotel } from '../../contexts/HotelContext';
 
 interface Room {
   id: string;
@@ -26,11 +29,12 @@ interface Room {
   isAvailable: boolean;
   isOccupied: boolean;
   amenities: string[];
-  imageUrl?: string;
+  images: string[]; // Updated to store multiple images
 }
 
 const HotelRoomManagementScreen: React.FC = () => {
   const { user } = useAuth();
+  const { addRoom, updateRoom } = useHotel();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
@@ -43,6 +47,7 @@ const HotelRoomManagementScreen: React.FC = () => {
     isAvailable: true,
     isOccupied: false,
     amenities: [],
+    images: [],
   });
 
   useEffect(() => {
@@ -50,7 +55,8 @@ const HotelRoomManagementScreen: React.FC = () => {
   }, []);
 
   const loadRooms = () => {
-    // Mock data - in real app, load from API
+    // In a real app, this would load from the hotel context
+    // For now, we'll use mock data
     const mockRooms: Room[] = [
       {
         id: '1',
@@ -62,6 +68,10 @@ const HotelRoomManagementScreen: React.FC = () => {
         isAvailable: true,
         isOccupied: false,
         amenities: ['WiFi', 'AC', 'TV', 'Private Bathroom'],
+        images: [
+          'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800',
+          'https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=800'
+        ],
       },
       {
         id: '2',
@@ -73,53 +83,60 @@ const HotelRoomManagementScreen: React.FC = () => {
         isAvailable: true,
         isOccupied: true,
         amenities: ['WiFi', 'AC', 'TV', 'Balcony', 'Mini Bar', 'Room Service'],
-      },
-      {
-        id: '3',
-        roomNumber: '301',
-        type: 'Suite',
-        description: 'Luxury suite with separate living area and premium amenities',
-        price: 450.00,
-        capacity: 4,
-        isAvailable: false,
-        isOccupied: false,
-        amenities: ['WiFi', 'AC', 'TV', 'Living Area', 'Kitchenette', 'Balcony', 'Premium Bathroom'],
+        images: [
+          'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800'
+        ],
       },
     ];
     setRooms(mockRooms);
   };
 
-  const handleAddRoom = () => {
+  const handleImagesUploaded = (imageUrls: string[]) => {
+    setNewRoom({ ...newRoom, images: imageUrls });
+  };
+
+  const handleAddRoom = async () => {
     if (!newRoom.roomNumber || !newRoom.type || !newRoom.description || !newRoom.price) {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
 
-    const room: Room = {
-      id: Date.now().toString(),
-      roomNumber: newRoom.roomNumber!,
-      type: newRoom.type!,
-      description: newRoom.description!,
-      price: newRoom.price!,
-      capacity: newRoom.capacity || 2,
-      isAvailable: newRoom.isAvailable ?? true,
-      isOccupied: newRoom.isOccupied ?? false,
-      amenities: newRoom.amenities || [],
-    };
+    try {
+      const roomData = {
+        ...newRoom,
+        id: Date.now().toString(),
+        roomNumber: newRoom.roomNumber!,
+        type: newRoom.type!,
+        description: newRoom.description!,
+        price: newRoom.price!,
+        capacity: newRoom.capacity || 2,
+        isAvailable: newRoom.isAvailable ?? true,
+        isOccupied: newRoom.isOccupied ?? false,
+        amenities: newRoom.amenities || [],
+        images: newRoom.images || [],
+        hotelId: user?.id || '', // Associate with hotel owner
+      };
 
-    setRooms([...rooms, room]);
-    setNewRoom({
-      roomNumber: '',
-      type: 'Standard',
-      description: '',
-      price: 0,
-      capacity: 2,
-      isAvailable: true,
-      isOccupied: false,
-      amenities: [],
-    });
-    setShowAddModal(false);
-    Alert.alert('Success', 'Room added successfully!');
+      // In a real app, we would call addRoom from the context
+      // await addRoom(roomData);
+      
+      setRooms([...rooms, roomData as Room]);
+      setNewRoom({
+        roomNumber: '',
+        type: 'Standard',
+        description: '',
+        price: 0,
+        capacity: 2,
+        isAvailable: true,
+        isOccupied: false,
+        amenities: [],
+        images: [],
+      });
+      setShowAddModal(false);
+      Alert.alert('Success', 'Room added successfully!');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to add room. Please try again.');
+    }
   };
 
   const handleEditRoom = (room: Room) => {
@@ -128,29 +145,40 @@ const HotelRoomManagementScreen: React.FC = () => {
     setShowAddModal(true);
   };
 
-  const handleUpdateRoom = () => {
+  const handleUpdateRoom = async () => {
     if (!editingRoom) return;
 
-    const updatedRooms = rooms.map(room =>
-      room.id === editingRoom.id
-        ? { ...room, ...newRoom }
-        : room
-    );
+    try {
+      const updatedRoom = {
+        ...editingRoom,
+        ...newRoom,
+      };
 
-    setRooms(updatedRooms);
-    setEditingRoom(null);
-    setNewRoom({
-      roomNumber: '',
-      type: 'Standard',
-      description: '',
-      price: 0,
-      capacity: 2,
-      isAvailable: true,
-      isOccupied: false,
-      amenities: [],
-    });
-    setShowAddModal(false);
-    Alert.alert('Success', 'Room updated successfully!');
+      // In a real app, we would call updateRoom from the context
+      // await updateRoom(updatedRoom.id, updatedRoom);
+      
+      const updatedRooms = rooms.map(room =>
+        room.id === editingRoom.id ? updatedRoom : room
+      );
+
+      setRooms(updatedRooms);
+      setEditingRoom(null);
+      setNewRoom({
+        roomNumber: '',
+        type: 'Standard',
+        description: '',
+        price: 0,
+        capacity: 2,
+        isAvailable: true,
+        isOccupied: false,
+        amenities: [],
+        images: [],
+      });
+      setShowAddModal(false);
+      Alert.alert('Success', 'Room updated successfully!');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update room. Please try again.');
+    }
   };
 
   const handleDeleteRoom = (id: string) => {
@@ -163,6 +191,7 @@ const HotelRoomManagementScreen: React.FC = () => {
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
+            // In a real app, we would call a delete function from the context
             setRooms(rooms.filter(room => room.id !== id));
             Alert.alert('Success', 'Room deleted successfully!');
           },
@@ -226,6 +255,24 @@ const HotelRoomManagementScreen: React.FC = () => {
           </View>
         </View>
 
+        {/* Image Preview */}
+        {room.images && room.images.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imagePreviewContainer}>
+            {room.images.slice(0, 3).map((image, index) => (
+              <Image
+                key={index}
+                source={{ uri: image }}
+                style={styles.roomImagePreview}
+              />
+            ))}
+            {room.images.length > 3 && (
+              <View style={[styles.roomImagePreview, styles.moreImagesOverlay]}>
+                <Text style={styles.moreImagesText}>+{room.images.length - 3}</Text>
+              </View>
+            )}
+          </ScrollView>
+        )}
+
         <View style={styles.roomDetails}>
           <View style={styles.detailRow}>
             <Ionicons name="people" size={16} color={theme.colors.text.secondary} />
@@ -280,6 +327,7 @@ const HotelRoomManagementScreen: React.FC = () => {
                 isAvailable: true,
                 isOccupied: false,
                 amenities: [],
+                images: [],
               });
             }}
           >
@@ -337,6 +385,16 @@ const HotelRoomManagementScreen: React.FC = () => {
             value={newRoom.amenities?.join(', ') || ''}
             onChangeText={(text) => setNewRoom({ ...newRoom, amenities: text.split(',').map(s => s.trim()).filter(s => s) })}
             multiline
+          />
+
+          {/* Image Upload Component */}
+          <ImageUpload
+            onImagesUploaded={handleImagesUploaded}
+            maxImages={5}
+            allowMultiple={true}
+            title="Room Images"
+            subtitle="Add photos of this room type"
+            existingImages={newRoom.images || []}
           />
 
           <View style={styles.switchRow}>
@@ -542,6 +600,29 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.error[50],
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.sm,
+  },
+  
+  imagePreviewContainer: {
+    flexDirection: 'row',
+    marginBottom: theme.spacing.md,
+  },
+  
+  roomImagePreview: {
+    width: 80,
+    height: 80,
+    borderRadius: theme.borderRadius.md,
+    marginRight: theme.spacing.sm,
+  },
+  
+  moreImagesOverlay: {
+    backgroundColor: theme.colors.background.secondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  
+  moreImagesText: {
+    color: theme.colors.text.primary,
+    fontWeight: theme.typography.fontWeight.bold,
   },
   
   roomDetails: {

@@ -1,22 +1,33 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, Card } from '../../components';
+import ImageUpload from '../../components/ImageUpload';
 import { theme } from '../../styles/theme';
 import { globalStyles } from '../../styles/globalStyles';
 import { useAuth } from '../../contexts/AuthContext';
+import { useHotel } from '../../contexts/HotelContext';
 
 const HotelProfileScreen: React.FC = () => {
   const { user, logout } = useAuth();
+  const { updateHotel } = useHotel();
+  const [hotelImages, setHotelImages] = useState<string[]>([]);
 
   const handleLogout = async () => {
     await logout();
+  };
+
+  const handleImagesUploaded = async (imageUrls: string[]) => {
+    setHotelImages(imageUrls);
+    // In a real app, we would update the hotel with the new images
+    // await updateHotel(user?.id || '', { images: imageUrls });
   };
 
   return (
@@ -29,6 +40,32 @@ const HotelProfileScreen: React.FC = () => {
           </View>
           <Text style={[globalStyles.h2, styles.title]}>Hotel Profile</Text>
           <Text style={[globalStyles.bodyLarge, styles.subtitle]}>Manage your hotel information</Text>
+        </View>
+
+        {/* Hotel Images */}
+        <View style={styles.section}>
+          <Text style={[globalStyles.h4, styles.sectionTitle]}>Hotel Images</Text>
+          <ImageUpload
+            onImagesUploaded={handleImagesUploaded}
+            maxImages={10}
+            allowMultiple={true}
+            title="Upload Hotel Photos"
+            subtitle="Add photos of your hotel exterior, lobby, rooms, and amenities"
+            existingImages={hotelImages}
+          />
+          
+          {/* Image Preview */}
+          {hotelImages.length > 0 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imagePreviewContainer}>
+              {hotelImages.map((image, index) => (
+                <Image
+                  key={index}
+                  source={{ uri: image }}
+                  style={styles.hotelImagePreview}
+                />
+              ))}
+            </ScrollView>
+          )}
         </View>
 
         {/* Hotel Information */}
@@ -146,6 +183,18 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: theme.colors.text.primary,
     marginBottom: theme.spacing[4],
+  },
+  
+  imagePreviewContainer: {
+    flexDirection: 'row',
+    marginVertical: theme.spacing.md,
+  },
+  
+  hotelImagePreview: {
+    width: 100,
+    height: 100,
+    borderRadius: theme.borderRadius.md,
+    marginRight: theme.spacing.sm,
   },
   
   // Info Card

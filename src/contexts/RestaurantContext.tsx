@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Restaurant, MenuItem, Order, OrderItem } from '../types';
+import { Restaurant, MenuItem, Order, Review } from '../types';
 import { apiService } from '../services/apiService';
 import { notificationService } from '../services/notificationService';
 
@@ -8,32 +8,42 @@ interface RestaurantContextType {
   restaurants: Restaurant[];
   menuItems: MenuItem[];
   orders: Order[];
-  cart: CartItem[];
+  reviews: Review[];
   loading: boolean;
-  // Restaurant management
-  getRestaurants: () => Promise<Restaurant[]>;
-  getRestaurantById: (id: string) => Restaurant | null;
-  getMenuByRestaurantId: (restaurantId: string) => MenuItem[];
-  getMenuItemById: (id: string) => MenuItem | null;
-  searchRestaurants: (query: string, filters?: RestaurantFilters) => Restaurant[];
-  // Cart management
+  // Add cart properties
+  cart: CartItem[];
   addToCart: (item: CartItem) => void;
   removeFromCart: (menuItemId: string) => void;
   updateCartItemQuantity: (menuItemId: string, quantity: number) => void;
   clearCart: () => void;
   getCartTotal: () => number;
+  // Restaurant management
+  getRestaurants: () => Promise<Restaurant[]>;
+  getMyRestaurants: () => Promise<Restaurant[]>;
+  getRestaurantById: (id: string) => Restaurant | null;
+  getMenuByRestaurantId: (restaurantId: string) => MenuItem[];
+  searchRestaurants: (query: string, filters?: RestaurantFilters) => Restaurant[];
+  // Menu management
+  getMenuItems: () => Promise<MenuItem[]>;
+  getMyMenuItems: () => Promise<MenuItem[]>;
+  getMenuItemById: (id: string) => MenuItem | null;
+  addMenuItem: (item: Omit<MenuItem, 'id'>) => Promise<MenuItem>;
+  updateMenuItem: (itemId: string, updates: Partial<MenuItem>) => Promise<boolean>;
+  removeMenuItem: (itemId: string) => Promise<boolean>;
+  updateMenuItemPrice: (itemId: string, newPrice: number) => Promise<boolean>;
+  toggleMenuItemAvailability: (itemId: string) => Promise<boolean>;
   // Order management
   createOrder: (orderData: Omit<Order, 'id' | 'createdAt'>) => Promise<Order>;
   getUserOrders: (userId: string) => Order[];
+  getMyOrders: () => Promise<Order[]>;
   updateOrderStatus: (orderId: string, status: Order['status']) => Promise<boolean>;
   cancelOrder: (orderId: string) => Promise<boolean>;
+  // Review management
+  getReviews: (restaurantId: string) => Promise<Review[]>;
+  addReview: (reviewData: Omit<Review, 'id' | 'createdAt'>) => Promise<Review>;
   // Admin functions
   addRestaurant: (restaurant: Omit<Restaurant, 'id' | 'createdAt'>) => Promise<Restaurant>;
   updateRestaurant: (restaurantId: string, updates: Partial<Restaurant>) => Promise<boolean>;
-  addMenuItem: (menuItem: Omit<MenuItem, 'id'>) => Promise<MenuItem>;
-  updateMenuItem: (menuItemId: string, updates: Partial<MenuItem>) => Promise<boolean>;
-  updateMenuItemPrice: (menuItemId: string, newPrice: number) => Promise<boolean>;
-  toggleMenuItemAvailability: (menuItemId: string) => Promise<boolean>;
 }
 
 interface RestaurantFilters {
@@ -71,6 +81,7 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -107,39 +118,19 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
         
         console.log(`✅ Loaded ${backendResponse.data.length} restaurants from backend`);
       } else {
-        // Fallback to stored data if backend fails
-        console.log('⚠️ Backend unavailable, loading stored data...');
-        const [storedRestaurants, storedMenuItems, storedOrders, storedCart] = await Promise.all([
-          AsyncStorage.getItem('restaurants'),
-          AsyncStorage.getItem('menuItems'),
-          AsyncStorage.getItem('orders'),
-          AsyncStorage.getItem('cart'),
-        ]);
-
-        if (storedRestaurants) setRestaurants(JSON.parse(storedRestaurants));
-        if (storedMenuItems) setMenuItems(JSON.parse(storedMenuItems));
-        if (storedOrders) setOrders(JSON.parse(storedOrders));
-        if (storedCart) setCart(JSON.parse(storedCart));
+        // If backend returns no data, show empty state instead of mock data
+        console.log('⚠️ Backend returned no data, showing empty state');
+        setRestaurants([]);
+        setMenuItems([]);
+        setOrders([]);
       }
     } catch (error) {
       console.error('Error loading restaurant data:', error);
       
-      // Fallback to stored data on error
-      try {
-        const [storedRestaurants, storedMenuItems, storedOrders, storedCart] = await Promise.all([
-          AsyncStorage.getItem('restaurants'),
-          AsyncStorage.getItem('menuItems'),
-          AsyncStorage.getItem('orders'),
-          AsyncStorage.getItem('cart'),
-        ]);
-
-        if (storedRestaurants) setRestaurants(JSON.parse(storedRestaurants));
-        if (storedMenuItems) setMenuItems(JSON.parse(storedMenuItems));
-        if (storedOrders) setOrders(JSON.parse(storedOrders));
-        if (storedCart) setCart(JSON.parse(storedCart));
-      } catch (fallbackError) {
-        console.error('Error loading fallback data:', fallbackError);
-      }
+      // Show empty state on error instead of mock data
+      setRestaurants([]);
+      setMenuItems([]);
+      setOrders([]);
     } finally {
       setLoading(false);
     }
@@ -176,13 +167,37 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
         return response.data;
       } else {
         console.error('Failed to fetch restaurants:', response.error);
-        // Return cached data if API fails
-        return restaurants;
+        // Return empty array if API fails
+        return [];
       }
     } catch (error) {
       console.error('Error fetching restaurants:', error);
-      // Return cached data if API fails
-      return restaurants;
+      // Return empty array if API fails
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getMyRestaurants = async (): Promise<Restaurant[]> => {
+    try {
+      setLoading(true);
+      const response = await apiService.getMyRestaurants();
+      
+      if (response.success && response.data) {
+        setRestaurants(response.data);
+        // Cache locally for offline access
+        await AsyncStorage.setItem('restaurants', JSON.stringify(response.data));
+        return response.data;
+      } else {
+        console.error('Failed to fetch my restaurants:', response.error);
+        // Return empty array if API fails
+        return [];
+      }
+    } catch (error) {
+      console.error('Error fetching my restaurants:', error);
+      // Return empty array if API fails
+      return [];
     } finally {
       setLoading(false);
     }
@@ -194,10 +209,6 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
 
   const getMenuByRestaurantId = (restaurantId: string): MenuItem[] => {
     return menuItems.filter(item => item.restaurantId === restaurantId);
-  };
-
-  const getMenuItemById = (id: string): MenuItem | null => {
-    return menuItems.find(item => item.id === id) || null;
   };
 
   const searchRestaurants = (query: string, filters?: RestaurantFilters): Restaurant[] => {
@@ -231,6 +242,150 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
     }
 
     return filteredRestaurants;
+  };
+
+  const getMenuItems = async (): Promise<MenuItem[]> => {
+    try {
+      setLoading(true);
+      // This method should not be called without a restaurant ID
+      // It's better to use getMenuByRestaurantId instead
+      console.warn('getMenuItems called without restaurant ID. Use getMenuByRestaurantId instead.');
+      return [];
+    } catch (error) {
+      console.error('Error fetching menu items:', error);
+      // Return empty array if API fails
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getMyMenuItems = async (): Promise<MenuItem[]> => {
+    try {
+      setLoading(true);
+      const response = await apiService.getMyMenuItems();
+      
+      if (response.success && response.data) {
+        setMenuItems(response.data);
+        // Cache locally for offline access
+        await AsyncStorage.setItem('menuItems', JSON.stringify(response.data));
+        return response.data;
+      } else {
+        console.error('Failed to fetch my menu items:', response.error);
+        // Return empty array if API fails
+        return [];
+      }
+    } catch (error) {
+      console.error('Error fetching my menu items:', error);
+      // Return empty array if API fails
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getMenuItemById = (id: string): MenuItem | null => {
+    return menuItems.find(item => item.id === id) || null;
+  };
+
+  const addMenuItem = async (item: Omit<MenuItem, 'id'>): Promise<MenuItem> => {
+    try {
+      const response = await apiService.createMenuItem(item);
+      
+      if (response.success && response.data) {
+        const newMenuItem = response.data;
+        setMenuItems(prev => [...prev, newMenuItem]);
+        return newMenuItem;
+      } else {
+        throw new Error(response.error || 'Failed to create menu item');
+      }
+    } catch (error) {
+      console.error('Error creating menu item:', error);
+      // Fallback to local creation
+      const newMenuItem: MenuItem = {
+        ...item,
+        id: `local_${Date.now()}`,
+      };
+      setMenuItems(prev => [...prev, newMenuItem]);
+      return newMenuItem;
+    }
+  };
+
+  const updateMenuItem = async (itemId: string, updates: Partial<MenuItem>): Promise<boolean> => {
+    setMenuItems(prev =>
+      prev.map(item =>
+        item.id === itemId ? { ...item, ...updates } : item
+      )
+    );
+    return true;
+  };
+
+  const updateMenuItemPrice = async (itemId: string, newPrice: number): Promise<boolean> => {
+    try {
+      const response = await apiService.updateMenuItem(itemId, { price: newPrice });
+      
+      if (response.success) {
+        setMenuItems(prev =>
+          prev.map(item =>
+            item.id === itemId ? { ...item, price: newPrice } : item
+          )
+        );
+        return true;
+      } else {
+        console.error('Failed to update menu item price:', response.error);
+        return false;
+      }
+    } catch (error) {
+      console.error('Error updating menu item price:', error);
+      // Update locally even if API fails
+      setMenuItems(prev =>
+        prev.map(item =>
+          item.id === itemId ? { ...item, price: newPrice } : item
+        )
+      );
+      return false;
+    }
+  };
+
+  const toggleMenuItemAvailability = async (itemId: string): Promise<boolean> => {
+    try {
+      // Get the current menu item to determine the new availability status
+      const currentItem = menuItems.find(item => item.id === itemId);
+      if (!currentItem) return false;
+      
+      const newAvailability = !currentItem.isAvailable;
+      const response = await apiService.updateMenuItem(itemId, { isAvailable: newAvailability });
+      
+      if (response.success) {
+        setMenuItems(prev =>
+          prev.map(item =>
+            item.id === itemId ? { ...item, isAvailable: newAvailability } : item
+          )
+        );
+        return true;
+      } else {
+        console.error('Failed to update menu item availability:', response.error);
+        return false;
+      }
+    } catch (error) {
+      console.error('Error updating menu item availability:', error);
+      // Update locally even if API fails
+      setMenuItems(prev =>
+        prev.map(item => {
+          if (item.id === itemId) {
+            const newAvailability = !item.isAvailable;
+            return { ...item, isAvailable: newAvailability };
+          }
+          return item;
+        })
+      );
+      return false;
+    }
+  };
+
+  const removeMenuItem = async (itemId: string): Promise<boolean> => {
+    setMenuItems(prev => prev.filter(item => item.id !== itemId));
+    return true;
   };
 
   const addToCart = (item: CartItem) => {
@@ -323,6 +478,30 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
 
   const getUserOrders = (userId: string): Order[] => {
     return orders.filter(order => order.userId === userId);
+  };
+
+  const getMyOrders = async (): Promise<Order[]> => {
+    try {
+      setLoading(true);
+      const response = await apiService.getMyOrders();
+      
+      if (response.success && response.data) {
+        setOrders(response.data);
+        // Cache locally for offline access
+        await AsyncStorage.setItem('orders', JSON.stringify(response.data));
+        return response.data;
+      } else {
+        console.error('Failed to fetch my orders:', response.error);
+        // Return empty array if API fails
+        return [];
+      }
+    } catch (error) {
+      console.error('Error fetching my orders:', error);
+      // Return empty array if API fails
+      return [];
+    } finally {
+      setLoading(false);
+    }
   };
 
   const updateOrderStatus = async (orderId: string, status: Order['status']): Promise<boolean> => {
@@ -433,74 +612,88 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
     }
   };
 
-  const addMenuItem = async (menuItemData: Omit<MenuItem, 'id'>): Promise<MenuItem> => {
+  const getReviews = async (restaurantId: string): Promise<Review[]> => {
     try {
-      const response = await apiService.createMenuItem(menuItemData);
+      setLoading(true);
+      const response = await apiService.getReviews(restaurantId);
       
       if (response.success && response.data) {
-        const newMenuItem = response.data;
-        setMenuItems(prev => [...prev, newMenuItem]);
-        return newMenuItem;
+        setReviews(response.data);
+        // Cache locally for offline access
+        await AsyncStorage.setItem('reviews', JSON.stringify(response.data));
+        return response.data;
       } else {
-        throw new Error(response.error || 'Failed to create menu item');
+        console.error('Failed to fetch reviews:', response.error);
+        // Return empty array if API fails
+        return [];
       }
     } catch (error) {
-      console.error('Error creating menu item:', error);
-      // Fallback to local creation
-      const newMenuItem: MenuItem = {
-        ...menuItemData,
-        id: `local_${Date.now()}`,
-      };
-      setMenuItems(prev => [...prev, newMenuItem]);
-      return newMenuItem;
+      console.error('Error fetching reviews:', error);
+      // Return empty array if API fails
+      return [];
+    } finally {
+      setLoading(false);
     }
   };
 
-  const updateMenuItem = async (menuItemId: string, updates: Partial<MenuItem>): Promise<boolean> => {
-    setMenuItems(prev =>
-      prev.map(item =>
-        item.id === menuItemId ? { ...item, ...updates } : item
-      )
-    );
-    return true;
+  const addReview = async (reviewData: Omit<Review, 'id' | 'createdAt'>): Promise<Review> => {
+    try {
+      const response = await apiService.createReview(reviewData);
+      
+      if (response.success && response.data) {
+        const newReview = response.data;
+        setReviews(prev => [...prev, newReview]);
+        return newReview;
+      } else {
+        throw new Error(response.error || 'Failed to create review');
+      }
+    } catch (error) {
+      console.error('Error creating review:', error);
+      // Fallback to local creation
+      const newReview: Review = {
+        ...reviewData,
+        id: `local_${Date.now()}`,
+        createdAt: new Date(),
+      };
+      setReviews(prev => [...prev, newReview]);
+      return newReview;
+    }
   };
 
-  const updateMenuItemPrice = async (menuItemId: string, newPrice: number): Promise<boolean> => {
-    return updateMenuItem(menuItemId, { price: newPrice });
-  };
-
-  const toggleMenuItemAvailability = async (menuItemId: string): Promise<boolean> => {
-    const menuItem = menuItems.find(item => item.id === menuItemId);
-    if (!menuItem) return false;
-    return updateMenuItem(menuItemId, { isAvailable: !menuItem.isAvailable });
-  };
-
-  const value: RestaurantContextType = {
+  const value = {
     restaurants,
     menuItems,
     orders,
-    cart,
+    reviews,
     loading,
-    getRestaurants,
-    getRestaurantById,
-    getMenuByRestaurantId,
-    getMenuItemById,
-    searchRestaurants,
+    cart,
     addToCart,
     removeFromCart,
     updateCartItemQuantity,
     clearCart,
     getCartTotal,
-    createOrder,
-    getUserOrders,
-    updateOrderStatus,
-    cancelOrder,
-    addRestaurant,
-    updateRestaurant,
+    getRestaurants,
+    getMyRestaurants,
+    getRestaurantById,
+    getMenuByRestaurantId,
+    searchRestaurants,
+    getMenuItems,
+    getMyMenuItems,
+    getMenuItemById,
     addMenuItem,
     updateMenuItem,
+    removeMenuItem,
     updateMenuItemPrice,
     toggleMenuItemAvailability,
+    createOrder,
+    getUserOrders,
+    getMyOrders,
+    updateOrderStatus,
+    cancelOrder,
+    getReviews,
+    addReview,
+    addRestaurant,
+    updateRestaurant,
   };
 
   return (
