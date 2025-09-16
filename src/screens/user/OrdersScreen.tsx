@@ -204,11 +204,15 @@ const OrdersScreen: React.FC = () => {
             <Button
               title="Pay Now"
               onPress={() => {
-                navigation.navigate('Payment', {
-                  amount: order.totalPrice,
-                  currency: 'USD',
-                  paymentFor: 'order',
-                  referenceId: order.id
+                // Navigate to Restaurants stack, then to Payment
+                navigation.navigate('Restaurants', {
+                  screen: 'Payment',
+                  params: {
+                    amount: order.totalPrice,
+                    currency: 'GHS',
+                    paymentFor: 'order',
+                    referenceId: order.id
+                  }
                 });
               }}
               style={styles.payButton}

@@ -72,19 +72,50 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
     }
   };
 
-  const handleBooking = async () => {
+  const handleAddToBookingCart = async () => {
     if (!selectedRoom || !user) {
       Alert.alert('Error', 'Please select a room and ensure you are logged in.');
       return;
     }
 
-    // Navigate to payment screen
-    navigation.navigate('Payment', {
-      amount: totalPrice,
-      currency: 'USD',
-      paymentFor: 'booking',
-      referenceId: `${hotel.id}-${Date.now()}`, // Generate a unique reference ID
-    });
+    try {
+      setIsBooking(true);
+      
+      // Create a pending booking (like adding to cart)
+      const bookingData = {
+        userId: user.id,
+        roomId: selectedRoom.id,
+        hotelId: hotel.id,
+        checkIn: checkInDate,
+        checkOut: checkOutDate,
+        guests,
+        totalPrice,
+        status: 'pending' as const, // Pending status like cart
+        paymentStatus: 'pending' as const,
+        specialRequests: ''
+      };
+
+      await createBooking(bookingData);
+
+      Alert.alert(
+        'Added to Booking Cart! 🛒',
+        `${selectedRoom.name} at ${hotel.name} has been added to your booking cart. Complete your booking in the Bookings tab.`,
+        [
+          {
+            text: 'Continue Browsing',
+            style: 'cancel'
+          },
+          {
+            text: 'Go to Bookings',
+            onPress: () => navigation.navigate('Bookings'),
+          }
+        ]
+      );
+    } catch (error) {
+      Alert.alert('Error', 'Failed to add booking to cart. Please try again.');
+    } finally {
+      setIsBooking(false);
+    }
   };
 
   // This function will be called after successful payment
@@ -319,7 +350,7 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
             </View>
             <View style={[styles.summaryRow, styles.totalRow]}>
               <Text style={styles.totalLabel}>Total:</Text>
-              <Text style={styles.totalValue}>${totalPrice.toFixed(2)}</Text>
+              <Text style={styles.totalValue}>GH₵{totalPrice.toFixed(2)}</Text>
             </View>
           </Card>
         )}
@@ -329,12 +360,12 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
       {selectedRoom && (
         <View style={styles.bottomBar}>
           <View style={styles.priceInfo}>
-            <Text style={styles.bottomPrice}>${totalPrice.toFixed(2)}</Text>
+            <Text style={styles.bottomPrice}>GH₵{totalPrice.toFixed(2)}</Text>
             <Text style={styles.bottomPriceUnit}>for {nights} night{nights > 1 ? 's' : ''}</Text>
           </View>
           <Button
-            title={isBooking ? "Booking..." : "Book Now"}
-            onPress={handleBooking}
+            title={isBooking ? "Adding..." : "Add to Booking Cart 🛒"}
+            onPress={handleAddToBookingCart}
             disabled={isBooking}
             style={styles.bookButton}
           />

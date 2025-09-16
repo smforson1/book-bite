@@ -18,6 +18,7 @@ import { theme } from '../../styles/theme';
 import { globalStyles } from '../../styles/globalStyles';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
+import { ConnectionTest } from '../../components/ConnectionTest';
 
 const LoginScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -40,6 +41,8 @@ const LoginScreen: React.FC = () => {
       Alert.alert('Error', 'Invalid email or password');
     }
   };
+
+  const [showConnectionTest, setShowConnectionTest] = useState(false);
 
   const showDemoCredentials = () => {
     Alert.alert(
@@ -116,6 +119,15 @@ const LoginScreen: React.FC = () => {
               style={styles.demoButton}
               icon={<Ionicons name="information-circle-outline" size={16} color={theme.colors.primary[500]} />}
             />
+
+            <Button
+              title="🔗 Test Backend Connection"
+              variant="outline"
+              onPress={() => setShowConnectionTest(true)}
+              fullWidth
+              style={[styles.demoButton, { marginTop: 8 }]}
+              icon={<Ionicons name="server-outline" size={16} color={theme.colors.primary[500]} />}
+            />
           </View>
 
           {/* Footer Section */}
@@ -134,6 +146,10 @@ const LoginScreen: React.FC = () => {
           </View>
         </LoadingState>
       </KeyboardAvoidingView>
+      
+      {showConnectionTest && (
+        <ConnectionTest onClose={() => setShowConnectionTest(false)} />
+      )}
     </Container>
   );
 };

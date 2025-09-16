@@ -81,19 +81,65 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
   const loadData = async () => {
     try {
       setLoading(true);
-      const [storedRestaurants, storedMenuItems, storedOrders, storedCart] = await Promise.all([
-        AsyncStorage.getItem('restaurants'),
-        AsyncStorage.getItem('menuItems'),
-        AsyncStorage.getItem('orders'),
-        AsyncStorage.getItem('cart'),
-      ]);
+      
+      // Try to load from backend first
+      const backendResponse = await apiService.getRestaurants();
+      
+      if (backendResponse.success && backendResponse.data) {
+        // Use real data from backend
+        setRestaurants(backendResponse.data);
+        
+        // Load menu items for all restaurants
+        const allMenuItems: MenuItem[] = [];
+        for (const restaurant of backendResponse.data) {
+          const menuResponse = await apiService.getMenuByRestaurantId(restaurant.id);
+          if (menuResponse.success && menuResponse.data) {
+            allMenuItems.push(...menuResponse.data);
+          }
+        }
+        setMenuItems(allMenuItems);
+        
+        // Load user orders
+        const ordersResponse = await apiService.getUserOrders();
+        if (ordersResponse.success && ordersResponse.data) {
+          setOrders(ordersResponse.data);
+        }
+        
+        console.log(`✅ Loaded ${backendResponse.data.length} restaurants from backend`);
+      } else {
+        // Fallback to stored data if backend fails
+        console.log('⚠️ Backend unavailable, loading stored data...');
+        const [storedRestaurants, storedMenuItems, storedOrders, storedCart] = await Promise.all([
+          AsyncStorage.getItem('restaurants'),
+          AsyncStorage.getItem('menuItems'),
+          AsyncStorage.getItem('orders'),
+          AsyncStorage.getItem('cart'),
+        ]);
 
-      if (storedRestaurants) setRestaurants(JSON.parse(storedRestaurants));
-      if (storedMenuItems) setMenuItems(JSON.parse(storedMenuItems));
-      if (storedOrders) setOrders(JSON.parse(storedOrders));
-      if (storedCart) setCart(JSON.parse(storedCart));
+        if (storedRestaurants) setRestaurants(JSON.parse(storedRestaurants));
+        if (storedMenuItems) setMenuItems(JSON.parse(storedMenuItems));
+        if (storedOrders) setOrders(JSON.parse(storedOrders));
+        if (storedCart) setCart(JSON.parse(storedCart));
+      }
     } catch (error) {
       console.error('Error loading restaurant data:', error);
+      
+      // Fallback to stored data on error
+      try {
+        const [storedRestaurants, storedMenuItems, storedOrders, storedCart] = await Promise.all([
+          AsyncStorage.getItem('restaurants'),
+          AsyncStorage.getItem('menuItems'),
+          AsyncStorage.getItem('orders'),
+          AsyncStorage.getItem('cart'),
+        ]);
+
+        if (storedRestaurants) setRestaurants(JSON.parse(storedRestaurants));
+        if (storedMenuItems) setMenuItems(JSON.parse(storedMenuItems));
+        if (storedOrders) setOrders(JSON.parse(storedOrders));
+        if (storedCart) setCart(JSON.parse(storedCart));
+      } catch (fallbackError) {
+        console.error('Error loading fallback data:', fallbackError);
+      }
     } finally {
       setLoading(false);
     }

@@ -3,7 +3,7 @@ import { User, Hotel, Room, Restaurant, MenuItem, Booking, Order, Review } from 
 
 // API Configuration
 const API_CONFIG = {
-  baseURL: __DEV__ ? 'http://localhost:3000/api' : 'https://api.bookbite.com',
+  baseURL: __DEV__ ? 'http://localhost:3000/api/v1' : 'https://api.bookbite.com/api/v1',
   timeout: 10000,
   retryAttempts: 3,
 };
@@ -85,14 +85,14 @@ class ApiService {
         return { success: true, data: result.data, message: result.message };
       } catch (error: any) {
         console.warn(`API request attempt ${attempt} failed:`, error.message);
-        
+
         if (attempt === this.retryAttempts) {
           return {
             success: false,
             error: error.message || 'Network request failed',
           };
         }
-        
+
         // Exponential backoff
         await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
       }
@@ -215,7 +215,7 @@ class ApiService {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('category', category);
-    
+
     return this.makeRequest('/upload', 'POST', formData);
   }
 

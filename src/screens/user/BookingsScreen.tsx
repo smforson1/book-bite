@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  TouchableOpacity,
   RefreshControl,
   Alert,
 } from 'react-native';
@@ -12,41 +11,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Card, Button } from '../../components';
 import { theme } from '../../styles/theme';
-import { globalStyles } from '../../styles/globalStyles';
 import { useHotel } from '../../contexts/HotelContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { Booking, Hotel, Room } from '../../types';
+import { Booking } from '../../types';
 
-export type BookingsStackParamList = {
-  Bookings: undefined;
-  Payment: {
-    amount: number;
-    currency: string;
-    paymentFor: 'booking' | 'order';
-    referenceId: string;
-  };
-  PaymentConfirmation: {
-    amount: number;
-    currency: string;
-    paymentFor: 'booking' | 'order';
-    referenceId: string;
-    paymentMethod: string;
-    transactionId: string;
-  };
+// Navigation type for tab navigation
+type TabNavigationProp = {
+  navigate: (screen: string, params?: any) => void;
+  getParent: () => any;
 };
-
-type BookingsScreenNavigationProp = StackNavigationProp<BookingsStackParamList, 'Bookings'>;
-
-type PaymentScreenNavigationProp = StackNavigationProp<BookingsStackParamList, 'Payment'>;
 
 const BookingsScreen: React.FC = () => {
   const { user } = useAuth();
   const { bookings, getHotelById, getRoomsByHotelId, updateBookingStatus } = useHotel();
   const [userBookings, setUserBookings] = useState<Booking[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const navigation = useNavigation<BookingsScreenNavigationProp>();
+  const navigation = useNavigation<TabNavigationProp>();
 
   useEffect(() => {
     if (user) {
@@ -54,6 +35,14 @@ const BookingsScreen: React.FC = () => {
       setUserBookings(filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
     }
   }, [bookings, user]);
+
+  // Separate pending bookings (booking cart) from other bookings
+  const pendingBookings = userBookings.filter(booking =>
+    booking.status === 'pending' && booking.paymentStatus === 'pending'
+  );
+  const otherBookings = userBookings.filter(booking =>
+    !(booking.status === 'pending' && booking.paymentStatus === 'pending')
+  );
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -117,25 +106,28 @@ const BookingsScreen: React.FC = () => {
     const hotel = getHotelById(booking.hotelId);
     const rooms = getRoomsByHotelId(booking.hotelId);
     const room = rooms.find(r => r.id === booking.roomId);
-    
+
     if (!hotel || !room) return null;
 
     const checkInDate = new Date(booking.checkIn);
     const checkOutDate = new Date(booking.checkOut);
     const isUpcoming = checkInDate > new Date();
     const canCancel = booking.status === 'pending' || (booking.status === 'confirmed' && isUpcoming);
-    const canPay = booking.status === 'pending' || booking.status === 'confirmed';
-    
+    const canPay = booking.paymentStatus === 'pending';
+    const isPendingBooking = booking.status === 'pending' && booking.paymentStatus === 'pending';
+
     return (
       <Card style={styles.bookingCard}>
         <View style={styles.bookingHeader}>
           <Text style={styles.hotelName}>{hotel.name}</Text>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) + '20' }]}>n            <Ionicons 
-              name={getStatusIcon(booking.status)} 
-              size={14} 
-              color={getStatusColor(booking.status)} 
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) + '20' }]}>
+            <Ionicons
+              name={getStatusIcon(booking.status)}
+              size={14}
+              color={getStatusColor(booking.status)}
             />
-            <Text style={[styles.statusText, { color: getStatusColor(booking.status) }]}>n              {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+            <Text style={[styles.statusText, { color: getStatusColor(booking.status) }]}>
+              {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
             </Text>
           </View>
         </View>
@@ -171,12 +163,43 @@ const BookingsScreen: React.FC = () => {
 
         <View style={styles.priceRow}>
           <Text style={styles.totalLabel}>Total:</Text>
-          <Text style={styles.totalPrice}>${booking.totalPrice.toFixed(2)}</Text>
+          <Text style={styles.totalPrice}>GH₵{booking.totalPrice.toFixed(2)}</Text>
         </View>
 
         <Text style={styles.bookingId}>Booking ID: {booking.id}</Text>
 
-        {canCancel && (
+        {/* Show different actions based on booking status */}
+        {isPendingBooking && (
+          <View style={styles.actionRow}>
+            <Button
+              title="🛒 Complete Booking"
+              onPress={() => {
+                // Navigate to Hotels stack, then to Payment
+                const parentNavigation = navigation.getParent();
+                if (parentNavigation) {
+                  parentNavigation.navigate('Hotels', {
+                    screen: 'Payment',
+                    params: {
+                      amount: booking.totalPrice,
+                      currency: 'GHS',
+                      paymentFor: 'booking',
+                      referenceId: booking.id
+                    }
+                  });
+                }
+              }}
+              style={styles.primaryPayButton}
+            />
+            <Button
+              title="Remove"
+              variant="outline"
+              onPress={() => handleCancelBooking(booking)}
+              style={styles.cancelButton}
+            />
+          </View>
+        )}
+
+        {canCancel && !isPendingBooking && (
           <View style={styles.actionRow}>
             <Button
               title="Cancel Booking"
@@ -186,18 +209,25 @@ const BookingsScreen: React.FC = () => {
             />
           </View>
         )}
-        
-        {canPay && (
+
+        {canPay && !isPendingBooking && (
           <View style={styles.actionRow}>
             <Button
               title="Pay Now"
               onPress={() => {
-                navigation.navigate('Payment', {
-                  amount: booking.totalPrice,
-                  currency: 'USD',
-                  paymentFor: 'booking',
-                  referenceId: booking.id
-                });
+                // Navigate to Hotels stack, then to Payment
+                const parentNavigation = navigation.getParent();
+                if (parentNavigation) {
+                  parentNavigation.navigate('Hotels', {
+                    screen: 'Payment',
+                    params: {
+                      amount: booking.totalPrice,
+                      currency: 'GHS',
+                      paymentFor: 'booking',
+                      referenceId: booking.id
+                    }
+                  });
+                }
               }}
               style={styles.payButton}
             />
@@ -220,9 +250,9 @@ const BookingsScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <FlatList
-        data={userBookings}
-        renderItem={renderBooking}
-        keyExtractor={(item) => item.id}
+        data={[]}
+        renderItem={() => null}
+        keyExtractor={() => 'header'}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -232,7 +262,43 @@ const BookingsScreen: React.FC = () => {
             tintColor={theme.colors.primary[500]}
           />
         }
-        ListEmptyComponent={renderEmptyState}
+        ListHeaderComponent={() => (
+          <View>
+            {/* Booking Cart Section */}
+            {pendingBookings.length > 0 && (
+              <View style={styles.sectionContainer}>
+                <View style={styles.sectionHeader}>
+                  <Ionicons name="cart" size={20} color={theme.colors.primary[500]} />
+                  <Text style={styles.sectionTitle}>Booking Cart ({pendingBookings.length})</Text>
+                </View>
+                <Text style={styles.sectionSubtitle}>Complete your bookings below</Text>
+                {pendingBookings.map((booking) => (
+                  <View key={booking.id}>
+                    {renderBooking({ item: booking })}
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Other Bookings Section */}
+            {otherBookings.length > 0 && (
+              <View style={styles.sectionContainer}>
+                <View style={styles.sectionHeader}>
+                  <Ionicons name="calendar" size={20} color={theme.colors.text.primary} />
+                  <Text style={styles.sectionTitle}>My Bookings ({otherBookings.length})</Text>
+                </View>
+                {otherBookings.map((booking) => (
+                  <View key={booking.id}>
+                    {renderBooking({ item: booking })}
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Empty State */}
+            {userBookings.length === 0 && renderEmptyState()}
+          </View>
+        )}
       />
     </SafeAreaView>
   );
@@ -377,6 +443,37 @@ const styles = StyleSheet.create({
   payButton: {
     borderColor: theme.colors.success[500],
     backgroundColor: theme.colors.success[500],
+    color: theme.colors.neutral[0],
+    borderRadius: theme.borderRadius.lg,
+    marginHorizontal: theme.spacing.sm,
+    marginVertical: theme.spacing.sm,
+  },
+  sectionContainer: {
+    marginBottom: theme.spacing.xl,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.xs,
+  },
+  sectionTitle: {
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.semiBold as '600',
+    color: theme.colors.text.primary,
+    marginLeft: theme.spacing.sm,
+  },
+  sectionSubtitle: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.md,
+    marginLeft: theme.spacing.xl,
+  },
+  primaryButton: {
+    backgroundColor: theme.colors.primary[500],
+  },
+  primaryPayButton: {
+    borderColor: theme.colors.primary[500],
+    backgroundColor: theme.colors.primary[500],
     color: theme.colors.neutral[0],
     borderRadius: theme.borderRadius.lg,
     marginHorizontal: theme.spacing.sm,

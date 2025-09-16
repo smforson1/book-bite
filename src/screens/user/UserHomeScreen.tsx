@@ -22,6 +22,8 @@ import {
 import { theme } from '../../styles/theme';
 import { globalStyles } from '../../styles/globalStyles';
 import { useAuth } from '../../contexts/AuthContext';
+import { useHotel } from '../../contexts/HotelContext';
+import { useRestaurant } from '../../contexts/RestaurantContext';
 import { useNavigation } from '@react-navigation/native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -30,9 +32,17 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const UserHomeScreen: React.FC = () => {
   const { user } = useAuth();
+  const { bookings, loading: hotelLoading } = useHotel();
+  const { orders, loading: restaurantLoading } = useRestaurant();
   const navigation = useNavigation();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Calculate real statistics
+  const userBookings = user ? bookings.filter(booking => booking.userId === user.id) : [];
+  const userOrders = user ? orders.filter(order => order.userId === user.id) : [];
+  const totalSaved = userBookings.reduce((sum, booking) => sum + (booking.originalPrice || 0) - booking.totalPrice, 0) +
+                    userOrders.reduce((sum, order) => sum + (order.originalPrice || 0) - order.totalPrice, 0);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -151,7 +161,9 @@ const UserHomeScreen: React.FC = () => {
               onPress={handleViewBookings}
               activeOpacity={0.7}
             >
-              <Text style={[globalStyles.h3, { color: theme.colors.primary[500], fontSize: theme.typography.fontSize.xl }]}>5</Text>
+              <Text style={[globalStyles.h3, { color: theme.colors.primary[500], fontSize: theme.typography.fontSize.xl }]}>
+                {hotelLoading ? '...' : userBookings.length}
+              </Text>
               <Text style={[globalStyles.bodySmall, styles.statLabel]} numberOfLines={1}>Bookings</Text>
               <Ionicons name="bed-outline" size={16} color={theme.colors.primary[500]} style={styles.statIcon} />
             </TouchableOpacity>
@@ -161,7 +173,9 @@ const UserHomeScreen: React.FC = () => {
               onPress={handleViewOrders}
               activeOpacity={0.7}
             >
-              <Text style={[globalStyles.h3, { color: theme.colors.secondary[500], fontSize: theme.typography.fontSize.xl }]}>12</Text>
+              <Text style={[globalStyles.h3, { color: theme.colors.secondary[500], fontSize: theme.typography.fontSize.xl }]}>
+                {restaurantLoading ? '...' : userOrders.length}
+              </Text>
               <Text style={[globalStyles.bodySmall, styles.statLabel]} numberOfLines={1}>Orders</Text>
               <Ionicons name="restaurant-outline" size={16} color={theme.colors.secondary[500]} style={styles.statIcon} />
             </TouchableOpacity>
@@ -170,7 +184,9 @@ const UserHomeScreen: React.FC = () => {
               style={[styles.statCard, { borderLeftColor: theme.colors.success[500] }]}
               activeOpacity={0.7}
             >
-              <Text style={[globalStyles.h3, { color: theme.colors.success[500], fontSize: theme.typography.fontSize.lg }]}>$420</Text>
+              <Text style={[globalStyles.h3, { color: theme.colors.success[500], fontSize: theme.typography.fontSize.lg }]}>
+                GH₵{totalSaved.toFixed(2)}
+              </Text>
               <Text style={[globalStyles.bodySmall, styles.statLabel]} numberOfLines={1}>Saved</Text>
               <Ionicons name="wallet-outline" size={16} color={theme.colors.success[500]} style={styles.statIcon} />
             </TouchableOpacity>

@@ -64,17 +64,61 @@ export const HotelProvider: React.FC<HotelProviderProps> = ({ children }) => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [storedHotels, storedRooms, storedBookings] = await Promise.all([
-        AsyncStorage.getItem('hotels'),
-        AsyncStorage.getItem('rooms'),
-        AsyncStorage.getItem('bookings'),
-      ]);
+      
+      // Try to load from backend first
+      const backendResponse = await apiService.getHotels();
+      
+      if (backendResponse.success && backendResponse.data) {
+        // Use real data from backend
+        setHotels(backendResponse.data);
+        
+        // Load rooms for all hotels
+        const allRooms: Room[] = [];
+        for (const hotel of backendResponse.data) {
+          const roomsResponse = await apiService.getRoomsByHotelId(hotel.id);
+          if (roomsResponse.success && roomsResponse.data) {
+            allRooms.push(...roomsResponse.data);
+          }
+        }
+        setRooms(allRooms);
+        
+        // Load user bookings
+        const bookingsResponse = await apiService.getUserBookings();
+        if (bookingsResponse.success && bookingsResponse.data) {
+          setBookings(bookingsResponse.data);
+        }
+        
+        console.log(`✅ Loaded ${backendResponse.data.length} hotels from backend`);
+      } else {
+        // Fallback to stored data if backend fails
+        console.log('⚠️ Backend unavailable, loading stored data...');
+        const [storedHotels, storedRooms, storedBookings] = await Promise.all([
+          AsyncStorage.getItem('hotels'),
+          AsyncStorage.getItem('rooms'),
+          AsyncStorage.getItem('bookings'),
+        ]);
 
-      if (storedHotels) setHotels(JSON.parse(storedHotels));
-      if (storedRooms) setRooms(JSON.parse(storedRooms));
-      if (storedBookings) setBookings(JSON.parse(storedBookings));
+        if (storedHotels) setHotels(JSON.parse(storedHotels));
+        if (storedRooms) setRooms(JSON.parse(storedRooms));
+        if (storedBookings) setBookings(JSON.parse(storedBookings));
+      }
     } catch (error) {
       console.error('Error loading hotel data:', error);
+      
+      // Fallback to stored data on error
+      try {
+        const [storedHotels, storedRooms, storedBookings] = await Promise.all([
+          AsyncStorage.getItem('hotels'),
+          AsyncStorage.getItem('rooms'),
+          AsyncStorage.getItem('bookings'),
+        ]);
+
+        if (storedHotels) setHotels(JSON.parse(storedHotels));
+        if (storedRooms) setRooms(JSON.parse(storedRooms));
+        if (storedBookings) setBookings(JSON.parse(storedBookings));
+      } catch (fallbackError) {
+        console.error('Error loading fallback data:', fallbackError);
+      }
     } finally {
       setLoading(false);
     }

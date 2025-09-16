@@ -606,29 +606,40 @@ export const mockUsers: User[] = [
   }
 ];
 
-// Initialize function to populate contexts with mock data
+// Initialize function to populate contexts with mock data (only if no real data exists)
 export const initializeMockData = async () => {
   try {
-    // Clear existing data
-    const keys = ['hotels', 'rooms', 'restaurants', 'menuItems', 'bookings', 'orders'];
-    await Promise.all(keys.map(key => 
-      import('@react-native-async-storage/async-storage').then(AsyncStorage => 
-        AsyncStorage.default.removeItem(key)
-      )
-    ));
-
-    // Set mock data
     const AsyncStorage = await import('@react-native-async-storage/async-storage');
-    await Promise.all([
-      AsyncStorage.default.setItem('hotels', JSON.stringify(mockHotels)),
-      AsyncStorage.default.setItem('rooms', JSON.stringify(mockRooms)),
-      AsyncStorage.default.setItem('restaurants', JSON.stringify(mockRestaurants)),
-      AsyncStorage.default.setItem('menuItems', JSON.stringify(mockMenuItems)),
-      AsyncStorage.default.setItem('bookings', JSON.stringify(mockBookings)),
-      AsyncStorage.default.setItem('orders', JSON.stringify(mockOrders)),
-    ]);
-
-    console.log('Mock data initialized successfully');
+    
+    // Check if we already have data (don't override real data from backend)
+    const existingHotels = await AsyncStorage.default.getItem('hotels');
+    const existingRestaurants = await AsyncStorage.default.getItem('restaurants');
+    
+    // Only initialize mock data if no real data exists
+    if (!existingHotels || !existingRestaurants) {
+      console.log('No existing data found, initializing with mock data...');
+      
+      // Set mock data only for missing items
+      const promises = [];
+      
+      if (!existingHotels) {
+        promises.push(AsyncStorage.default.setItem('hotels', JSON.stringify(mockHotels)));
+        promises.push(AsyncStorage.default.setItem('rooms', JSON.stringify(mockRooms)));
+        promises.push(AsyncStorage.default.setItem('bookings', JSON.stringify(mockBookings)));
+      }
+      
+      if (!existingRestaurants) {
+        promises.push(AsyncStorage.default.setItem('restaurants', JSON.stringify(mockRestaurants)));
+        promises.push(AsyncStorage.default.setItem('menuItems', JSON.stringify(mockMenuItems)));
+        promises.push(AsyncStorage.default.setItem('orders', JSON.stringify(mockOrders)));
+      }
+      
+      await Promise.all(promises);
+      console.log('Mock data initialized successfully');
+    } else {
+      console.log('Existing data found, skipping mock data initialization');
+    }
+    
     return true;
   } catch (error) {
     console.error('Error initializing mock data:', error);
