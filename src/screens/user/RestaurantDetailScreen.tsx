@@ -46,15 +46,23 @@ const RestaurantDetailScreen: React.FC<RestaurantDetailScreenProps> = ({ route, 
   const [isOrdering, setIsOrdering] = useState(false);
   const [deliveryAddress, setDeliveryAddress] = useState('');
 
-  const menuItems = useMemo(() => getMenuByRestaurantId(restaurant.id), [restaurant.id]);
+  const menuItems = useMemo(() => {
+    const items = getMenuByRestaurantId(restaurant.id);
+    console.log(`🍕 Menu items for ${restaurant.name}:`, items.length);
+    return items;
+  }, [restaurant.id]);
   const categories = useMemo(() => {
     const cats = ['All', ...new Set(menuItems.map(item => item.category))];
     return cats;
   }, [menuItems]);
   
   const filteredMenuItems = useMemo(() => {
-    if (selectedCategory === 'All') return menuItems.filter(item => item.isAvailable);
-    return menuItems.filter(item => item.category === selectedCategory && item.isAvailable);
+    const filtered = selectedCategory === 'All' 
+      ? menuItems.filter(item => item.isAvailable)
+      : menuItems.filter(item => item.category === selectedCategory && item.isAvailable);
+    
+    console.log(`🔍 Filtered menu items (${selectedCategory}):`, filtered.length);
+    return filtered;
   }, [menuItems, selectedCategory]);
 
   const cartTotal = getCartTotal();
@@ -212,7 +220,7 @@ const RestaurantDetailScreen: React.FC<RestaurantDetailScreenProps> = ({ route, 
             )}
           </View>
           <View style={styles.priceRow}>
-            <Text style={styles.menuItemPrice}>${item.price.toFixed(2)}</Text>
+            <Text style={styles.menuItemPrice}>GH₵{item.price.toFixed(2)}</Text>
             <Button
               title="Add to Cart"
               onPress={() => handleAddToCart(item)}
@@ -263,11 +271,11 @@ const RestaurantDetailScreen: React.FC<RestaurantDetailScreenProps> = ({ route, 
               </View>
               <View style={styles.deliveryItem}>
                 <Ionicons name="car" size={16} color={theme.colors.text.secondary} />
-                <Text style={styles.deliveryText}>${restaurant.deliveryFee.toFixed(2)} delivery</Text>
+                <Text style={styles.deliveryText}>GH₵{restaurant.deliveryFee.toFixed(2)} delivery</Text>
               </View>
               <View style={styles.deliveryItem}>
                 <Ionicons name="card" size={16} color={theme.colors.text.secondary} />
-                <Text style={styles.deliveryText}>${restaurant.minimumOrder} min</Text>
+                <Text style={styles.deliveryText}>GH₵{restaurant.minimumOrder} min</Text>
               </View>
             </View>
           </View>
@@ -291,7 +299,7 @@ const RestaurantDetailScreen: React.FC<RestaurantDetailScreenProps> = ({ route, 
         {/* Menu Items */}
         <View style={styles.menuSection}>
           <Text style={[globalStyles.h3, styles.sectionTitle]}>Menu</Text>
-          {filteredMenuItems.map(renderMenuItem)}
+          {filteredMenuItems.map((item, index) => renderMenuItem(item, index))}
           {filteredMenuItems.length === 0 && (
             <Text style={styles.noItemsText}>
               No items available in {selectedCategory === 'All' ? 'this restaurant' : selectedCategory}
@@ -319,8 +327,8 @@ const RestaurantDetailScreen: React.FC<RestaurantDetailScreenProps> = ({ route, 
               <View key={index} style={styles.cartItem}>
                 <Text style={styles.cartItemName}>{item.name}</Text>
                 <View style={styles.cartItemRow}>
-                  <Text style={styles.cartItemPrice}>${item.price.toFixed(2)} x {item.quantity}</Text>
-                  <Text style={styles.cartItemTotal}>${(item.price * item.quantity).toFixed(2)}</Text>
+                  <Text style={styles.cartItemPrice}>GH₵{item.price.toFixed(2)} x {item.quantity}</Text>
+                  <Text style={styles.cartItemTotal}>GH₵{(item.price * item.quantity).toFixed(2)}</Text>
                 </View>
               </View>
             ))}
@@ -328,15 +336,15 @@ const RestaurantDetailScreen: React.FC<RestaurantDetailScreenProps> = ({ route, 
             <View style={styles.orderSummary}>
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Subtotal:</Text>
-                <Text style={styles.summaryValue}>${cartTotal.toFixed(2)}</Text>
+                <Text style={styles.summaryValue}>GH₵{cartTotal.toFixed(2)}</Text>
               </View>
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Delivery Fee:</Text>
-                <Text style={styles.summaryValue}>${restaurant.deliveryFee.toFixed(2)}</Text>
+                <Text style={styles.summaryValue}>GH₵{restaurant.deliveryFee.toFixed(2)}</Text>
               </View>
               <View style={[styles.summaryRow, styles.totalRow]}>
                 <Text style={styles.totalLabel}>Total:</Text>
-                <Text style={styles.totalValue}>${(cartTotal + restaurant.deliveryFee).toFixed(2)}</Text>
+                <Text style={styles.totalValue}>GH₵{(cartTotal + restaurant.deliveryFee).toFixed(2)}</Text>
               </View>
             </View>
 
@@ -361,7 +369,7 @@ const RestaurantDetailScreen: React.FC<RestaurantDetailScreenProps> = ({ route, 
             />
             {cartTotal < restaurant.minimumOrder && (
               <Text style={styles.minimumOrderText}>
-                Minimum order: ${restaurant.minimumOrder.toFixed(2)}
+                Minimum order: GH₵{restaurant.minimumOrder.toFixed(2)}
               </Text>
             )}
           </View>

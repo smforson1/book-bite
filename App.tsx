@@ -4,7 +4,7 @@ import { AuthProvider } from './src/contexts/AuthContext';
 import { HotelProvider } from './src/contexts/HotelContext';
 import { RestaurantProvider } from './src/contexts/RestaurantContext';
 import { ReviewProvider } from './src/contexts/ReviewContext';
-import { ThemeProvider } from './src/contexts/ThemeContext';
+
 import AppNavigator from './src/navigation/AppNavigator';
 import { initializeMockData } from './src/services/mockDataService';
 import { ErrorBoundary, OfflineIndicator } from './src/components/ErrorBoundary';
@@ -68,19 +68,17 @@ export default function App() {
         });
       }}
     >
-      <ThemeProvider>
-        <AuthProvider>
-          <HotelProvider>
-            <RestaurantProvider>
-              <ReviewProvider>
-                <AppNavigator />
-                <OfflineIndicator />
-                <StatusBar style="auto" />
-              </ReviewProvider>
-            </RestaurantProvider>
-          </HotelProvider>
-        </AuthProvider>
-      </ThemeProvider>
+      <AuthProvider>
+        <HotelProvider>
+          <RestaurantProvider>
+            <ReviewProvider>
+              <AppNavigator />
+              <OfflineIndicator />
+              <StatusBar style="auto" />
+            </ReviewProvider>
+          </RestaurantProvider>
+        </HotelProvider>
+      </AuthProvider>
     </ErrorBoundary>
   );
 }

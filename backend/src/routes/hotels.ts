@@ -11,17 +11,17 @@ import {
 } from '@/controllers/hotelController';
 import { authenticate, authorize } from '@/middleware/auth';
 import { handleValidationErrors } from '@/middleware/validation';
-import { uploadLimiter } from '@/middleware/rateLimiter';
+import { uploadLimiter, publicApiLimiter } from '@/middleware/rateLimiter';
 import { uploadMultiple } from '@/middleware/upload';
 import { hotelValidation, searchValidation, mongoIdValidation } from '@/utils/validation';
 
 const router = Router();
 
-// Public routes
-router.get('/', searchValidation, handleValidationErrors, getHotels);
-router.get('/nearby', searchValidation, handleValidationErrors, getNearbyHotels);
-router.get('/:id', mongoIdValidation('id'), handleValidationErrors, getHotelById);
-router.get('/:hotelId/rooms', mongoIdValidation('hotelId'), handleValidationErrors, getHotelRooms);
+// Public routes - with lenient rate limiting
+router.get('/', publicApiLimiter, searchValidation, handleValidationErrors, getHotels);
+router.get('/nearby', publicApiLimiter, searchValidation, handleValidationErrors, getNearbyHotels);
+router.get('/:id', publicApiLimiter, mongoIdValidation('id'), handleValidationErrors, getHotelById);
+router.get('/:hotelId/rooms', publicApiLimiter, mongoIdValidation('hotelId'), handleValidationErrors, getHotelRooms);
 
 // Protected routes
 router.use(authenticate);

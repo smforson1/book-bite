@@ -174,19 +174,13 @@ const BookingsScreen: React.FC = () => {
             <Button
               title="🛒 Complete Booking"
               onPress={() => {
-                // Navigate to Hotels stack, then to Payment
-                const parentNavigation = navigation.getParent();
-                if (parentNavigation) {
-                  parentNavigation.navigate('Hotels', {
-                    screen: 'Payment',
-                    params: {
-                      amount: booking.totalPrice,
-                      currency: 'GHS',
-                      paymentFor: 'booking',
-                      referenceId: booking.id
-                    }
-                  });
-                }
+                // Navigate directly to Payment screen
+                navigation.navigate('Payment', {
+                  amount: booking.totalPrice,
+                  currency: 'GHS',
+                  paymentFor: 'booking',
+                  referenceId: booking.id
+                });
               }}
               style={styles.primaryPayButton}
             />
@@ -215,19 +209,13 @@ const BookingsScreen: React.FC = () => {
             <Button
               title="Pay Now"
               onPress={() => {
-                // Navigate to Hotels stack, then to Payment
-                const parentNavigation = navigation.getParent();
-                if (parentNavigation) {
-                  parentNavigation.navigate('Hotels', {
-                    screen: 'Payment',
-                    params: {
-                      amount: booking.totalPrice,
-                      currency: 'GHS',
-                      paymentFor: 'booking',
-                      referenceId: booking.id
-                    }
-                  });
-                }
+                // Navigate directly to Payment screen
+                navigation.navigate('Payment', {
+                  amount: booking.totalPrice,
+                  currency: 'GHS',
+                  paymentFor: 'booking',
+                  referenceId: booking.id
+                });
               }}
               style={styles.payButton}
             />

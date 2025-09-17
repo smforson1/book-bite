@@ -14,10 +14,13 @@ import { theme } from '../../styles/theme';
 import { globalStyles } from '../../styles/globalStyles';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRestaurant } from '../../contexts/RestaurantContext';
+// ThemeContext import removed as part of dark mode revert
 
 const RestaurantProfileScreen: React.FC = () => {
   const { user, logout } = useAuth();
   const { updateRestaurant } = useRestaurant();
+  // Theme hook removed as part of dark mode revert
+  const currentTheme = theme;
   const [restaurantImages, setRestaurantImages] = useState<string[]>([]);
 
   const handleLogout = async () => {
@@ -31,20 +34,20 @@ const RestaurantProfileScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: currentTheme.colors.background.secondary }]}>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Header Section */}
-        <View style={styles.header}>
-          <View style={styles.profileIcon}>
-            <Ionicons name="restaurant-outline" size={64} color={theme.colors.secondary[500]} />
+        <View style={[styles.header, { backgroundColor: currentTheme.colors.background.primary }]}>
+          <View style={[styles.profileIcon, { backgroundColor: currentTheme.colors.secondary[50] }]}>
+            <Ionicons name="restaurant-outline" size={64} color={currentTheme.colors.secondary[500]} />
           </View>
-          <Text style={[globalStyles.h2, styles.title]}>Restaurant Profile</Text>
-          <Text style={[globalStyles.bodyLarge, styles.subtitle]}>Manage your restaurant information</Text>
+          <Text style={[globalStyles.h2, styles.title, { color: currentTheme.colors.text.primary }]}>Restaurant Profile</Text>
+          <Text style={[globalStyles.bodyLarge, styles.subtitle, { color: currentTheme.colors.text.secondary }]}>Manage your restaurant information</Text>
         </View>
 
         {/* Restaurant Images */}
         <View style={styles.section}>
-          <Text style={[globalStyles.h4, styles.sectionTitle]}>Restaurant Images</Text>
+          <Text style={[globalStyles.h4, styles.sectionTitle, { color: currentTheme.colors.text.primary }]}>Restaurant Images</Text>
           <ImageUpload
             onImagesUploaded={handleImagesUploaded}
             maxImages={10}
@@ -70,38 +73,38 @@ const RestaurantProfileScreen: React.FC = () => {
 
         {/* Restaurant Information */}
         <View style={styles.section}>
-          <Text style={[globalStyles.h4, styles.sectionTitle]}>Restaurant Information</Text>
+          <Text style={[globalStyles.h4, styles.sectionTitle, { color: currentTheme.colors.text.primary }]}>Restaurant Information</Text>
           
           <Card style={styles.infoCard}>
-            <View style={styles.infoItem}>
-              <Ionicons name="restaurant" size={20} color={theme.colors.text.secondary} />
+            <View style={[styles.infoItem, { borderBottomColor: currentTheme.colors.border.light }]}>
+              <Ionicons name="restaurant" size={20} color={currentTheme.colors.text.secondary} />
               <View style={styles.infoContent}>
-                <Text style={[globalStyles.bodySmall, styles.infoLabel]}>Restaurant Name</Text>
-                <Text style={[globalStyles.body, styles.infoValue]}>{user?.name || 'Restaurant Name'}</Text>
+                <Text style={[globalStyles.bodySmall, styles.infoLabel, { color: currentTheme.colors.text.secondary }]}>Restaurant Name</Text>
+                <Text style={[globalStyles.body, styles.infoValue, { color: currentTheme.colors.text.primary }]}>{user?.name || 'Restaurant Name'}</Text>
               </View>
             </View>
             
-            <View style={styles.infoItem}>
-              <Ionicons name="mail" size={20} color={theme.colors.text.secondary} />
+            <View style={[styles.infoItem, { borderBottomColor: currentTheme.colors.border.light }]}>
+              <Ionicons name="mail" size={20} color={currentTheme.colors.text.secondary} />
               <View style={styles.infoContent}>
-                <Text style={[globalStyles.bodySmall, styles.infoLabel]}>Email</Text>
-                <Text style={[globalStyles.body, styles.infoValue]}>{user?.email}</Text>
+                <Text style={[globalStyles.bodySmall, styles.infoLabel, { color: currentTheme.colors.text.secondary }]}>Email</Text>
+                <Text style={[globalStyles.body, styles.infoValue, { color: currentTheme.colors.text.primary }]}>{user?.email}</Text>
               </View>
             </View>
             
-            <View style={styles.infoItem}>
-              <Ionicons name="call" size={20} color={theme.colors.text.secondary} />
+            <View style={[styles.infoItem, { borderBottomColor: currentTheme.colors.border.light }]}>
+              <Ionicons name="call" size={20} color={currentTheme.colors.text.secondary} />
               <View style={styles.infoContent}>
-                <Text style={[globalStyles.bodySmall, styles.infoLabel]}>Phone</Text>
-                <Text style={[globalStyles.body, styles.infoValue]}>{user?.phone || 'Not provided'}</Text>
+                <Text style={[globalStyles.bodySmall, styles.infoLabel, { color: currentTheme.colors.text.secondary }]}>Phone</Text>
+                <Text style={[globalStyles.body, styles.infoValue, { color: currentTheme.colors.text.primary }]}>{user?.phone || 'Not provided'}</Text>
               </View>
             </View>
             
-            <View style={styles.infoItem}>
-              <Ionicons name="calendar" size={20} color={theme.colors.text.secondary} />
+            <View style={[styles.infoItem, { borderBottomColor: currentTheme.colors.border.light }]}>
+              <Ionicons name="calendar" size={20} color={currentTheme.colors.text.secondary} />
               <View style={styles.infoContent}>
-                <Text style={[globalStyles.bodySmall, styles.infoLabel]}>Member Since</Text>
-                <Text style={[globalStyles.body, styles.infoValue]}>{user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}</Text>
+                <Text style={[globalStyles.bodySmall, styles.infoLabel, { color: currentTheme.colors.text.secondary }]}>Member Since</Text>
+                <Text style={[globalStyles.body, styles.infoValue, { color: currentTheme.colors.text.primary }]}>{user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}</Text>
               </View>
             </View>
           </Card>
@@ -109,10 +112,10 @@ const RestaurantProfileScreen: React.FC = () => {
 
         {/* Settings */}
         <View style={styles.section}>
-          <Text style={[globalStyles.h4, styles.sectionTitle]}>Settings</Text>
+          <Text style={[globalStyles.h4, styles.sectionTitle, { color: currentTheme.colors.text.primary }]}>Settings</Text>
           
           <Card style={styles.settingsCard}>
-            <Text style={[globalStyles.body, styles.settingsText]}>Restaurant settings and menu management options will be available here.</Text>
+            <Text style={[globalStyles.body, styles.settingsText, { color: currentTheme.colors.text.secondary }]}>Restaurant settings and menu management options will be available here.</Text>
           </Card>
         </View>
 
@@ -122,9 +125,9 @@ const RestaurantProfileScreen: React.FC = () => {
             title="Logout"
             variant="outline"
             onPress={handleLogout}
-            icon={<Ionicons name="log-out-outline" size={16} color={theme.colors.error[500]} />}
-            style={StyleSheet.flatten([styles.logoutButton, { borderColor: theme.colors.error[500] }])}
-            textStyle={{ color: theme.colors.error[500] }}
+            icon={<Ionicons name="log-out-outline" size={16} color={currentTheme.colors.error[500]} />}
+            style={StyleSheet.flatten([styles.logoutButton, { borderColor: currentTheme.colors.error[500] }])}
+            textStyle={{ color: currentTheme.colors.error[500] }}
           />
         </View>
       </ScrollView>
@@ -135,7 +138,6 @@ const RestaurantProfileScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.secondary,
   },
   
   content: {
@@ -146,7 +148,6 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     padding: theme.spacing[6],
-    backgroundColor: theme.colors.background.primary,
     borderBottomLeftRadius: theme.borderRadius['2xl'],
     borderBottomRightRadius: theme.borderRadius['2xl'],
     ...theme.shadows.sm,
@@ -156,7 +157,6 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: theme.colors.secondary[50],
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: theme.spacing[4],
@@ -164,13 +164,11 @@ const styles = StyleSheet.create({
   },
   
   title: {
-    color: theme.colors.text.primary,
     marginBottom: theme.spacing[1],
   },
   
   subtitle: {
     textAlign: 'center',
-    color: theme.colors.text.secondary,
   },
   
   // Sections
@@ -181,7 +179,6 @@ const styles = StyleSheet.create({
   },
   
   sectionTitle: {
-    color: theme.colors.text.primary,
     marginBottom: theme.spacing[4],
   },
   
@@ -207,7 +204,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: theme.spacing[3],
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.light,
   },
   
   infoContent: {
@@ -216,12 +212,10 @@ const styles = StyleSheet.create({
   },
   
   infoLabel: {
-    color: theme.colors.text.secondary,
     marginBottom: theme.spacing[1],
   },
   
   infoValue: {
-    color: theme.colors.text.primary,
   },
   
   // Settings Card
@@ -232,7 +226,6 @@ const styles = StyleSheet.create({
   
   settingsText: {
     textAlign: 'center',
-    color: theme.colors.text.secondary,
   },
   
   // Logout Section

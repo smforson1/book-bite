@@ -1,10 +1,47 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { User, Hotel, Room, Restaurant, MenuItem, Booking, Order, Review } from '../types';
 
 // API Configuration
+const getBaseURL = () => {
+  if (!__DEV__) {
+    return 'http://UPDATE-THIS-TO-YOUR-ACTUAL-BACKEND-URL/api/v1';
+  }
+
+  // Development URLs for different platforms
+  if (Platform.OS === 'android') {
+    // Android emulator maps 10.0.2.2 to host machine's localhost
+    return 'http://10.0.2.2:3000/api/v1';
+  } else {
+    // iOS Simulator - try localhost first, then 127.0.0.1 as fallback
+    return 'http://localhost:3000/api/v1';
+  }
+};
+
+// Fallback URLs to try if primary URL fails
+const getFallbackURLs = () => {
+  if (!__DEV__) return [];
+
+  const fallbacks = [];
+
+  if (Platform.OS === 'ios') {
+    fallbacks.push(
+      'http://127.0.0.1:3000/api/v1',
+      'http://0.0.0.0:3000/api/v1'
+    );
+  } else {
+    fallbacks.push(
+      'http://localhost:3000/api/v1',
+      'http://127.0.0.1:3000/api/v1'
+    );
+  }
+
+  return fallbacks;
+};
+
 const API_CONFIG = {
-  // TODO: Update this to your actual backend URL in production
-  baseURL: __DEV__ ? 'http://localhost:3000/api/v1' : 'http://UPDATE-THIS-TO-YOUR-ACTUAL-BACKEND-URL/api/v1',
+  baseURL: getBaseURL(),
+  fallbackURLs: getFallbackURLs(),
   timeout: 10000,
   retryAttempts: 3,
 };
@@ -24,13 +61,75 @@ interface ApiError {
 
 class ApiService {
   private baseURL: string;
+  private fallbackURLs: string[];
   private timeout: number;
   private retryAttempts: number;
 
   constructor() {
     this.baseURL = API_CONFIG.baseURL;
+    this.fallbackURLs = API_CONFIG.fallbackURLs;
     this.timeout = API_CONFIG.timeout;
     this.retryAttempts = API_CONFIG.retryAttempts;
+
+    // Debug logging for development
+    if (__DEV__) {
+      console.log(`🌐 API Service initialized with baseURL: ${this.baseURL}`);
+      console.log(`📱 Platform: ${Platform.OS}`);
+      console.log(`🔄 Fallback URLs: ${this.fallbackURLs.join(', ')}`);
+
+      // Test connectivity on initialization
+      this.testConnectivity();
+    }
+  }
+
+  private async testConnectivity(): Promise<void> {
+    console.log('🔍 Testing backend connectivity...');
+
+    const urlsToTest = [this.baseURL, ...this.fallbackURLs];
+    let workingURL = null;
+
+    for (const baseURL of urlsToTest) {
+      try {
+        const healthURL = baseURL.replace('/api/v1', '/health');
+        console.log(`   Testing: ${healthURL}`);
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+        const response = await fetch(healthURL, {
+          method: 'GET',
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          console.log(`   ✅ ${baseURL} - Backend is accessible`);
+          workingURL = baseURL;
+          break;
+        } else {
+          console.log(`   ⚠️ ${baseURL} - Backend responded with status: ${response.status}`);
+        }
+      } catch (error: any) {
+        console.log(`   ❌ ${baseURL} - ${error.message}`);
+      }
+    }
+
+    if (workingURL) {
+      if (workingURL !== this.baseURL) {
+        console.log(`🔄 Updating primary URL to working URL: ${workingURL}`);
+        this.baseURL = workingURL;
+      }
+      console.log('✅ Backend connectivity established');
+    } else {
+      console.log('❌ No working backend URL found');
+      console.log('💡 Troubleshooting tips:');
+      console.log('   - Ensure backend is running: cd backend && npm run dev');
+      console.log('   - Check network connectivity');
+      if (Platform.OS === 'android') {
+        console.log('   - For Android emulator, try: adb reverse tcp:3000 tcp:3000');
+      }
+    }
   }
 
   private async getAuthToken(): Promise<string | null> {
@@ -42,13 +141,40 @@ class ApiService {
     }
   }
 
-  private async makeRequest<T>(
+  private async makeRequestWithFallback<T>(
     endpoint: string,
     method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
     data?: any,
     requiresAuth: boolean = true
   ): Promise<ApiResponse<T>> {
-    const url = `${this.baseURL}${endpoint}`;
+    const urlsToTry = [this.baseURL, ...this.fallbackURLs];
+
+    for (const baseURL of urlsToTry) {
+      const result = await this.makeRequestToURL<T>(baseURL, endpoint, method, data, requiresAuth);
+      if (result.success) {
+        // Update baseURL if a fallback worked
+        if (baseURL !== this.baseURL) {
+          console.log(`✅ Fallback URL worked, updating baseURL to: ${baseURL}`);
+          this.baseURL = baseURL;
+        }
+        return result;
+      }
+    }
+
+    return {
+      success: false,
+      error: `All connection attempts failed. Tried: ${urlsToTry.join(', ')}`
+    };
+  }
+
+  private async makeRequestToURL<T>(
+    baseURL: string,
+    endpoint: string,
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
+    data?: any,
+    requiresAuth: boolean = true
+  ): Promise<ApiResponse<T>> {
+    const url = `${baseURL}${endpoint}`;
     const token = requiresAuth ? await this.getAuthToken() : null;
 
     const headers: Record<string, string> = {
@@ -66,40 +192,51 @@ class ApiService {
       body: data ? JSON.stringify(data) : undefined,
     };
 
-    for (let attempt = 1; attempt <= this.retryAttempts; attempt++) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
-        const response = await fetch(url, {
-          ...config,
-          signal: controller.signal,
-        });
+      const response = await fetch(url, {
+        ...config,
+        signal: controller.signal,
+      });
 
-        clearTimeout(timeoutId);
+      clearTimeout(timeoutId);
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        return { success: true, data: result.data, message: result.message };
-      } catch (error: any) {
-        console.warn(`API request attempt ${attempt} failed:`, error.message);
-
-        if (attempt === this.retryAttempts) {
-          return {
-            success: false,
-            error: error.message || 'Network request failed',
-          };
-        }
-
-        // Exponential backoff
-        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    }
 
-    return { success: false, error: 'Max retry attempts exceeded' };
+      const result = await response.json();
+      return { success: true, data: result.data, message: result.message };
+    } catch (error: any) {
+      const errorMessage = error.message || 'Network request failed';
+
+      // Special handling for rate limiting
+      if (error.message?.includes('429') || errorMessage.includes('Too many requests')) {
+        console.warn(`🚨 Rate limited on ${baseURL}:`, errorMessage);
+        return {
+          success: false,
+          error: 'Rate limited - please wait a moment and try again',
+        };
+      }
+
+      console.warn(`🚨 Request to ${baseURL} failed:`, errorMessage);
+
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    }
+  }
+
+  private async makeRequest<T>(
+    endpoint: string,
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
+    data?: any,
+    requiresAuth: boolean = true
+  ): Promise<ApiResponse<T>> {
+    return this.makeRequestWithFallback<T>(endpoint, method, data, requiresAuth);
   }
 
   // Authentication APIs
@@ -122,11 +259,17 @@ class ApiService {
   // Hotel APIs
   async getHotels(filters?: any): Promise<ApiResponse<Hotel[]>> {
     const queryParams = filters ? `?${new URLSearchParams(filters).toString()}` : '';
-    return this.makeRequest(`/hotels${queryParams}`);
+    const response = await this.makeRequest<{ hotels: Hotel[] }>(`/hotels${queryParams}`, 'GET', undefined, false);
+
+    // Extract hotels array from nested response structure
+    if (response.success && response.data?.hotels) {
+      return { success: true, data: response.data.hotels };
+    }
+    return { success: false, error: response.error || 'No hotels found' };
   }
 
   async getHotelById(id: string): Promise<ApiResponse<Hotel>> {
-    return this.makeRequest(`/hotels/${id}`);
+    return this.makeRequest(`/hotels/${id}`, 'GET', undefined, false);
   }
 
   async getMyHotels(): Promise<ApiResponse<Hotel[]>> {
@@ -134,7 +277,13 @@ class ApiService {
   }
 
   async getRoomsByHotelId(hotelId: string): Promise<ApiResponse<Room[]>> {
-    return this.makeRequest(`/hotels/${hotelId}/rooms`);
+    const response = await this.makeRequest<{ rooms: Room[] }>(`/hotels/${hotelId}/rooms`, 'GET', undefined, false);
+
+    // Extract rooms array from nested response structure
+    if (response.success && response.data?.rooms) {
+      return { success: true, data: response.data.rooms };
+    }
+    return { success: false, error: response.error || 'No rooms found' };
   }
 
   async getMyRooms(): Promise<ApiResponse<Room[]>> {
@@ -146,7 +295,13 @@ class ApiService {
   }
 
   async getUserBookings(): Promise<ApiResponse<Booking[]>> {
-    return this.makeRequest('/bookings/user');
+    const response = await this.makeRequest<{ bookings: Booking[] }>('/bookings/user');
+
+    // Extract bookings array from nested response structure
+    if (response.success && response.data?.bookings) {
+      return { success: true, data: response.data.bookings };
+    }
+    return { success: false, error: response.error || 'No bookings found' };
   }
 
   async getMyBookings(): Promise<ApiResponse<Booking[]>> {
@@ -160,11 +315,17 @@ class ApiService {
   // Restaurant APIs
   async getRestaurants(filters?: any): Promise<ApiResponse<Restaurant[]>> {
     const queryParams = filters ? `?${new URLSearchParams(filters).toString()}` : '';
-    return this.makeRequest(`/restaurants${queryParams}`);
+    const response = await this.makeRequest<{ restaurants: Restaurant[] }>(`/restaurants${queryParams}`, 'GET', undefined, false);
+
+    // Extract restaurants array from nested response structure
+    if (response.success && response.data?.restaurants) {
+      return { success: true, data: response.data.restaurants };
+    }
+    return { success: false, error: response.error || 'No restaurants found' };
   }
 
   async getRestaurantById(id: string): Promise<ApiResponse<Restaurant>> {
-    return this.makeRequest(`/restaurants/${id}`);
+    return this.makeRequest(`/restaurants/${id}`, 'GET', undefined, false);
   }
 
   async getMyRestaurants(): Promise<ApiResponse<Restaurant[]>> {
@@ -172,7 +333,21 @@ class ApiService {
   }
 
   async getMenuByRestaurantId(restaurantId: string): Promise<ApiResponse<MenuItem[]>> {
-    return this.makeRequest(`/restaurants/${restaurantId}/menu`);
+    const response = await this.makeRequest<{ menuItems: MenuItem[] }>(`/restaurants/${restaurantId}/menu`, 'GET', undefined, false);
+
+    // Extract menu items array from nested response structure
+    if (response.success && response.data?.menuItems) {
+      // Fix the restaurantId field - backend returns it as populated object, we need just the ID
+      const fixedMenuItems = response.data.menuItems.map(item => ({
+        ...item,
+        restaurantId: typeof item.restaurantId === 'object'
+          ? (item.restaurantId as any).id || (item.restaurantId as any)._id
+          : item.restaurantId
+      }));
+
+      return { success: true, data: fixedMenuItems };
+    }
+    return { success: false, error: response.error || 'No menu items found' };
   }
 
   async getMyMenuItems(): Promise<ApiResponse<MenuItem[]>> {
@@ -184,7 +359,13 @@ class ApiService {
   }
 
   async getUserOrders(): Promise<ApiResponse<Order[]>> {
-    return this.makeRequest('/orders/user');
+    const response = await this.makeRequest<{ orders: Order[] }>('/orders/user');
+
+    // Extract orders array from nested response structure
+    if (response.success && response.data?.orders) {
+      return { success: true, data: response.data.orders };
+    }
+    return { success: false, error: response.error || 'No orders found' };
   }
 
   async getMyOrders(): Promise<ApiResponse<Order[]>> {

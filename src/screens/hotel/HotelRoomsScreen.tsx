@@ -15,6 +15,7 @@ import { Button, Card, Input } from '../../components';
 import { theme } from '../../styles/theme';
 import { globalStyles } from '../../styles/globalStyles';
 import { useAuth } from '../../contexts/AuthContext';
+// ThemeContext import removed as part of dark mode revert
 
 interface Room {
   id: string;
@@ -31,6 +32,8 @@ interface Room {
 
 const HotelRoomsScreen: React.FC = () => {
   const { user } = useAuth();
+  // Theme hook removed as part of dark mode revert
+  const currentTheme = theme;
   const [rooms, setRooms] = useState<Room[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
@@ -367,24 +370,24 @@ const HotelRoomsScreen: React.FC = () => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: currentTheme.colors.background.secondary }]}>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.stats}>
           <Card style={styles.statCard}>
-            <Text style={[globalStyles.h3, { color: theme.colors.primary[500] }]}>{rooms.length}</Text>
-            <Text style={styles.statLabel}>Total Rooms</Text>
+            <Text style={[globalStyles.h3, { color: currentTheme.colors.primary[500] }]}>{rooms.length}</Text>
+            <Text style={[styles.statLabel, { color: currentTheme.colors.text.secondary }]}>Total Rooms</Text>
           </Card>
           <Card style={styles.statCard}>
-            <Text style={[globalStyles.h3, { color: theme.colors.success[500] }]}>
+            <Text style={[globalStyles.h3, { color: currentTheme.colors.success[500] }]}>
               {rooms.filter(room => room.isAvailable && !room.isOccupied).length}
             </Text>
-            <Text style={styles.statLabel}>Available</Text>
+            <Text style={[styles.statLabel, { color: currentTheme.colors.text.secondary }]}>Available</Text>
           </Card>
           <Card style={styles.statCard}>
-            <Text style={[globalStyles.h3, { color: theme.colors.warning[500] }]}>
+            <Text style={[globalStyles.h3, { color: currentTheme.colors.warning[500] }]}>
               {rooms.filter(room => room.isOccupied).length}
             </Text>
-            <Text style={styles.statLabel}>Occupied</Text>
+            <Text style={[styles.statLabel, { color: currentTheme.colors.text.secondary }]}>Occupied</Text>
           </Card>
         </View>
 

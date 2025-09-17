@@ -77,6 +77,114 @@ interface RestaurantProviderProps {
   children: ReactNode;
 }
 
+// Helper function to create sample menu items for testing
+const createSampleMenuItems = (restaurants: Restaurant[]): MenuItem[] => {
+  const sampleMenuItems: MenuItem[] = [];
+  
+  restaurants.forEach((restaurant) => {
+    if (restaurant.name === 'Santoku Japanese Restaurant') {
+      sampleMenuItems.push(
+        {
+          id: `menu_${restaurant.id}_1`,
+          restaurantId: restaurant.id,
+          name: 'Chicken Teriyaki Bento',
+          description: 'Grilled chicken teriyaki with rice and vegetables',
+          price: 55.00,
+          category: 'Bento',
+          images: [],
+          isAvailable: true,
+          ingredients: ['Chicken', 'Rice', 'Vegetables', 'Teriyaki Sauce'],
+          allergens: ['Soy'],
+          preparationTime: '15-20 minutes'
+        },
+        {
+          id: `menu_${restaurant.id}_2`,
+          restaurantId: restaurant.id,
+          name: 'Salmon Sashimi Set',
+          description: 'Fresh salmon sashimi with wasabi and pickled ginger',
+          price: 65.00,
+          category: 'Sashimi',
+          images: [],
+          isAvailable: true,
+          ingredients: ['Fresh Salmon', 'Wasabi', 'Pickled Ginger', 'Soy Sauce'],
+          allergens: ['Fish'],
+          preparationTime: '10-15 minutes'
+        },
+        {
+          id: `menu_${restaurant.id}_3`,
+          restaurantId: restaurant.id,
+          name: 'Miso Ramen',
+          description: 'Rich miso broth with noodles, pork, and vegetables',
+          price: 48.00,
+          category: 'Ramen',
+          images: [],
+          isAvailable: true,
+          ingredients: ['Ramen Noodles', 'Miso Broth', 'Pork', 'Green Onions', 'Egg'],
+          allergens: ['Gluten', 'Soy', 'Egg'],
+          preparationTime: '12-18 minutes'
+        }
+      );
+    } else if (restaurant.name === 'Buka Restaurant') {
+      sampleMenuItems.push(
+        {
+          id: `menu_${restaurant.id}_1`,
+          restaurantId: restaurant.id,
+          name: 'Jollof Rice with Grilled Chicken',
+          description: 'Our signature jollof rice served with perfectly grilled chicken',
+          price: 35.00,
+          category: 'Main Course',
+          images: [],
+          isAvailable: true,
+          ingredients: ['Rice', 'Chicken', 'Tomatoes', 'Onions', 'Spices'],
+          allergens: [],
+          preparationTime: '20-25 minutes'
+        },
+        {
+          id: `menu_${restaurant.id}_2`,
+          restaurantId: restaurant.id,
+          name: 'Grilled Tilapia with Banku',
+          description: 'Fresh tilapia grilled to perfection, served with traditional banku',
+          price: 45.00,
+          category: 'Main Course',
+          images: [],
+          isAvailable: true,
+          ingredients: ['Tilapia', 'Banku', 'Pepper Sauce', 'Onions'],
+          allergens: ['Fish'],
+          preparationTime: '25-30 minutes'
+        },
+        {
+          id: `menu_${restaurant.id}_3`,
+          restaurantId: restaurant.id,
+          name: 'Kelewele with Groundnut Soup',
+          description: 'Spicy fried plantain served with rich groundnut soup',
+          price: 28.00,
+          category: 'Traditional',
+          images: [],
+          isAvailable: true,
+          ingredients: ['Plantain', 'Groundnuts', 'Palm Oil', 'Spices', 'Meat'],
+          allergens: ['Nuts'],
+          preparationTime: '18-22 minutes'
+        },
+        {
+          id: `menu_${restaurant.id}_4`,
+          restaurantId: restaurant.id,
+          name: 'Waakye with Stew',
+          description: 'Traditional rice and beans served with spicy stew',
+          price: 25.00,
+          category: 'Traditional',
+          images: [],
+          isAvailable: true,
+          ingredients: ['Rice', 'Beans', 'Stew', 'Gari', 'Boiled Egg'],
+          allergens: ['Egg'],
+          preparationTime: '15-20 minutes'
+        }
+      );
+    }
+  });
+  
+  return sampleMenuItems;
+};
+
 export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children }) => {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -103,12 +211,26 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
         // Load menu items for all restaurants
         const allMenuItems: MenuItem[] = [];
         for (const restaurant of backendResponse.data) {
+          console.log(`🍕 Loading menu for ${restaurant.name}...`);
           const menuResponse = await apiService.getMenuByRestaurantId(restaurant.id);
           if (menuResponse.success && menuResponse.data) {
+            console.log(`   ✅ Found ${menuResponse.data.length} menu items`);
             allMenuItems.push(...menuResponse.data);
+          } else {
+            console.log(`   ⚠️ No menu items found: ${menuResponse.error}`);
           }
         }
+        
+        // If no menu items found from backend, add sample menu items for testing
+        if (allMenuItems.length === 0 && backendResponse.data.length > 0) {
+          console.log('📝 No menu items found from backend, adding sample menu items for testing...');
+          const sampleMenuItems = createSampleMenuItems(backendResponse.data);
+          allMenuItems.push(...sampleMenuItems);
+          console.log(`✅ Added ${sampleMenuItems.length} sample menu items`);
+        }
+        
         setMenuItems(allMenuItems);
+        console.log(`🍽️ Total menu items loaded: ${allMenuItems.length}`);
         
         // Load user orders
         const ordersResponse = await apiService.getUserOrders();
@@ -208,7 +330,9 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
   };
 
   const getMenuByRestaurantId = (restaurantId: string): MenuItem[] => {
-    return menuItems.filter(item => item.restaurantId === restaurantId);
+    const filteredItems = menuItems.filter(item => item.restaurantId === restaurantId);
+    console.log(`🍕 Menu items for restaurant ${restaurantId}: ${filteredItems.length}`);
+    return filteredItems;
   };
 
   const searchRestaurants = (query: string, filters?: RestaurantFilters): Restaurant[] => {

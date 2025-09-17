@@ -2,7 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../styles/theme';
+import { lightTheme as theme } from '../styles/theme';
 import HotelDashboardScreen from '../screens/hotel/HotelDashboardScreen';
 import HotelRoomsScreen from '../screens/hotel/HotelRoomsScreen';
 import HotelBookingsScreen from '../screens/hotel/HotelBookingsScreen';
@@ -39,6 +39,9 @@ const DashboardStack = () => {
 };
 
 const HotelNavigator: React.FC = () => {
+  // Theme hook removed as part of dark mode revert
+  const currentTheme = theme;
+  
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -64,25 +67,25 @@ const HotelNavigator: React.FC = () => {
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: theme.colors.success[500],
-        tabBarInactiveTintColor: theme.colors.text.tertiary,
+        tabBarActiveTintColor: currentTheme.colors.success[500],
+        tabBarInactiveTintColor: currentTheme.colors.text.tertiary,
         headerShown: true,
         headerStyle: {
-          backgroundColor: theme.colors.success[500],
+          backgroundColor: currentTheme.colors.success[500],
           elevation: 0,
           shadowOpacity: 0,
           borderBottomWidth: 0,
         },
-        headerTintColor: theme.colors.neutral[0],
+        headerTintColor: currentTheme.colors.neutral[0],
         headerTitleStyle: {
-          fontWeight: theme.typography.fontWeight.semiBold,
-          fontSize: theme.typography.fontSize.lg,
+          fontWeight: currentTheme.typography.fontWeight.semiBold,
+          fontSize: currentTheme.typography.fontSize.lg,
         },
         tabBarStyle: {
-          backgroundColor: theme.colors.background.primary,
+          backgroundColor: currentTheme.colors.background.primary,
           borderTopWidth: 0,
           elevation: 8,
-          shadowColor: theme.colors.shadow.medium,
+          shadowColor: currentTheme.colors.shadow.medium,
           shadowOffset: { width: 0, height: -4 },
           shadowOpacity: 0.1,
           shadowRadius: 8,
@@ -91,8 +94,8 @@ const HotelNavigator: React.FC = () => {
           paddingTop: 8,
         },
         tabBarLabelStyle: {
-          fontSize: theme.typography.fontSize.xs,
-          fontWeight: theme.typography.fontWeight.medium,
+          fontSize: currentTheme.typography.fontSize.xs,
+          fontWeight: currentTheme.typography.fontWeight.medium,
           marginTop: 4,
         },
         tabBarIconStyle: {
@@ -107,12 +110,12 @@ const HotelNavigator: React.FC = () => {
           title: 'Hotel Dashboard',
           headerShown: true,
           headerStyle: {
-            backgroundColor: theme.colors.success[500],
+            backgroundColor: currentTheme.colors.success[500],
           },
-          headerTintColor: theme.colors.neutral[0],
+          headerTintColor: currentTheme.colors.neutral[0],
           headerTitleStyle: {
-            fontWeight: theme.typography.fontWeight.semiBold,
-            fontSize: theme.typography.fontSize.lg,
+            fontWeight: currentTheme.typography.fontWeight.semiBold,
+            fontSize: currentTheme.typography.fontSize.lg,
           },
         }}
       />
@@ -123,12 +126,12 @@ const HotelNavigator: React.FC = () => {
           title: 'Manage Rooms',
           headerShown: true,
           headerStyle: {
-            backgroundColor: theme.colors.success[500],
+            backgroundColor: currentTheme.colors.success[500],
           },
-          headerTintColor: theme.colors.neutral[0],
+          headerTintColor: currentTheme.colors.neutral[0],
           headerTitleStyle: {
-            fontWeight: theme.typography.fontWeight.semiBold,
-            fontSize: theme.typography.fontSize.lg,
+            fontWeight: currentTheme.typography.fontWeight.semiBold,
+            fontSize: currentTheme.typography.fontSize.lg,
           },
         }}
       />
@@ -139,12 +142,12 @@ const HotelNavigator: React.FC = () => {
           title: 'Bookings',
           headerShown: true,
           headerStyle: {
-            backgroundColor: theme.colors.success[500],
+            backgroundColor: currentTheme.colors.success[500],
           },
-          headerTintColor: theme.colors.neutral[0],
+          headerTintColor: currentTheme.colors.neutral[0],
           headerTitleStyle: {
-            fontWeight: theme.typography.fontWeight.semiBold,
-            fontSize: theme.typography.fontSize.lg,
+            fontWeight: currentTheme.typography.fontWeight.semiBold,
+            fontSize: currentTheme.typography.fontSize.lg,
           },
         }}
       />
@@ -155,12 +158,12 @@ const HotelNavigator: React.FC = () => {
           title: 'Hotel Profile',
           headerShown: true,
           headerStyle: {
-            backgroundColor: theme.colors.success[500],
+            backgroundColor: currentTheme.colors.success[500],
           },
-          headerTintColor: theme.colors.neutral[0],
+          headerTintColor: currentTheme.colors.neutral[0],
           headerTitleStyle: {
-            fontWeight: theme.typography.fontWeight.semiBold,
-            fontSize: theme.typography.fontSize.lg,
+            fontWeight: currentTheme.typography.fontWeight.semiBold,
+            fontSize: currentTheme.typography.fontSize.lg,
           },
         }}
       />

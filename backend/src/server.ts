@@ -20,6 +20,9 @@ import authRoutes from '@/routes/auth';
 import hotelRoutes from '@/routes/hotels';
 import roomRoutes from '@/routes/rooms';
 import bookingRoutes from '@/routes/bookings';
+import restaurantRoutes from '@/routes/restaurants';
+import menuItemRoutes from '@/routes/menuItems';
+import orderRoutes from '@/routes/orders';
 
 const app = express();
 const server = createServer(app);
@@ -72,6 +75,9 @@ app.use(`/api/${API_VERSION}/auth`, authRoutes);
 app.use(`/api/${API_VERSION}/hotels`, hotelRoutes);
 app.use(`/api/${API_VERSION}/rooms`, roomRoutes);
 app.use(`/api/${API_VERSION}/bookings`, bookingRoutes);
+app.use(`/api/${API_VERSION}/restaurants`, restaurantRoutes);
+app.use(`/api/${API_VERSION}/menu-items`, menuItemRoutes);
+app.use(`/api/${API_VERSION}/orders`, orderRoutes);
 
 // Socket.IO status endpoint
 app.get('/api/socket/status', (req, res) => {

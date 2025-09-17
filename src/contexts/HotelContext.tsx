@@ -53,6 +53,104 @@ interface HotelProviderProps {
   children: ReactNode;
 }
 
+// Helper function to create sample rooms for testing
+const createSampleRooms = (hotels: Hotel[]): Room[] => {
+  const sampleRooms: Room[] = [];
+  
+  hotels.forEach((hotel) => {
+    if (hotel.name === 'Golden Tulip Accra') {
+      sampleRooms.push(
+        {
+          id: `room_${hotel.id}_1`,
+          hotelId: hotel.id,
+          name: 'Deluxe Room',
+          description: 'Spacious room with city view and modern amenities',
+          price: 250.00,
+          capacity: 2,
+          amenities: ['WiFi', 'AC', 'TV', 'Mini Bar', 'Safe'],
+          roomNumber: '101',
+          type: 'deluxe',
+          isAvailable: true,
+          images: []
+        },
+        {
+          id: `room_${hotel.id}_2`,
+          hotelId: hotel.id,
+          name: 'Executive Suite',
+          description: 'Luxury suite with separate living area and premium amenities',
+          price: 450.00,
+          capacity: 4,
+          amenities: ['WiFi', 'AC', 'TV', 'Mini Bar', 'Safe', 'Balcony', 'Living Room'],
+          roomNumber: '201',
+          type: 'suite',
+          isAvailable: true,
+          images: []
+        }
+      );
+    } else if (hotel.name === 'Kempinski Hotel Gold Coast City') {
+      sampleRooms.push(
+        {
+          id: `room_${hotel.id}_1`,
+          hotelId: hotel.id,
+          name: 'Ocean View Room',
+          description: 'Beautiful room with stunning ocean views',
+          price: 350.00,
+          capacity: 2,
+          amenities: ['WiFi', 'AC', 'TV', 'Mini Bar', 'Safe', 'Ocean View'],
+          roomNumber: '301',
+          type: 'deluxe',
+          isAvailable: true,
+          images: []
+        },
+        {
+          id: `room_${hotel.id}_2`,
+          hotelId: hotel.id,
+          name: 'Presidential Suite',
+          description: 'Ultimate luxury with panoramic ocean views and premium services',
+          price: 800.00,
+          capacity: 6,
+          amenities: ['WiFi', 'AC', 'TV', 'Mini Bar', 'Safe', 'Ocean View', 'Balcony', 'Living Room', 'Jacuzzi'],
+          roomNumber: '501',
+          type: 'suite',
+          isAvailable: true,
+          images: []
+        }
+      );
+    } else if (hotel.name === 'Royal Senchi Resort') {
+      sampleRooms.push(
+        {
+          id: `room_${hotel.id}_1`,
+          hotelId: hotel.id,
+          name: 'Lake View Chalet',
+          description: 'Charming chalet with direct lake access',
+          price: 180.00,
+          capacity: 3,
+          amenities: ['WiFi', 'AC', 'TV', 'Lake View', 'Balcony'],
+          roomNumber: '401',
+          type: 'single',
+          isAvailable: true,
+          images: []
+        },
+        {
+          id: `room_${hotel.id}_2`,
+          hotelId: hotel.id,
+          name: 'Family Villa',
+          description: 'Spacious villa perfect for families with lake activities',
+          price: 320.00,
+          capacity: 6,
+          amenities: ['WiFi', 'AC', 'TV', 'Lake View', 'Balcony', 'Kitchen', 'Living Room'],
+          roomNumber: '501',
+          type: 'suite',
+          isAvailable: true,
+          images: []
+        }
+      );
+    }
+  });
+  
+  return sampleRooms;
+};
+
 export const HotelProvider: React.FC<HotelProviderProps> = ({ children }) => {
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -82,6 +180,14 @@ export const HotelProvider: React.FC<HotelProviderProps> = ({ children }) => {
             allRooms.push(...roomsResponse.data);
           }
         }
+        
+        // If no rooms found from backend, add sample rooms for testing
+        if (allRooms.length === 0 && backendResponse.data.length > 0) {
+          console.log('📝 No rooms found from backend, adding sample rooms for testing...');
+          const sampleRooms = createSampleRooms(backendResponse.data);
+          allRooms.push(...sampleRooms);
+        }
+        
         setRooms(allRooms);
         
         // Load user bookings

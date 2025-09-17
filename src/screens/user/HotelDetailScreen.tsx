@@ -41,16 +41,21 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
   const [checkInDate, setCheckInDate] = useState(new Date());
   const [checkOutDate, setCheckOutDate] = useState(new Date(Date.now() + 24 * 60 * 60 * 1000));
   const [guests, setGuests] = useState(1);
+  const [roomQuantity, setRoomQuantity] = useState(1);
   const [showCheckInPicker, setShowCheckInPicker] = useState(false);
   const [showCheckOutPicker, setShowCheckOutPicker] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
 
-  const rooms = useMemo(() => getRoomsByHotelId(hotel.id), [hotel.id]);
+  const rooms = useMemo(() => {
+    const hotelRooms = getRoomsByHotelId(hotel.id);
+    console.log(`🛏️ Rooms for ${hotel.name}:`, hotelRooms.length);
+    return hotelRooms;
+  }, [hotel.id]);
   const reviewSummary = useMemo(() => getReviewSummary(hotel.id, 'hotel'), [hotel.id]);
   const canWriteReview = user ? canUserReview(user.id, hotel.id, 'hotel') : false;
   
   const nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24));
-  const totalPrice = selectedRoom ? selectedRoom.price * nights : 0;
+  const totalPrice = selectedRoom ? selectedRoom.price * nights * roomQuantity : 0;
 
   const handleDateChange = (event: any, selectedDate?: Date, type: 'checkIn' | 'checkOut' = 'checkIn') => {
     const currentDate = selectedDate || (type === 'checkIn' ? checkInDate : checkOutDate);
@@ -89,6 +94,7 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
         checkIn: checkInDate,
         checkOut: checkOutDate,
         guests,
+        roomQuantity,
         totalPrice,
         status: 'pending' as const, // Pending status like cart
         paymentStatus: 'pending' as const,
@@ -98,16 +104,17 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
       await createBooking(bookingData);
 
       Alert.alert(
-        'Added to Booking Cart! 🛒',
-        `${selectedRoom.name} at ${hotel.name} has been added to your booking cart. Complete your booking in the Bookings tab.`,
+        'Room Added to Cart! 🛒',
+        `${roomQuantity} x ${selectedRoom.name} at ${hotel.name}\nTotal: GH₵${totalPrice.toFixed(2)} for ${nights} night${nights > 1 ? 's' : ''}\n\nComplete your booking in the Bookings tab.`,
         [
           {
             text: 'Continue Browsing',
             style: 'cancel'
           },
           {
-            text: 'Go to Bookings',
+            text: 'Complete Booking',
             onPress: () => navigation.navigate('Bookings'),
+            style: 'default'
           }
         ]
       );
@@ -212,7 +219,7 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
         <Text style={styles.roomDescription}>{room.description}</Text>
         <Text style={styles.roomCapacity}>Max Guests: {room.capacity}</Text>
         <View style={styles.roomPricing}>
-          <Text style={styles.roomPrice}>${room.price}</Text>
+          <Text style={styles.roomPrice}>GH₵{room.price}</Text>
           <Text style={styles.roomPriceUnit}>/ night</Text>
         </View>
         <View style={styles.roomAmenities}>
@@ -233,7 +240,11 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Hotel Images */}
         <View style={styles.imageContainer}>
           <Image source={{ uri: hotel.images[0] }} style={styles.heroImage} />
@@ -313,11 +324,36 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
               </TouchableOpacity>
             </View>
           </View>
+
+          {/* Room Quantity Selection */}
+          <View style={styles.guestRow}>
+            <Text style={styles.guestLabel}>Rooms</Text>
+            <View style={styles.guestControls}>
+              <TouchableOpacity
+                style={styles.guestButton}
+                onPress={() => setRoomQuantity(Math.max(1, roomQuantity - 1))}
+              >
+                <Ionicons name="remove" size={20} color={theme.colors.primary[500]} />
+              </TouchableOpacity>
+              <Text style={styles.guestCount}>{roomQuantity}</Text>
+              <TouchableOpacity
+                style={styles.guestButton}
+                onPress={() => setRoomQuantity(Math.min(5, roomQuantity + 1))}
+              >
+                <Ionicons name="add" size={20} color={theme.colors.primary[500]} />
+              </TouchableOpacity>
+            </View>
+          </View>
         </Card>
 
         {/* Room Selection */}
         <Card style={styles.section}>
-          <Text style={[globalStyles.h3, styles.sectionTitle]}>Available Rooms</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={[globalStyles.h3, styles.sectionTitle]}>Available Rooms</Text>
+            {!selectedRoom && rooms.length > 0 && (
+              <Text style={styles.selectPrompt}>👆 Tap to select a room</Text>
+            )}
+          </View>
           {rooms.filter(room => room.isAvailable && room.capacity >= guests).map(renderRoom)}
           {rooms.filter(room => room.isAvailable && room.capacity >= guests).length === 0 && (
             <Text style={styles.noRoomsText}>
@@ -328,7 +364,7 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
 
         {/* Booking Summary */}
         {selectedRoom && (
-          <Card style={styles.section}>
+          <Card style={StyleSheet.flatten([styles.section, styles.bookingSummaryCard])}>
             <Text style={[globalStyles.h3, styles.sectionTitle]}>Booking Summary</Text>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Room:</Text>
@@ -348,27 +384,38 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
               <Text style={styles.summaryLabel}>Guests:</Text>
               <Text style={styles.summaryValue}>{guests}</Text>
             </View>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Rooms:</Text>
+              <Text style={styles.summaryValue}>{roomQuantity}</Text>
+            </View>
             <View style={[styles.summaryRow, styles.totalRow]}>
               <Text style={styles.totalLabel}>Total:</Text>
               <Text style={styles.totalValue}>GH₵{totalPrice.toFixed(2)}</Text>
+            </View>
+            
+            {/* Book Now Button - Inside Summary Card */}
+            <View style={styles.bookingButtonContainer}>
+              <Button
+                title={isBooking ? "Adding to Cart..." : "Book Now 🛒"}
+                onPress={handleAddToBookingCart}
+                disabled={isBooking}
+                style={styles.summaryBookButton}
+              />
             </View>
           </Card>
         )}
       </ScrollView>
 
-      {/* Bottom Booking Bar */}
+      {/* Bottom Price Bar - Simple price display only */}
       {selectedRoom && (
         <View style={styles.bottomBar}>
           <View style={styles.priceInfo}>
             <Text style={styles.bottomPrice}>GH₵{totalPrice.toFixed(2)}</Text>
-            <Text style={styles.bottomPriceUnit}>for {nights} night{nights > 1 ? 's' : ''}</Text>
+            <Text style={styles.bottomPriceUnit}>
+              {roomQuantity} room{roomQuantity > 1 ? 's' : ''} × {nights} night{nights > 1 ? 's' : ''}
+            </Text>
           </View>
-          <Button
-            title={isBooking ? "Adding..." : "Add to Booking Cart 🛒"}
-            onPress={handleAddToBookingCart}
-            disabled={isBooking}
-            style={styles.bookButton}
-          />
+          <Text style={styles.bookingHint}>👆 Book in summary above</Text>
         </View>
       )}
 
@@ -403,6 +450,9 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 150, // Extra padding to ensure content is not hidden behind bottom bar (increased)
   },
   imageContainer: {
     position: 'relative',
@@ -640,6 +690,10 @@ const styles = StyleSheet.create({
     color: theme.colors.primary[500],
   },
   bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -648,6 +702,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: theme.colors.border.light,
     ...theme.shadows.md,
+    zIndex: 1000,
   },
   priceInfo: {
     flex: 1,
@@ -663,6 +718,44 @@ const styles = StyleSheet.create({
   },
   bookButton: {
     minWidth: 120,
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  selectRoomText: {
+    fontSize: theme.typography.fontSize.md,
+    color: theme.colors.text.secondary,
+    fontStyle: 'italic',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  selectPrompt: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.primary[500],
+    fontWeight: '600',
+  },
+  bookingSummaryCard: {
+    marginBottom: theme.spacing.xl, // Extra margin for the last card
+  },
+  bookingButtonContainer: {
+    marginTop: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border.light,
+  },
+  summaryBookButton: {
+    width: '100%',
+    paddingVertical: theme.spacing.md,
+  },
+  bookingHint: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.secondary,
+    fontStyle: 'italic',
+    textAlign: 'center',
   },
 });
 

@@ -18,6 +18,7 @@ import { theme } from '../../styles/theme';
 import { globalStyles } from '../../styles/globalStyles';
 import { useAuth } from '../../contexts/AuthContext';
 import { useHotel } from '../../contexts/HotelContext';
+// ThemeContext import removed as part of dark mode revert
 
 interface Room {
   id: string;
@@ -35,6 +36,8 @@ interface Room {
 const HotelRoomManagementScreen: React.FC = () => {
   const { user } = useAuth();
   const { addRoom, updateRoom } = useHotel();
+  // Theme hook removed as part of dark mode revert
+  const currentTheme = theme;
   const [rooms, setRooms] = useState<Room[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
@@ -119,7 +122,7 @@ const HotelRoomManagementScreen: React.FC = () => {
 
       // In a real app, we would call addRoom from the context
       // await addRoom(roomData);
-      
+
       setRooms([...rooms, roomData as Room]);
       setNewRoom({
         roomNumber: '',
@@ -156,7 +159,7 @@ const HotelRoomManagementScreen: React.FC = () => {
 
       // In a real app, we would call updateRoom from the context
       // await updateRoom(updatedRoom.id, updatedRoom);
-      
+
       const updatedRooms = rooms.map(room =>
         room.id === editingRoom.id ? updatedRoom : room
       );
@@ -217,39 +220,39 @@ const HotelRoomManagementScreen: React.FC = () => {
   };
 
   const getRoomStatus = (room: Room) => {
-    if (room.isOccupied) return { text: 'Occupied', style: styles.occupied };
-    if (!room.isAvailable) return { text: 'Maintenance', style: styles.maintenance };
-    return { text: 'Available', style: styles.available };
+    if (room.isOccupied) return { text: 'Occupied', style: [styles.occupied, { backgroundColor: currentTheme.colors.warning[50] }] };
+    if (!room.isAvailable) return { text: 'Maintenance', style: [styles.maintenance, { backgroundColor: currentTheme.colors.error[50] }] };
+    return { text: 'Available', style: [styles.available, { backgroundColor: currentTheme.colors.success[50] }] };
   };
 
   const renderRoom = (room: Room) => {
     const status = getRoomStatus(room);
-    
+
     return (
       <Card key={room.id} style={styles.roomCard}>
         <View style={styles.roomHeader}>
           <View style={styles.roomInfo}>
-            <Text style={[globalStyles.h4, styles.roomNumber]}>Room {room.roomNumber}</Text>
-            <Text style={styles.roomType}>{room.type}</Text>
-            <Text style={styles.roomDescription} numberOfLines={2}>{room.description}</Text>
+            <Text style={[globalStyles.h4, styles.roomNumber, { color: currentTheme.colors.text.primary }]}>Room {room.roomNumber}</Text>
+            <Text style={[styles.roomType, { color: currentTheme.colors.primary[500] }]}>{room.type}</Text>
+            <Text style={[styles.roomDescription, { color: currentTheme.colors.text.secondary }]} numberOfLines={2}>{room.description}</Text>
           </View>
           <View style={styles.roomActions}>
-            <Text style={[globalStyles.h4, styles.roomPrice]}>GH₵{room.price.toFixed(2)}/night</Text>
+            <Text style={[globalStyles.h4, styles.roomPrice, { color: currentTheme.colors.primary[500] }]}>GH₵{room.price.toFixed(2)}/night</Text>
             <View style={[styles.statusBadge, status.style]}>
-              <Text style={styles.statusText}>{status.text}</Text>
+              <Text style={[styles.statusText, { color: currentTheme.colors.text.primary }]}>{status.text}</Text>
             </View>
             <View style={styles.actionButtons}>
-              <TouchableOpacity 
-                style={styles.editButton} 
+              <TouchableOpacity
+                style={[styles.editButton, { backgroundColor: currentTheme.colors.primary[50] }]}
                 onPress={() => handleEditRoom(room)}
               >
-                <Ionicons name="pencil" size={16} color={theme.colors.primary[500]} />
+                <Ionicons name="pencil" size={16} color={currentTheme.colors.primary[500]} />
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.deleteButton} 
+              <TouchableOpacity
+                style={[styles.deleteButton, { backgroundColor: currentTheme.colors.error[50] }]}
                 onPress={() => handleDeleteRoom(room.id)}
               >
-                <Ionicons name="trash" size={16} color={theme.colors.error[500]} />
+                <Ionicons name="trash" size={16} color={currentTheme.colors.error[500]} />
               </TouchableOpacity>
             </View>
           </View>
@@ -266,43 +269,43 @@ const HotelRoomManagementScreen: React.FC = () => {
               />
             ))}
             {room.images.length > 3 && (
-              <View style={[styles.roomImagePreview, styles.moreImagesOverlay]}>
-                <Text style={styles.moreImagesText}>+{room.images.length - 3}</Text>
+              <View style={[styles.roomImagePreview, styles.moreImagesOverlay, { backgroundColor: currentTheme.colors.background.secondary }]}>
+                <Text style={[styles.moreImagesText, { color: currentTheme.colors.text.primary }]}>+{room.images.length - 3}</Text>
               </View>
             )}
           </ScrollView>
         )}
 
-        <View style={styles.roomDetails}>
+        <View style={[styles.roomDetails, { borderTopColor: currentTheme.colors.border.light }]}>
           <View style={styles.detailRow}>
-            <Ionicons name="people" size={16} color={theme.colors.text.secondary} />
-            <Text style={styles.detailText}>Capacity: {room.capacity} guests</Text>
+            <Ionicons name="people" size={16} color={currentTheme.colors.text.secondary} />
+            <Text style={[styles.detailText, { color: currentTheme.colors.text.secondary }]}>Capacity: {room.capacity} guests</Text>
           </View>
           <View style={styles.amenities}>
-            <Text style={styles.amenitiesLabel}>Amenities:</Text>
-            <Text style={styles.amenitiesText}>
+            <Text style={[styles.amenitiesLabel, { color: currentTheme.colors.text.primary }]}>Amenities:</Text>
+            <Text style={[styles.amenitiesText, { color: currentTheme.colors.text.secondary }]}>
               {room.amenities.length > 0 ? room.amenities.join(', ') : 'Basic amenities'}
             </Text>
           </View>
         </View>
 
-        <View style={styles.roomControls}>
+        <View style={[styles.roomControls, { borderTopColor: currentTheme.colors.border.light }]}>
           <View style={styles.controlRow}>
-            <Text style={styles.controlLabel}>Available for Booking</Text>
+            <Text style={[styles.controlLabel, { color: currentTheme.colors.text.primary }]}>Available for Booking</Text>
             <Switch
               value={room.isAvailable}
               onValueChange={() => toggleAvailability(room.id)}
-              trackColor={{ false: theme.colors.neutral[300], true: theme.colors.primary[500] + '40' }}
-              thumbColor={room.isAvailable ? theme.colors.primary[500] : theme.colors.neutral[400]}
+              trackColor={{ false: currentTheme.colors.neutral[300], true: currentTheme.colors.primary[500] + '40' }}
+              thumbColor={room.isAvailable ? currentTheme.colors.primary[500] : currentTheme.colors.neutral[400]}
             />
           </View>
           <View style={styles.controlRow}>
-            <Text style={styles.controlLabel}>Currently Occupied</Text>
+            <Text style={[styles.controlLabel, { color: currentTheme.colors.text.primary }]}>Currently Occupied</Text>
             <Switch
               value={room.isOccupied}
               onValueChange={() => toggleOccupancy(room.id)}
-              trackColor={{ false: theme.colors.neutral[300], true: theme.colors.warning[500] + '40' }}
-              thumbColor={room.isOccupied ? theme.colors.warning[500] : theme.colors.neutral[400]}
+              trackColor={{ false: currentTheme.colors.neutral[300], true: currentTheme.colors.warning[500] + '40' }}
+              thumbColor={room.isOccupied ? currentTheme.colors.warning[500] : currentTheme.colors.neutral[400]}
             />
           </View>
         </View>
@@ -312,9 +315,9 @@ const HotelRoomManagementScreen: React.FC = () => {
 
   const renderAddEditModal = () => (
     <Modal visible={showAddModal} animationType="slide" presentationStyle="pageSheet">
-      <SafeAreaView style={styles.modalContainer}>
-        <View style={styles.modalHeader}>
-          <TouchableOpacity 
+      <SafeAreaView style={[styles.modalContainer, { backgroundColor: currentTheme.colors.background.primary }]}>
+        <View style={[styles.modalHeader, { borderBottomColor: currentTheme.colors.border.light }]}>
+          <TouchableOpacity
             onPress={() => {
               setShowAddModal(false);
               setEditingRoom(null);
@@ -331,9 +334,9 @@ const HotelRoomManagementScreen: React.FC = () => {
               });
             }}
           >
-            <Ionicons name="close" size={24} color={theme.colors.text.primary} />
+            <Ionicons name="close" size={24} color={currentTheme.colors.text.primary} />
           </TouchableOpacity>
-          <Text style={[globalStyles.h3, styles.modalTitle]}>
+          <Text style={[globalStyles.h3, styles.modalTitle, { color: currentTheme.colors.text.primary }]}>
             {editingRoom ? 'Edit Room' : 'Add Room'}
           </Text>
           <View style={{ width: 24 }} />
@@ -397,19 +400,23 @@ const HotelRoomManagementScreen: React.FC = () => {
             existingImages={newRoom.images || []}
           />
 
-          <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>Available for Booking</Text>
+          <View style={[styles.switchRow, { borderBottomColor: currentTheme.colors.border.light }]}>
+            <Text style={[styles.switchLabel, { color: currentTheme.colors.text.primary }]}>Available for Booking</Text>
             <Switch
               value={newRoom.isAvailable ?? true}
               onValueChange={(value) => setNewRoom({ ...newRoom, isAvailable: value })}
+              trackColor={{ false: currentTheme.colors.neutral[300], true: currentTheme.colors.primary[500] + '40' }}
+              thumbColor={newRoom.isAvailable ? currentTheme.colors.primary[500] : currentTheme.colors.neutral[400]}
             />
           </View>
 
-          <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>Currently Occupied</Text>
+          <View style={[styles.switchRow, { borderBottomColor: currentTheme.colors.border.light }]}>
+            <Text style={[styles.switchLabel, { color: currentTheme.colors.text.primary }]}>Currently Occupied</Text>
             <Switch
               value={newRoom.isOccupied ?? false}
               onValueChange={(value) => setNewRoom({ ...newRoom, isOccupied: value })}
+              trackColor={{ false: currentTheme.colors.neutral[300], true: currentTheme.colors.warning[500] + '40' }}
+              thumbColor={newRoom.isOccupied ? currentTheme.colors.warning[500] : currentTheme.colors.neutral[400]}
             />
           </View>
 
@@ -425,24 +432,24 @@ const HotelRoomManagementScreen: React.FC = () => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: currentTheme.colors.background.secondary }]}>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.stats}>
           <Card style={styles.statCard}>
-            <Text style={[globalStyles.h3, { color: theme.colors.primary[500] }]}>{rooms.length}</Text>
-            <Text style={styles.statLabel}>Total Rooms</Text>
+            <Text style={[globalStyles.h3, { color: currentTheme.colors.primary[500] }]}>{rooms.length}</Text>
+            <Text style={[styles.statLabel, { color: currentTheme.colors.text.secondary }]}>Total Rooms</Text>
           </Card>
           <Card style={styles.statCard}>
-            <Text style={[globalStyles.h3, { color: theme.colors.success[500] }]}>
+            <Text style={[globalStyles.h3, { color: currentTheme.colors.success[500] }]}>
               {rooms.filter(room => room.isAvailable && !room.isOccupied).length}
             </Text>
-            <Text style={styles.statLabel}>Available</Text>
+            <Text style={[styles.statLabel, { color: currentTheme.colors.text.secondary }]}>Available</Text>
           </Card>
           <Card style={styles.statCard}>
-            <Text style={[globalStyles.h3, { color: theme.colors.warning[500] }]}>
+            <Text style={[globalStyles.h3, { color: currentTheme.colors.warning[500] }]}>
               {rooms.filter(room => room.isOccupied).length}
             </Text>
-            <Text style={styles.statLabel}>Occupied</Text>
+            <Text style={[styles.statLabel, { color: currentTheme.colors.text.secondary }]}>Occupied</Text>
           </Card>
         </View>
 
@@ -452,12 +459,12 @@ const HotelRoomManagementScreen: React.FC = () => {
       </ScrollView>
 
       {/* Floating Action Button */}
-      <TouchableOpacity 
-        style={styles.fab}
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: currentTheme.colors.primary[500] }]}
         onPress={() => setShowAddModal(true)}
         activeOpacity={0.8}
       >
-        <Ionicons name="add" size={28} color={theme.colors.text.inverse} />
+        <Ionicons name="add" size={28} color={currentTheme.colors.text.inverse} />
       </TouchableOpacity>
 
       {renderAddEditModal()}
@@ -468,20 +475,19 @@ const HotelRoomManagementScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.secondary,
   },
-  
+
   content: {
     flex: 1,
     paddingHorizontal: theme.spacing.lg,
   },
-  
+
   stats: {
     flexDirection: 'row',
     paddingVertical: theme.spacing.md,
     gap: theme.spacing.md,
   },
-  
+
   // Floating Action Button
   fab: {
     position: 'absolute',
@@ -490,7 +496,6 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: theme.colors.success[500],
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 8,
@@ -502,189 +507,169 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
   },
-  
+
   statCard: {
     flex: 1,
     alignItems: 'center',
     paddingVertical: theme.spacing.lg,
   },
-  
+
   statLabel: {
     marginTop: theme.spacing.xs,
-    color: theme.colors.text.secondary,
     fontSize: theme.typography.fontSize.sm,
   },
-  
+
   roomList: {
     paddingBottom: theme.spacing.xl,
   },
-  
+
   roomCard: {
     marginBottom: theme.spacing.md,
   },
-  
+
   roomHeader: {
     flexDirection: 'row',
     marginBottom: theme.spacing.md,
   },
-  
+
   roomInfo: {
     flex: 1,
     marginRight: theme.spacing.md,
   },
-  
+
   roomNumber: {
-    color: theme.colors.text.primary,
     marginBottom: theme.spacing.xs,
   },
-  
+
   roomType: {
     fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.primary[500],
     fontWeight: theme.typography.fontWeight.medium,
     marginBottom: theme.spacing.xs,
   },
-  
+
   roomDescription: {
     fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
     lineHeight: 20,
   },
-  
+
   roomActions: {
     alignItems: 'flex-end',
   },
-  
+
   roomPrice: {
-    color: theme.colors.text.primary,
     marginBottom: theme.spacing.sm,
   },
-  
+
   statusBadge: {
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: theme.spacing.xs,
     borderRadius: theme.borderRadius.md,
     marginBottom: theme.spacing.sm,
   },
-  
+
   available: {
-    backgroundColor: theme.colors.success[50],
   },
-  
+
   occupied: {
-    backgroundColor: theme.colors.warning[50],
   },
-  
+
   maintenance: {
-    backgroundColor: theme.colors.error[50],
   },
-  
+
   statusText: {
     fontSize: theme.typography.fontSize.xs,
     fontWeight: theme.typography.fontWeight.medium,
-    color: theme.colors.text.primary,
   },
-  
+
   actionButtons: {
     flexDirection: 'row',
     gap: theme.spacing.sm,
   },
-  
+
   editButton: {
-    backgroundColor: theme.colors.primary[50],
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.sm,
   },
-  
+
   deleteButton: {
-    backgroundColor: theme.colors.error[50],
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.sm,
   },
-  
+
   imagePreviewContainer: {
     flexDirection: 'row',
     marginBottom: theme.spacing.md,
   },
-  
+
   roomImagePreview: {
     width: 80,
     height: 80,
     borderRadius: theme.borderRadius.md,
     marginRight: theme.spacing.sm,
   },
-  
+
   moreImagesOverlay: {
-    backgroundColor: theme.colors.background.secondary,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  
+
   moreImagesText: {
-    color: theme.colors.text.primary,
     fontWeight: theme.typography.fontWeight.bold,
   },
-  
+
   roomDetails: {
     marginBottom: theme.spacing.md,
     paddingTop: theme.spacing.md,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.border.light,
   },
-  
+
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: theme.spacing.sm,
   },
-  
+
   detailText: {
     marginLeft: theme.spacing.sm,
     fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
   },
-  
+
   amenities: {
     marginTop: theme.spacing.sm,
   },
-  
+
   amenitiesLabel: {
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.medium,
-    color: theme.colors.text.primary,
     marginBottom: theme.spacing.xs,
   },
-  
+
   amenitiesText: {
     fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
     lineHeight: 18,
   },
-  
+
   roomControls: {
     borderTopWidth: 1,
-    borderTopColor: theme.colors.border.light,
     paddingTop: theme.spacing.md,
     gap: theme.spacing.sm,
   },
-  
+
   controlRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  
+
   controlLabel: {
     fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
   },
-  
+
   // Modal Styles
   modalContainer: {
     flex: 1,
-    backgroundColor: theme.colors.background.primary,
   },
-  
+
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -692,33 +677,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.light,
   },
-  
+
   modalTitle: {
-    color: theme.colors.text.primary,
   },
-  
+
   modalContent: {
     flex: 1,
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.lg,
   },
-  
+
   switchRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.light,
   },
-  
+
   switchLabel: {
     fontSize: theme.typography.fontSize.md,
-    color: theme.colors.text.primary,
   },
-  
+
   submitButton: {
     marginTop: theme.spacing.xl,
     marginBottom: theme.spacing.xl,

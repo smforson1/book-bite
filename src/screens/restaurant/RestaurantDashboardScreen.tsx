@@ -8,18 +8,18 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Button, Card, ThemeToggle } from '../../components';
-import { theme } from '../../styles/theme';
+import { Button, Card } from '../../components';
 import { globalStyles } from '../../styles/globalStyles';
+import { theme } from '../../styles/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRestaurant } from '../../contexts/RestaurantContext';
-import { useTheme } from '../../contexts/ThemeContext';
+
 import { useNavigation } from '@react-navigation/native';
 
 const RestaurantDashboardScreen: React.FC = () => {
   const { user } = useAuth();
   const { getMyRestaurants, getMyOrders, getMyMenuItems, restaurants, orders, menuItems } = useRestaurant();
-  const { theme: currentTheme } = useTheme();
+
   const navigation = useNavigation();
   const [todayStats, setTodayStats] = useState({
     orders: 0,
@@ -82,100 +82,95 @@ const RestaurantDashboardScreen: React.FC = () => {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: currentTheme.colors.background.secondary }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background.secondary }]}>
         <View style={styles.loadingContainer}>
-          <Text style={[globalStyles.bodyLarge, { color: currentTheme.colors.text.primary }]}>Loading dashboard...</Text>
+          <Text style={[globalStyles.bodyLarge, { color: theme.colors.text.primary }]}>Loading dashboard...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: currentTheme.colors.background.secondary }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background.secondary }]}>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Header Section */}
-        <View style={[styles.header, { backgroundColor: currentTheme.colors.background.primary }]}>
+        <View style={[styles.header, { backgroundColor: theme.colors.background.primary }]}>
           <View style={styles.welcomeSection}>
-            <Text style={[globalStyles.h2, styles.greeting, { color: currentTheme.colors.text.primary }]}>Welcome, {user?.name}! 🍽️</Text>
-            <Text style={[globalStyles.bodyLarge, styles.subtitle, { color: currentTheme.colors.text.secondary }]}>Manage your restaurant business</Text>
+            <Text style={[globalStyles.h2, styles.greeting, { color: theme.colors.text.primary }]}>Welcome, {user?.name}! 🍽️</Text>
+            <Text style={[globalStyles.bodyLarge, styles.subtitle, { color: theme.colors.text.secondary }]}>Manage your restaurant business</Text>
           </View>
           
           <View style={styles.restaurantIcon}>
-            <Ionicons name="restaurant" size={48} color={currentTheme.colors.secondary[500]} />
+            <Ionicons name="restaurant" size={48} color={theme.colors.secondary[500]} />
           </View>
-        </View>
-
-        {/* Theme Toggle */}
-        <View style={styles.themeToggleContainer}>
-          <ThemeToggle />
         </View>
 
         {/* Quick Stats */}
         <View style={styles.statsSection}>
-          <Text style={[globalStyles.h4, styles.sectionTitle, { color: currentTheme.colors.text.primary }]}>Today's Overview</Text>
+          <Text style={[globalStyles.h4, styles.sectionTitle, { color: theme.colors.text.primary }]}>Today's Overview</Text>
           <View style={styles.statsRow}>
-            <Card style={StyleSheet.flatten([styles.statCard, { borderLeftColor: currentTheme.colors.primary[500], backgroundColor: currentTheme.colors.background.primary }])}>
-              <Text style={[globalStyles.h3, { color: currentTheme.colors.primary[500] }]}>{todayStats.orders}</Text>
-              <Text style={[globalStyles.bodySmall, styles.statLabel, { color: currentTheme.colors.text.secondary }]}>Orders</Text>
+            <Card style={StyleSheet.flatten([styles.statCard, { borderLeftColor: theme.colors.primary[500], backgroundColor: theme.colors.background.primary }])}>
+              <Text style={[globalStyles.h3, { color: theme.colors.primary[500] }]}>{todayStats.orders}</Text>
+              <Text style={[globalStyles.bodySmall, styles.statLabel, { color: theme.colors.text.secondary }]}>Orders</Text>
             </Card>
             
-            <Card style={StyleSheet.flatten([styles.statCard, { borderLeftColor: currentTheme.colors.secondary[500], backgroundColor: currentTheme.colors.background.primary }])}>
-              <Text style={[globalStyles.h3, { color: currentTheme.colors.secondary[500] }]}>₵{todayStats.revenue.toFixed(2)}</Text>
-              <Text style={[globalStyles.bodySmall, styles.statLabel, { color: currentTheme.colors.text.secondary }]}>Revenue</Text>
+            <Card style={StyleSheet.flatten([styles.statCard, { borderLeftColor: theme.colors.secondary[500], backgroundColor: theme.colors.background.primary }])}>
+              <Text style={[globalStyles.h3, { color: theme.colors.secondary[500] }]}>₵{todayStats.revenue.toFixed(2)}</Text>
+              <Text style={[globalStyles.bodySmall, styles.statLabel, { color: theme.colors.text.secondary }]}>Revenue</Text>
             </Card>
             
-            <Card style={StyleSheet.flatten([styles.statCard, { borderLeftColor: currentTheme.colors.success[500], backgroundColor: currentTheme.colors.background.primary }])}>
-              <Text style={[globalStyles.h3, { color: currentTheme.colors.success[500] }]}>{todayStats.menuItems}</Text>
-              <Text style={[globalStyles.bodySmall, styles.statLabel, { color: currentTheme.colors.text.secondary }]}>Menu Items</Text>
+            <Card style={StyleSheet.flatten([styles.statCard, { borderLeftColor: theme.colors.success[500], backgroundColor: theme.colors.background.primary }])}>
+              <Text style={[globalStyles.h3, { color: theme.colors.success[500] }]}>{todayStats.menuItems}</Text>
+              <Text style={[globalStyles.bodySmall, styles.statLabel, { color: theme.colors.text.secondary }]}>Menu Items</Text>
             </Card>
           </View>
         </View>
 
         {/* Quick Actions */}
         <View style={styles.section}>
-          <Text style={[globalStyles.h4, styles.sectionTitle, { color: currentTheme.colors.text.primary }]}>Quick Actions</Text>
+          <Text style={[globalStyles.h4, styles.sectionTitle, { color: theme.colors.text.primary }]}>Quick Actions</Text>
           <View style={styles.quickActions}>
             <TouchableOpacity 
-              style={[styles.actionButton, { backgroundColor: currentTheme.colors.background.primary }]}
+              style={[styles.actionButton, { backgroundColor: theme.colors.background.primary }]}
               onPress={() => {
                 // @ts-ignore
                 navigation.navigate('Menu');
               }}
             >
-              <Ionicons name="restaurant" size={20} color={currentTheme.colors.secondary[500]} />
-              <Text style={[styles.actionText, { color: currentTheme.colors.text.primary }]}>Manage Menu</Text>
+              <Ionicons name="restaurant" size={20} color={theme.colors.secondary[500]} />
+              <Text style={[styles.actionText, { color: theme.colors.text.primary }]}>Manage Menu</Text>
             </TouchableOpacity>
             <TouchableOpacity 
-              style={[styles.actionButton, { backgroundColor: currentTheme.colors.background.primary }]}
+              style={[styles.actionButton, { backgroundColor: theme.colors.background.primary }]}
               onPress={() => {
                 // @ts-ignore
                 navigation.navigate('Orders');
               }}
             >
-              <Ionicons name="receipt" size={20} color={currentTheme.colors.primary[500]} />
-              <Text style={[styles.actionText, { color: currentTheme.colors.text.primary }]}>View Orders</Text>
+              <Ionicons name="receipt" size={20} color={theme.colors.primary[500]} />
+              <Text style={[styles.actionText, { color: theme.colors.text.primary }]}>View Orders</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionButton, { backgroundColor: currentTheme.colors.background.primary }]}>
-              <Ionicons name="analytics" size={20} color={currentTheme.colors.warning[500]} />
-              <Text style={[styles.actionText, { color: currentTheme.colors.text.primary }]}>Analytics</Text>
+            <TouchableOpacity style={[styles.actionButton, { backgroundColor: theme.colors.background.primary }]}>
+              <Ionicons name="analytics" size={20} color={theme.colors.warning[500]} />
+              <Text style={[styles.actionText, { color: theme.colors.text.primary }]}>Analytics</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionButton, { backgroundColor: currentTheme.colors.background.primary }]}>
-              <Ionicons name="settings" size={20} color={currentTheme.colors.neutral[600]} />
-              <Text style={[styles.actionText, { color: currentTheme.colors.text.primary }]}>Settings</Text>
+            <TouchableOpacity style={[styles.actionButton, { backgroundColor: theme.colors.background.primary }]}>
+              <Ionicons name="settings" size={20} color={theme.colors.neutral[600]} />
+              <Text style={[styles.actionText, { color: theme.colors.text.primary }]}>Settings</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Recent Orders */}
         <View style={styles.section}>
-          <Text style={[globalStyles.h4, styles.sectionTitle, { color: currentTheme.colors.text.primary }]}>Recent Orders</Text>
-          <Card style={StyleSheet.flatten([styles.ordersCard, { backgroundColor: currentTheme.colors.background.primary }])}>
+          <Text style={[globalStyles.h4, styles.sectionTitle, { color: theme.colors.text.primary }]}>Recent Orders</Text>
+          <Card style={StyleSheet.flatten([styles.ordersCard, { backgroundColor: theme.colors.background.primary }])}>
             <View style={styles.emptyState}>
-              <View style={[styles.emptyIcon, { backgroundColor: currentTheme.colors.background.secondary }]}>
-                <Ionicons name="receipt-outline" size={48} color={currentTheme.colors.text.tertiary} />
+              <View style={[styles.emptyIcon, { backgroundColor: theme.colors.background.secondary }]}>
+                <Ionicons name="receipt-outline" size={48} color={theme.colors.text.tertiary} />
               </View>
-              <Text style={[globalStyles.h5, styles.emptyText, { color: currentTheme.colors.text.primary }]}>No recent orders</Text>
-              <Text style={[globalStyles.bodySmall, styles.emptySubtext, { color: currentTheme.colors.text.secondary }]}>Customer orders will appear here</Text>
+              <Text style={[globalStyles.h5, styles.emptyText, { color: theme.colors.text.primary }]}>No recent orders</Text>
+              <Text style={[globalStyles.bodySmall, styles.emptySubtext, { color: theme.colors.text.secondary }]}>Customer orders will appear here</Text>
             </View>
           </Card>
         </View>

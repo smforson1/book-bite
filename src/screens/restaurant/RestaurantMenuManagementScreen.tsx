@@ -14,10 +14,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, Card, Input } from '../../components';
 import ImageUpload from '../../components/ImageUpload';
-import { theme } from '../../styles/theme';
 import { globalStyles } from '../../styles/globalStyles';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRestaurant } from '../../contexts/RestaurantContext';
+import { lightTheme as theme } from '../../styles/theme';
 
 interface MenuItem {
   id: string;
@@ -34,6 +34,7 @@ interface MenuItem {
 const RestaurantMenuManagementScreen: React.FC = () => {
   const { user } = useAuth();
   const { addMenuItem, updateMenuItem } = useRestaurant();
+  
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);

@@ -383,6 +383,8 @@ const UserProfileScreen: React.FC = () => {
   );
 };
 
+
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -504,7 +506,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border.light,
   },
-  
   logoutAction: {
     borderBottomWidth: 0,
   },

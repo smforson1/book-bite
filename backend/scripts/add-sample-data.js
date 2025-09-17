@@ -261,6 +261,36 @@ async function createRestaurant(restaurantData, token) {
   return null;
 }
 
+async function createMenuItem(menuItemData, token) {
+  try {
+    const response = await axios.post(`${API_BASE}/menu-items`, menuItemData, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (response.data.success) {
+      console.log(`✅ Created menu item: ${menuItemData.name}`);
+      return response.data.data.menuItem;
+    }
+  } catch (error) {
+    console.error(`❌ Failed to create menu item ${menuItemData.name}:`, error.response?.data?.message || error.message);
+  }
+  return null;
+}
+
+async function createRoom(roomData, token) {
+  try {
+    const response = await axios.post(`${API_BASE}/rooms`, roomData, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (response.data.success) {
+      console.log(`✅ Created room: ${roomData.name} (${roomData.roomNumber})`);
+      return response.data.data.room;
+    }
+  } catch (error) {
+    console.error(`❌ Failed to create room ${roomData.name}:`, error.response?.data?.message || error.message);
+  }
+  return null;
+}
+
 async function addSampleData() {
   console.log('🚀 Adding sample data to Book Bite backend...\n');
 
@@ -329,6 +359,31 @@ async function addSampleData() {
       }
     }
 
+    // Create rooms for hotels
+    console.log('\n🛏️ Creating hotel rooms...');
+    let createdRooms = 0;
+    
+    for (let i = 0; i < createdHotels.length; i++) {
+      const hotel = createdHotels[i];
+      const owner = hotelOwners[i];
+      
+      // Find rooms for this hotel
+      const hotelRooms = sampleRooms.filter(room => 
+        room.hotelName === sampleHotels[i].name
+      );
+      
+      for (const roomData of hotelRooms) {
+        const { hotelName, ...roomInfo } = roomData;
+        const room = await createRoom({
+          ...roomInfo,
+          hotelId: hotel._id,
+          isAvailable: true
+        }, owner.accessToken);
+        
+        if (room) createdRooms++;
+      }
+    }
+
     // Create restaurants
     console.log('\n🍽️ Creating restaurants...');
     const createdRestaurants = [];
@@ -341,12 +396,38 @@ async function addSampleData() {
       }
     }
 
+    // Create menu items
+    console.log('\n🍕 Creating menu items...');
+    let createdMenuItems = 0;
+    
+    for (let i = 0; i < createdRestaurants.length; i++) {
+      const restaurant = createdRestaurants[i];
+      const owner = restaurantOwners[i];
+      
+      // Find menu items for this restaurant
+      const restaurantMenuItems = sampleMenuItems.filter(item => 
+        item.restaurantName === sampleRestaurants[i].name
+      );
+      
+      for (const menuItemData of restaurantMenuItems) {
+        const { restaurantName, ...itemData } = menuItemData;
+        const menuItem = await createMenuItem({
+          ...itemData,
+          restaurantId: restaurant._id
+        }, owner.accessToken);
+        
+        if (menuItem) createdMenuItems++;
+      }
+    }
+
     console.log('\n🎉 Sample data added successfully!');
     console.log(`📊 Summary:`);
     console.log(`   👥 Users: ${hotelOwners.length + restaurantOwners.length}`);
     console.log(`   🏨 Hotels: ${createdHotels.length}`);
+    console.log(`   🛏️ Rooms: ${createdRooms}`);
     console.log(`   🍽️ Restaurants: ${createdRestaurants.length}`);
-    console.log('\n💡 You can now see these hotels and restaurants in your app!');
+    console.log(`   🍕 Menu Items: ${createdMenuItems}`);
+    console.log('\n� Yoeu can now see these hotels and restaurants in your app!');
     console.log('🔄 Refresh your app to load the new data.');
 
   } catch (error) {
