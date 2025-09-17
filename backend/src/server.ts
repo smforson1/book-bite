@@ -23,6 +23,7 @@ import bookingRoutes from '@/routes/bookings';
 import restaurantRoutes from '@/routes/restaurants';
 import menuItemRoutes from '@/routes/menuItems';
 import orderRoutes from '@/routes/orders';
+import uploadRoutes from '@/routes/upload';
 
 const app = express();
 const server = createServer(app);
@@ -48,6 +49,9 @@ app.use(generalLimiter);
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Serve uploaded files statically
+app.use('/uploads', express.static('uploads'));
 
 // Compression middleware
 app.use(compression());
@@ -78,6 +82,7 @@ app.use(`/api/${API_VERSION}/bookings`, bookingRoutes);
 app.use(`/api/${API_VERSION}/restaurants`, restaurantRoutes);
 app.use(`/api/${API_VERSION}/menu-items`, menuItemRoutes);
 app.use(`/api/${API_VERSION}/orders`, orderRoutes);
+app.use(`/api/${API_VERSION}/upload`, uploadRoutes);
 
 // Socket.IO status endpoint
 app.get('/api/socket/status', (req, res) => {

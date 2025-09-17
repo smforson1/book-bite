@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { User, Hotel, Room, Restaurant, MenuItem, Booking, Order, Review } from '../types';
+import { storageService } from './storageService';
 
 // API Configuration
 const getBaseURL = () => {
@@ -60,7 +61,7 @@ interface ApiError {
 }
 
 class ApiService {
-  private baseURL: string;
+  public baseURL: string;
   private fallbackURLs: string[];
   private timeout: number;
   private retryAttempts: number;
@@ -132,9 +133,13 @@ class ApiService {
     }
   }
 
-  private async getAuthToken(): Promise<string | null> {
+  async getAuthToken(): Promise<string | null> {
     try {
-      return await AsyncStorage.getItem('AUTH_TOKEN');
+      const token = await storageService.getAuthToken();
+      if (__DEV__) {
+        console.log('🔑 Auth token retrieved:', token ? 'Token exists' : 'No token found');
+      }
+      return token;
     } catch (error) {
       console.error('Error getting auth token:', error);
       return null;
@@ -178,18 +183,30 @@ class ApiService {
     const token = requiresAuth ? await this.getAuthToken() : null;
 
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
       'Accept': 'application/json',
     };
 
+    // Don't set Content-Type for FormData - let the browser set it with boundary
+    const isFormData = data instanceof FormData;
+    if (!isFormData) {
+      headers['Content-Type'] = 'application/json';
+    }
+
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
+      if (__DEV__) {
+        console.log('🔐 Adding auth header to request:', url);
+      }
+    } else if (requiresAuth) {
+      if (__DEV__) {
+        console.warn('⚠️ No auth token available for authenticated request:', url);
+      }
     }
 
     const config: RequestInit = {
       method,
       headers,
-      body: data ? JSON.stringify(data) : undefined,
+      body: data ? (isFormData ? data : JSON.stringify(data)) : undefined,
     };
 
     try {
@@ -418,6 +435,7 @@ class ApiService {
     formData.append('file', file);
     formData.append('category', category);
 
+    // Use the generic upload endpoint
     return this.makeRequest('/upload', 'POST', formData);
   }
 
