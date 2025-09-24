@@ -17,7 +17,7 @@ import { useRestaurant } from '../../contexts/RestaurantContext';
 import { Restaurant } from '../../types';
 import { googleMapsService } from '../../services/googleMapsService';
 import { ghanaPromotionService, GhanaPromotion } from '../../services/ghanaPromotionService';
-import { locationService } from '../../services/locationService';
+import { locationService, UserLocation } from '../../services/locationService';
 import { useListing } from '../../hooks';
 
 interface RestaurantsScreenProps {
@@ -29,6 +29,8 @@ interface RestaurantFilters {
   minRating?: number;
   maxDeliveryTime?: number;
   maxDeliveryFee?: number;
+  minPrice?: number;
+  maxPrice?: number;
   location?: string;
 }
 
@@ -42,6 +44,21 @@ const RestaurantsScreen: React.FC<RestaurantsScreenProps> = ({ navigation }) => 
 
     if (filters.maxDeliveryFee !== undefined) {
       filtered = filtered.filter(restaurant => restaurant.deliveryFee <= filters.maxDeliveryFee!);
+    }
+
+    if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
+      // Filter restaurants based on menu item prices
+      filtered = filtered.filter(restaurant => {
+        const restaurantMenu = getMenuByRestaurantId(restaurant.id);
+        if (restaurantMenu.length === 0) return false;
+        
+        // Check if any menu item falls within the price range
+        return restaurantMenu.some((item: any) => {
+          if (filters.minPrice !== undefined && item.price < filters.minPrice!) return false;
+          if (filters.maxPrice !== undefined && item.price > filters.maxPrice!) return false;
+          return true;
+        });
+      });
     }
 
     if (filters.cuisine && filters.cuisine.length > 0) {
@@ -63,7 +80,7 @@ const RestaurantsScreen: React.FC<RestaurantsScreenProps> = ({ navigation }) => 
     return filtered;
   };
 
-  const { restaurants, getRestaurants, searchRestaurants } = useRestaurant();
+  const { restaurants, getRestaurants, searchRestaurants, getMenuByRestaurantId } = useRestaurant();
   const {
     loading,
     searchQuery,
@@ -132,6 +149,61 @@ const RestaurantsScreen: React.FC<RestaurantsScreenProps> = ({ navigation }) => 
     navigation.navigate('RestaurantDetail', { restaurant });
   };
 
+  const handleSortByDistance = async () => {
+    if (!userLocation) {
+      // Get current location if not available
+      try {
+        const currentLocation = await locationService.getCurrentLocation();
+        if (!currentLocation) return;
+        
+        sortRestaurantsByDistance(currentLocation);
+      } catch (error) {
+        console.error('Error getting current location:', error);
+      }
+      return;
+    }
+    
+    sortRestaurantsByDistance(userLocation);
+  };
+
+  const sortRestaurantsByDistance = async (currentLocation: any) => {
+    try {
+      const restaurantsWithDistance = await Promise.all(
+        filteredRestaurants.map(async (restaurant) => {
+          try {
+            // For demo purposes, we'll use mock coordinates
+            // In a real app, restaurants would have stored coordinates
+            const restaurantCoords = await locationService.geocodeAddress(restaurant.address);
+            
+            let distance = 0;
+            if (restaurantCoords.length > 0) {
+              distance = locationService.calculateDistance(
+                { latitude: currentLocation.latitude || 5.6037, longitude: currentLocation.longitude || -0.1870 },
+                restaurantCoords[0]
+              );
+            }
+            
+            return {
+              ...restaurant,
+              distance: distance
+            };
+          } catch (error) {
+            return {
+              ...restaurant,
+              distance: 999 // Put restaurants with geocoding errors at the end
+            };
+          }
+        })
+      );
+
+      // Sort by distance
+      const sortedRestaurants = restaurantsWithDistance.sort((a, b) => a.distance - b.distance);
+      setFilteredItems(sortedRestaurants);
+    } catch (error) {
+      console.error('Error sorting by distance:', error);
+    }
+  };
+
   const renderRestaurant = ({ item: restaurant }: { item: Restaurant }) => {
     const hasActivePromo = promotions.some((promo: GhanaPromotion) => 
       userLocation?.city && promo.applicableCities.includes(userLocation.city) &&
@@ -177,6 +249,14 @@ const RestaurantsScreen: React.FC<RestaurantsScreenProps> = ({ navigation }) => 
               <Ionicons name="card" size={12} color={theme.colors.text.tertiary} />
               <Text style={styles.deliveryText}>₵{restaurant.minimumOrder} min</Text>
             </View>
+            {(restaurant as any).distance && (restaurant as any).distance < 999 && (
+              <View style={styles.deliveryItem}>
+                <Ionicons name="navigate" size={12} color={theme.colors.primary[500]} />
+                <Text style={[styles.deliveryText, styles.distanceText]}>
+                  {(restaurant as any).distance.toFixed(1)} km
+                </Text>
+              </View>
+            )}
             {userLocation && locationService.isLocationInGhana({ 
               latitude: 5.6037, 
               longitude: -0.1870 
@@ -232,11 +312,20 @@ const RestaurantsScreen: React.FC<RestaurantsScreenProps> = ({ navigation }) => 
         }
       />
 
-      {/* Location Header */}
+      {/* Location Header with Sort Options */}
       {userLocation && (
         <View style={styles.locationHeader}>
-          <Ionicons name="location" size={16} color={theme.colors.primary[500]} />
-          <Text style={styles.locationText}>Delivering to {userLocation.city}</Text>
+          <View style={styles.locationInfo}>
+            <Ionicons name="location" size={16} color={theme.colors.primary[500]} />
+            <Text style={styles.locationText}>Delivering to {userLocation.city}</Text>
+          </View>
+          <TouchableOpacity 
+            style={styles.sortButton}
+            onPress={() => handleSortByDistance()}
+          >
+            <Ionicons name="navigate" size={14} color={theme.colors.primary[500]} />
+            <Text style={styles.sortButtonText}>Sort by Distance</Text>
+          </TouchableOpacity>
         </View>
       )}
       
@@ -390,6 +479,10 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.xs,
     color: theme.colors.text.tertiary,
   },
+  distanceText: {
+    color: theme.colors.primary[600],
+    fontWeight: theme.typography.fontWeight.medium as '500',
+  },
   chevronContainer: {
     justifyContent: 'center',
     alignItems: 'center',
@@ -447,13 +540,34 @@ const styles = StyleSheet.create({
   locationHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.sm,
     backgroundColor: theme.colors.primary[50],
   },
+  locationInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   locationText: {
     marginLeft: theme.spacing.xs,
     fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.primary[600],
+    fontWeight: theme.typography.fontWeight.medium as '500',
+  },
+  sortButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    backgroundColor: theme.colors.background.primary,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.primary[200],
+  },
+  sortButtonText: {
+    marginLeft: theme.spacing.xs,
+    fontSize: theme.typography.fontSize.xs,
     color: theme.colors.primary[600],
     fontWeight: theme.typography.fontWeight.medium as '500',
   },

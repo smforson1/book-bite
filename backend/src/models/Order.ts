@@ -42,7 +42,7 @@ const orderSchema = new Schema<IOrder>({
       validator: function(items: IOrderItem[]) {
         return items.length > 0;
       },
-      message: 'Order must contain at least one item'
+      message: 'Order must have at least one item'
     }
   },
   totalPrice: {
@@ -55,18 +55,33 @@ const orderSchema = new Schema<IOrder>({
     required: [true, 'Delivery address is required'],
     trim: true,
     minlength: [10, 'Delivery address must be at least 10 characters long'],
-    maxlength: [200, 'Delivery address cannot exceed 200 characters']
+    maxlength: [300, 'Delivery address cannot exceed 300 characters']
   },
   deliveryCoordinates: {
     latitude: {
       type: Number,
-      min: [-90, 'Latitude must be between -90 and 90'],
-      max: [90, 'Latitude must be between -90 and 90']
+      required: [true, 'Delivery latitude is required'],
+      min: [-90, 'Invalid latitude'],
+      max: [90, 'Invalid latitude']
     },
     longitude: {
       type: Number,
-      min: [-180, 'Longitude must be between -180 and 180'],
-      max: [180, 'Longitude must be between -180 and 180']
+      required: [true, 'Delivery longitude is required'],
+      min: [-180, 'Invalid longitude'],
+      max: [180, 'Invalid longitude']
+    }
+  },
+  deliveryDetails: {
+    streetAddress: { type: String },
+    apartmentNumber: { type: String },
+    floor: { type: String },
+    buildingName: { type: String },
+    landmark: { type: String },
+    contactPhone: { type: String },
+    label: {
+      type: String,
+      enum: ['Home', 'Work', 'Other'],
+      default: 'Other'
     }
   },
   status: {
@@ -103,7 +118,7 @@ const orderSchema = new Schema<IOrder>({
   },
   deliveryInstructions: {
     type: String,
-    maxlength: [500, 'Delivery instructions cannot exceed 500 characters']
+    maxlength: [300, 'Delivery instructions cannot exceed 300 characters']
   }
 }, {
   timestamps: true,
@@ -143,16 +158,12 @@ orderSchema.virtual('driver', {
   justOne: true
 });
 
-// Virtual for total items count
-orderSchema.virtual('totalItems').get(function() {
-  return this.items.reduce((total, item) => total + item.quantity, 0);
-});
-
-// Method to calculate estimated delivery time
-orderSchema.methods.calculateEstimatedDeliveryTime = function(restaurantDeliveryTime: string) {
+// Method to calculate delivery time based on restaurant's delivery time
+orderSchema.methods.calculateEstimatedDeliveryTime = function() {
   const now = new Date();
-  const deliveryMinutes = parseInt(restaurantDeliveryTime.match(/\d+/)?.[0] || '30');
-  return new Date(now.getTime() + deliveryMinutes * 60000);
+  // Add 30-60 minutes for preparation and delivery
+  const estimatedMinutes = 30 + Math.floor(Math.random() * 30);
+  return new Date(now.getTime() + estimatedMinutes * 60000);
 };
 
 export const Order = mongoose.model<IOrder>('Order', orderSchema);

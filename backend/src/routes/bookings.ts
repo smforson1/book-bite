@@ -24,9 +24,9 @@ router.get('/:id', mongoIdValidation('id'), handleValidationErrors, getBookingBy
 router.patch('/:id/cancel', mongoIdValidation('id'), handleValidationErrors, cancelBooking);
 
 // Hotel owner and admin routes
-router.get('/', authorize('hotel_owner', 'admin'), getBookings);
+router.get('/', authorize(['hotel_owner', 'admin']), getBookings);
 router.patch('/:id/status',
-  authorize('hotel_owner', 'admin'),
+  authorize(['hotel_owner', 'admin']),
   mongoIdValidation('id'),
   [
     body('status')

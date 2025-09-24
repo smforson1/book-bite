@@ -98,12 +98,28 @@ export interface Order {
   totalPrice: number;
   originalPrice?: number;
   deliveryAddress: string;
+  deliveryCoordinates: {
+    latitude: number;
+    longitude: number;
+  };
+  deliveryDetails?: {
+    streetAddress?: string;
+    apartmentNumber?: string;
+    floor?: string;
+    buildingName?: string;
+    landmark?: string;
+    contactPhone?: string;
+    label?: string;
+  };
+  deliveryInstructions?: string;
   status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'picked_up' | 'on_the_way' | 'delivered' | 'cancelled';
   paymentStatus: 'pending' | 'paid' | 'refunded';
   paymentMethod?: string;
   transactionId?: string;
   paymentDate?: Date;
   estimatedDeliveryTime: Date;
+  actualDeliveryTime?: Date;
+  driverId?: string;
   createdAt: Date;
 }
 

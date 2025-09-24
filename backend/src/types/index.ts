@@ -11,6 +11,7 @@ export interface IUser extends Document {
   role: 'user' | 'hotel_owner' | 'restaurant_owner' | 'admin';
   phone?: string;
   avatar?: string;
+  pushToken?: string;
   isActive: boolean;
   emailVerified: boolean;
   createdAt: Date;
@@ -151,9 +152,18 @@ export interface IOrder extends Document {
   items: IOrderItem[];
   totalPrice: number;
   deliveryAddress: string;
-  deliveryCoordinates?: {
+  deliveryCoordinates: {
     latitude: number;
     longitude: number;
+  };
+  deliveryDetails?: {
+    streetAddress?: string;
+    apartmentNumber?: string;
+    floor?: string;
+    buildingName?: string;
+    landmark?: string;
+    contactPhone?: string;
+    label?: string;
   };
   status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'picked_up' | 'on_the_way' | 'delivered' | 'cancelled';
   paymentStatus: 'pending' | 'paid' | 'refunded';

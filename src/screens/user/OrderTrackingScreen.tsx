@@ -19,7 +19,7 @@ import { ghanaSMSService } from '../../services/ghanaSMSService';
 import { googleMapsService } from '../../services/googleMapsService';
 import GhanaMapComponent, { MapMarker } from '../../components/GhanaMapComponent';
 import { LocationCoordinates } from '../../services/locationService';
-import { Order } from '../../types';
+import { Order } from '../../types/index';
 
 interface OrderTrackingScreenProps {
   navigation: any;
@@ -52,13 +52,13 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
   const [showMap, setShowMap] = useState(false);
   const [mapMarkers, setMapMarkers] = useState<MapMarker[]>([]);
   const [deliveryRoute, setDeliveryRoute] = useState<LocationCoordinates[]>([]);
-  
+
   const progressAnimation = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     loadOrderData();
     setupRealTimeTracking();
-    
+
     return () => {
       // Cleanup real-time subscriptions
       realTimeService.disconnect();
@@ -77,11 +77,11 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
       const foundOrder = orders.find(o => o.id === orderId);
       if (foundOrder) {
         setOrder(foundOrder);
-        
+
         // Load tracking history
         const history = await realTimeService.getOrderTrackingHistory(orderId);
         setTrackingUpdates(history);
-        
+
         // Get estimated delivery time from Ghana maps service
         if (foundOrder.deliveryAddress) {
           const restaurant = getRestaurantById(foundOrder.restaurantId);
@@ -100,17 +100,17 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
     const unsubscribeOrder = realTimeService.subscribe('order_update', (update: OrderTrackingUpdate) => {
       if (update.orderId === orderId) {
         setTrackingUpdates(prev => [...prev, update]);
-        
+
         // Update order status
         if (order) {
           setOrder(prev => prev ? { ...prev, status: update.status as any } : null);
         }
-        
+
         // Update estimated arrival time
         if (update.estimatedDeliveryTime) {
           setEstimatedArrival(update.estimatedDeliveryTime.toLocaleTimeString());
         }
-        
+
         // Animate progress
         animateProgress(update.status);
       }
@@ -120,7 +120,7 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
     const unsubscribeLocation = realTimeService.subscribe('driver_location', (data: any) => {
       if (data.orderId === orderId && data.location) {
         setDriverLocation(data.location);
-        
+
         // Update delivery route if we have restaurant and delivery addresses
         updateDeliveryRoute(data.location);
       }
@@ -245,9 +245,9 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
           restaurantLocation,
           deliveryLocation
         );
-        
+
         setEstimatedArrival(estimate.estimatedTime);
-        
+
         // Update delivery route
         if (estimate.route) {
           // Decode polyline to coordinates (simplified)
@@ -262,7 +262,41 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
 
   const updateDeliveryRoute = (currentDriverLocation: LocationCoordinates) => {
     if (!order) return;
+
+    // Use precise delivery coordinates from enhanced order system
+    const deliveryCoords = (order as any).deliveryCoordinates || order.deliveryCoordinates;
+    if (deliveryCoords) {
+      // Update route with precise coordinates
+      const routeCoords = [currentDriverLocation, deliveryCoords];
+      setDeliveryRoute(routeCoords);
+    }
+  };
+
+  const showPreciseDeliveryLocation = () => {
+    if (!order) return;
     
+    const deliveryCoords = (order as any)?.deliveryCoordinates || order?.deliveryCoordinates;
+    if (!deliveryCoords) return;
+
+    Alert.alert(
+      'Precise Delivery Location',
+      `Your order will be delivered to:\n\n${order.deliveryAddress}\n\nGPS Coordinates:\n${deliveryCoords.latitude.toFixed(6)}, ${deliveryCoords.longitude.toFixed(6)}`,
+      [
+        { text: 'OK' },
+        {
+          text: 'Open in Maps',
+          onPress: () => {
+            const url = `https://maps.google.com/?q=${deliveryCoords.latitude},${deliveryCoords.longitude}`;
+            Linking.openURL(url);
+          }
+        }
+      ]
+    );
+  };
+
+  const updateDeliveryRouteOld = (currentDriverLocation: LocationCoordinates) => {
+    if (!order) return;
+
     // Update route from current driver location to delivery address
     // This would use Google Maps Directions API to get real-time route
     const deliveryAddress = { latitude: 5.6137, longitude: -0.1770 }; // Placeholder
@@ -280,7 +314,7 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
     };
 
     const targetValue = progressValues[status as keyof typeof progressValues] || 0;
-    
+
     Animated.timing(progressAnimation, {
       toValue: targetValue,
       duration: 1000,
@@ -302,9 +336,9 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
         `Do you want to call ${restaurant.name}?`,
         [
           { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Call', 
-            onPress: () => Linking.openURL(`tel:${restaurant.phone}`) 
+          {
+            text: 'Call',
+            onPress: () => Linking.openURL(`tel:${restaurant.phone}`)
           }
         ]
       );
@@ -315,14 +349,14 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
     try {
       // This would send user's current location to the delivery person via SMS
       await ghanaSMSService.sendTemplatedSMS(
-        'delivery_location_update', 
+        'delivery_location_update',
         '+233123456789', // Driver's phone
         {
           orderId: order?.id || '',
           location: 'Current location coordinates'
         }
       );
-      
+
       Alert.alert('Success', 'Your location has been shared with the delivery person.');
     } catch (error) {
       Alert.alert('Error', 'Failed to share location. Please try again.');
@@ -361,10 +395,10 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
           step.completed && styles.stepIconCompleted,
           step.active && styles.stepIconActive
         ]}>
-          <Ionicons 
-            name={step.icon as any} 
-            size={20} 
-            color={step.completed ? theme.colors.neutral[0] : theme.colors.text.tertiary} 
+          <Ionicons
+            name={step.icon as any}
+            size={20}
+            color={step.completed ? theme.colors.neutral[0] : theme.colors.text.tertiary}
           />
         </View>
         {index < trackingSteps.length - 1 && (
@@ -400,7 +434,7 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
           <Text style={styles.errorMessage}>
             We couldn't find the order you're looking for.
           </Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
@@ -417,14 +451,14 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
           <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Track Order</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.headerAction}
           onPress={() => setShowMap(!showMap)}
         >
@@ -465,7 +499,7 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
         {/* Progress Bar */}
         <View style={styles.progressContainer}>
           <View style={styles.progressBar}>
-            <Animated.View 
+            <Animated.View
               style={[
                 styles.progressFill,
                 {
@@ -474,7 +508,7 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
                     outputRange: ['0%', '100%'],
                   })
                 }
-              ]} 
+              ]}
             />
           </View>
         </View>
@@ -514,7 +548,7 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
 
         {/* Actions */}
         <View style={styles.actionsContainer}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={handleCallRestaurant}
           >
@@ -522,8 +556,16 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
             <Text style={styles.actionButtonText}>Call Restaurant</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={showPreciseDeliveryLocation}
+          >
+            <Ionicons name="location" size={20} color={theme.colors.primary[500]} />
+            <Text style={styles.actionButtonText}>View Precise Location</Text>
+          </TouchableOpacity>
+
           {['picked_up', 'on_the_way'].includes(order.status) && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.actionButton}
               onPress={handleShareLocation}
             >
@@ -532,7 +574,7 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
             </TouchableOpacity>
           )}
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.actionButton, styles.reportButton]}
             onPress={handleReportIssue}
           >

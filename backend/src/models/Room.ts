@@ -34,7 +34,8 @@ const roomSchema = new Schema<IRoom>({
   },
   amenities: [{
     type: String,
-    trim: true
+    trim: true,
+    required: true
   }],
   images: [{
     type: String,
@@ -47,9 +48,7 @@ const roomSchema = new Schema<IRoom>({
   roomNumber: {
     type: String,
     required: [true, 'Room number is required'],
-    trim: true,
-    minlength: [1, 'Room number must be at least 1 character long'],
-    maxlength: [20, 'Room number cannot exceed 20 characters']
+    trim: true
   },
   type: {
     type: String,
@@ -62,14 +61,15 @@ const roomSchema = new Schema<IRoom>({
   toObject: { virtuals: true }
 });
 
-// Compound index to ensure unique room numbers per hotel
-roomSchema.index({ hotelId: 1, roomNumber: 1 }, { unique: true });
-
-// Other indexes for performance
+// Indexes for performance
 roomSchema.index({ hotelId: 1 });
 roomSchema.index({ isAvailable: 1 });
-roomSchema.index({ type: 1 });
 roomSchema.index({ price: 1 });
+roomSchema.index({ type: 1 });
+roomSchema.index({ capacity: 1 });
+
+// Compound index to ensure unique room numbers per hotel
+roomSchema.index({ hotelId: 1, roomNumber: 1 }, { unique: true });
 
 // Virtual for hotel
 roomSchema.virtual('hotel', {
@@ -77,13 +77,6 @@ roomSchema.virtual('hotel', {
   localField: 'hotelId',
   foreignField: '_id',
   justOne: true
-});
-
-// Virtual for bookings
-roomSchema.virtual('bookings', {
-  ref: 'Booking',
-  localField: '_id',
-  foreignField: 'roomId'
 });
 
 export const Room = mongoose.model<IRoom>('Room', roomSchema);

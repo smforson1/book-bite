@@ -394,6 +394,35 @@ class ApiService {
   }
 
   // Payment APIs
+  async initiatePayment(paymentData: {
+    amount: number;
+    currency: string;
+    paymentMethod: string;
+    referenceId: string;
+    type: 'booking' | 'order';
+  }): Promise<ApiResponse<{ payment: any; paymentUrl?: string; accessCode?: string }>> {
+    return this.makeRequest('/payments/initiate', 'POST', paymentData);
+  }
+
+  async verifyPayment(transactionId: string): Promise<ApiResponse<{ payment: any }>> {
+    return this.makeRequest(`/payments/verify/${transactionId}`, 'GET');
+  }
+
+  async getPaymentHistory(filters?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    paymentMethod?: string;
+  }): Promise<ApiResponse<{ payments: any[] }>> {
+    const queryParams = filters ? `?${new URLSearchParams(filters as any).toString()}` : '';
+    return this.makeRequest(`/payments/history${queryParams}`, 'GET');
+  }
+
+  async getPaymentMethods(): Promise<ApiResponse<{ paymentMethods: any[] }>> {
+    return this.makeRequest('/payments/methods');
+  }
+
+  // Legacy method for backward compatibility
   async processPayment(paymentData: {
     amount: number;
     currency: string;
@@ -401,32 +430,124 @@ class ApiService {
     referenceId: string;
     type: 'booking' | 'order';
   }): Promise<ApiResponse<{ transactionId: string; status: string }>> {
-    return this.makeRequest('/payments/process', 'POST', paymentData);
-  }
+    const response = await this.initiatePayment({
+      amount: paymentData.amount,
+      currency: paymentData.currency,
+      paymentMethod: paymentData.paymentMethodId,
+      referenceId: paymentData.referenceId,
+      type: paymentData.type
+    });
 
-  async getPaymentMethods(): Promise<ApiResponse<any[]>> {
-    return this.makeRequest('/payments/methods');
-  }
+    // Transform the response to match the legacy format
+    if (response.success && response.data?.payment) {
+      return {
+        success: true,
+        data: {
+          transactionId: response.data.payment.transactionId || response.data.payment.id,
+          status: response.data.payment.status || 'pending'
+        },
+        message: response.message
+      };
+    }
 
-  async savePaymentMethod(paymentMethodData: any): Promise<ApiResponse<any>> {
-    return this.makeRequest('/payments/methods', 'POST', paymentMethodData);
+    return {
+      success: false,
+      error: response.error || 'Payment initiation failed'
+    };
   }
 
   // Review APIs
-  async getReviews(targetId: string, targetType: 'hotel' | 'restaurant' = 'restaurant'): Promise<ApiResponse<Review[]>> {
-    return this.makeRequest(`/reviews?targetId=${targetId}&targetType=${targetType}`);
+  async getReviews(filters?: {
+    targetId?: string;
+    targetType?: 'hotel' | 'restaurant';
+    page?: number;
+    limit?: number;
+    sortBy?: 'createdAt' | 'rating' | 'helpful';
+    minRating?: number;
+    verifiedOnly?: boolean;
+  }): Promise<ApiResponse<{ reviews: Review[]; ratingDistribution?: any }>> {
+    const queryParams = filters ? `?${new URLSearchParams(filters as any).toString()}` : '';
+    return this.makeRequest(`/reviews${queryParams}`);
   }
 
-  async createReview(reviewData: Omit<Review, 'id' | 'createdAt'>): Promise<ApiResponse<Review>> {
-    return this.makeRequest('/reviews', 'POST', reviewData);
+  async createReview(reviewData: {
+    targetId: string;
+    targetType: 'hotel' | 'restaurant';
+    rating: number;
+    title: string;
+    comment: string;
+  }, images?: any[]): Promise<ApiResponse<{ review: Review }>> {
+    const formData = new FormData();
+
+    // Add review data
+    Object.keys(reviewData).forEach(key => {
+      formData.append(key, (reviewData as any)[key]);
+    });
+
+    // Add images if provided
+    if (images && images.length > 0) {
+      images.forEach((image, index) => {
+        formData.append('images', {
+          uri: image.uri,
+          type: 'image/jpeg',
+          name: `review-image-${index}.jpg`,
+        } as any);
+      });
+    }
+
+    return this.makeRequest('/reviews', 'POST', formData);
   }
 
-  async updateReview(reviewId: string, updates: Partial<Review>): Promise<ApiResponse<Review>> {
-    return this.makeRequest(`/reviews/${reviewId}`, 'PUT', updates);
+  async updateReview(reviewId: string, updates: {
+    rating?: number;
+    title?: string;
+    comment?: string;
+  }, images?: any[]): Promise<ApiResponse<{ review: Review }>> {
+    const formData = new FormData();
+
+    // Add update data
+    Object.keys(updates).forEach(key => {
+      formData.append(key, (updates as any)[key]);
+    });
+
+    // Add images if provided
+    if (images && images.length > 0) {
+      images.forEach((image, index) => {
+        formData.append('images', {
+          uri: image.uri,
+          type: 'image/jpeg',
+          name: `review-image-${index}.jpg`,
+        } as any);
+      });
+    }
+
+    return this.makeRequest(`/reviews/${reviewId}`, 'PUT', formData);
   }
 
   async deleteReview(reviewId: string): Promise<ApiResponse<void>> {
     return this.makeRequest(`/reviews/${reviewId}`, 'DELETE');
+  }
+
+  async markReviewHelpful(reviewId: string): Promise<ApiResponse<{ review: Review }>> {
+    return this.makeRequest(`/reviews/${reviewId}/helpful`, 'POST');
+  }
+
+  async getUserReviews(filters?: {
+    targetType?: 'hotel' | 'restaurant';
+    page?: number;
+    limit?: number;
+  }): Promise<ApiResponse<{ reviews: Review[] }>> {
+    const queryParams = filters ? `?${new URLSearchParams(filters as any).toString()}` : '';
+    return this.makeRequest(`/reviews/user${queryParams}`);
+  }
+
+  async getReviewStats(targetId: string, targetType: 'hotel' | 'restaurant'): Promise<ApiResponse<{
+    averageRating: number;
+    totalReviews: number;
+    verifiedReviews: number;
+    ratingDistribution: { [key: number]: number };
+  }>> {
+    return this.makeRequest(`/reviews/stats?targetId=${targetId}&targetType=${targetType}`);
   }
 
   // File upload
@@ -519,6 +640,46 @@ class ApiService {
 
   async updateUserProfile(userId: string, updates: Partial<User>): Promise<ApiResponse<User>> {
     return this.makeRequest(`/auth/profile`, 'PUT', updates);
+  }
+
+  // Notification APIs
+  async registerPushToken(pushToken: string): Promise<ApiResponse<void>> {
+    return this.makeRequest('/notifications/register-token', 'POST', { pushToken });
+  }
+
+  async unregisterPushToken(): Promise<ApiResponse<void>> {
+    return this.makeRequest('/notifications/unregister-token', 'DELETE');
+  }
+
+  async sendTestNotification(data?: {
+    title?: string;
+    body?: string;
+    data?: any;
+  }): Promise<ApiResponse<void>> {
+    return this.makeRequest('/notifications/test', 'POST', data);
+  }
+
+  async getNotificationSettings(): Promise<ApiResponse<{
+    settings: {
+      pushNotificationsEnabled: boolean;
+      orderUpdates: boolean;
+      bookingUpdates: boolean;
+      paymentUpdates: boolean;
+      promotions: boolean;
+      emailNotifications: boolean;
+    };
+  }>> {
+    return this.makeRequest('/notifications/settings');
+  }
+
+  async updateNotificationSettings(settings: {
+    orderUpdates?: boolean;
+    bookingUpdates?: boolean;
+    paymentUpdates?: boolean;
+    promotions?: boolean;
+    emailNotifications?: boolean;
+  }): Promise<ApiResponse<{ settings: any }>> {
+    return this.makeRequest('/notifications/settings', 'PUT', settings);
   }
 
   // Hotel management APIs

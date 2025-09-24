@@ -10,61 +10,41 @@ export interface LocationAddress {
   street?: string;
   city?: string;
   region?: string;
-  country?: string;
   postalCode?: string;
+  country?: string;
   name?: string;
+  formattedAddress?: string;
 }
 
-export interface GhanaLocation extends LocationCoordinates {
-  address?: LocationAddress;
+export interface UserLocation {
+  coordinates: LocationCoordinates;
+  address: LocationAddress;
   accuracy?: number;
-  timestamp?: number;
+  timestamp: number;
 }
 
-// Ghana regions and major cities
-export const GHANA_REGIONS = [
-  'Greater Accra Region',
-  'Ashanti Region',
-  'Western Region',
-  'Central Region',
-  'Eastern Region',
-  'Northern Region',
-  'Upper East Region',
-  'Upper West Region',
-  'Volta Region',
-  'Brong-Ahafo Region',
-];
-
-export const GHANA_MAJOR_CITIES = [
-  'Accra',
-  'Kumasi',
-  'Tamale',
-  'Takoradi',
-  'Cape Coast',
-  'Sunyani',
-  'Koforidua',
-  'Ho',
-  'Wa',
-  'Bolgatanga',
-  'Tema',
-  'Obuasi',
-  'Techiman',
-  'Bawku',
-  'Nkawkaw',
-];
+export interface SavedLocation {
+  id: string;
+  name: string;
+  coordinates: LocationCoordinates;
+  address: LocationAddress;
+  type: 'home' | 'work' | 'other';
+  isDefault?: boolean;
+}
 
 class LocationService {
-  private currentLocation: GhanaLocation | null = null;
+  private currentLocation: UserLocation | null = null;
   private watchId: Location.LocationSubscription | null = null;
 
+  // Request location permissions
   async requestPermissions(): Promise<boolean> {
     try {
       const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
-      
+
       if (foregroundStatus !== 'granted') {
         Alert.alert(
           'Location Permission Required',
-          'BookBite needs location access to show nearby hotels and restaurants, and to provide accurate delivery services.',
+          'Please enable location access to use location features like delivery address and nearby restaurants.',
           [
             { text: 'Cancel', style: 'cancel' },
             { text: 'Open Settings', onPress: () => Location.requestForegroundPermissionsAsync() }
@@ -80,282 +60,224 @@ class LocationService {
     }
   }
 
-  async getCurrentCity(): Promise<{ city: string; region: string } | null> {
-    try {
-      const location = await this.getCurrentLocation();
-      if (location && location.address) {
-        return {
-          city: location.address.city || 'Unknown City',
-          region: location.address.region || 'Unknown Region'
-        };
-      }
-      
-      // Fallback to default Ghana location
-      return {
-        city: 'Accra',
-        region: 'Greater Accra Region'
-      };
-    } catch (error) {
-      console.error('Error getting current city:', error);
-      return {
-        city: 'Accra',
-        region: 'Greater Accra Region'
-      };
-    }
-  }
-
-  async getCurrentLocation(): Promise<GhanaLocation | null> {
+  // Get current location
+  async getCurrentLocation(highAccuracy: boolean = true): Promise<UserLocation | null> {
     try {
       const hasPermission = await this.requestPermissions();
-      if (!hasPermission) {
-        return null;
-      }
+      if (!hasPermission) return null;
 
       const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-        // timeout: 15000,
+        accuracy: highAccuracy ? Location.Accuracy.High : Location.Accuracy.Balanced,
       });
 
-      const ghanaLocation: GhanaLocation = {
+      const coordinates: LocationCoordinates = {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
-        accuracy: location.coords.accuracy ?? undefined,
+      };
+
+      // Reverse geocode to get address
+      const address = await this.reverseGeocode(coordinates);
+
+      const userLocation: UserLocation = {
+        coordinates,
+        address,
+        accuracy: location.coords.accuracy || undefined,
         timestamp: location.timestamp,
       };
 
-      // Reverse geocode to get address if within Ghana
-      if (this.isLocationInGhana(ghanaLocation)) {
-        const address = await this.reverseGeocode(ghanaLocation);
-        ghanaLocation.address = address;
-      }
-
-      this.currentLocation = ghanaLocation;
-      return ghanaLocation;
+      this.currentLocation = userLocation;
+      return userLocation;
     } catch (error) {
       console.error('Error getting current location:', error);
-      Alert.alert(
-        'Location Error',
-        'Unable to get your current location. Please check your GPS settings and try again.'
-      );
+      Alert.alert('Location Error', 'Unable to get your current location. Please try again.');
       return null;
     }
   }
 
-  async reverseGeocode(coordinates: LocationCoordinates): Promise<LocationAddress | undefined> {
+  // Reverse geocode coordinates to address
+  async reverseGeocode(coordinates: LocationCoordinates): Promise<LocationAddress> {
     try {
-      const [geocodeResult] = await Location.reverseGeocodeAsync({
-        latitude: coordinates.latitude,
-        longitude: coordinates.longitude,
-      });
+      const results = await Location.reverseGeocodeAsync(coordinates);
 
-      if (geocodeResult) {
+      if (results.length > 0) {
+        const result = results[0];
         return {
-          street: geocodeResult.street || geocodeResult.streetNumber ? `${geocodeResult.streetNumber || ''} ${geocodeResult.street || ''}`.trim() : undefined,
-          city: geocodeResult.city || undefined,
-          region: geocodeResult.region || undefined,
-          country: geocodeResult.country || undefined,
-          postalCode: geocodeResult.postalCode || undefined,
-          name: geocodeResult.name || undefined,
+          street: result.street || undefined,
+          city: result.city || undefined,
+          region: result.region || undefined,
+          postalCode: result.postalCode || undefined,
+          country: result.country || undefined,
+          name: result.name || undefined,
+          formattedAddress: this.formatAddress(result),
         };
       }
+
+      return {
+        formattedAddress: `${coordinates.latitude.toFixed(6)}, ${coordinates.longitude.toFixed(6)}`,
+      };
     } catch (error) {
       console.error('Error reverse geocoding:', error);
+      return {
+        formattedAddress: `${coordinates.latitude.toFixed(6)}, ${coordinates.longitude.toFixed(6)}`,
+      };
     }
-    return undefined;
   }
 
-  async geocode(address: string): Promise<LocationCoordinates[]> {
+  // Forward geocode address to coordinates
+  async geocodeAddress(address: string): Promise<LocationCoordinates[]> {
     try {
-      // Add Ghana to search to improve accuracy
-      const searchAddress = address.toLowerCase().includes('ghana') ? address : `${address}, Ghana`;
-      
-      const geocodeResults = await Location.geocodeAsync(searchAddress);
-      
-      return geocodeResults
-        .filter(result => this.isLocationInGhana(result))
-        .map(result => ({
-          latitude: result.latitude,
-          longitude: result.longitude,
-        }));
+      const results = await Location.geocodeAsync(address);
+      return results.map(result => ({
+        latitude: result.latitude,
+        longitude: result.longitude,
+      }));
     } catch (error) {
       console.error('Error geocoding address:', error);
       return [];
     }
   }
 
-  isLocationInGhana(coordinates: LocationCoordinates): boolean {
-    // Ghana's approximate bounding box
-    const GHANA_BOUNDS = {
-      north: 11.2,   // Northern border
-      south: 4.5,    // Southern border (coast)
-      east: 1.3,     // Eastern border
-      west: -3.5,    // Western border
-    };
+  // Format address for display
+  private formatAddress(address: any): string {
+    const parts = [];
 
-    return (
-      coordinates.latitude >= GHANA_BOUNDS.south &&
-      coordinates.latitude <= GHANA_BOUNDS.north &&
-      coordinates.longitude >= GHANA_BOUNDS.west &&
-      coordinates.longitude <= GHANA_BOUNDS.east
-    );
+    if (address.name) parts.push(address.name);
+    if (address.street) parts.push(address.street);
+    if (address.city) parts.push(address.city);
+    if (address.region) parts.push(address.region);
+
+    return parts.join(', ') || 'Unknown location';
   }
 
-  calculateDistance(point1: LocationCoordinates, point2: LocationCoordinates): number {
-    const R = 6371; // Earth's radius in kilometers
-    const dLat = this.degToRad(point2.latitude - point1.latitude);
-    const dLon = this.degToRad(point2.longitude - point1.longitude);
-    
-    const a = 
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(this.degToRad(point1.latitude)) * Math.cos(this.degToRad(point2.latitude)) * 
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c; // Distance in kilometers
-    
-    return distance;
-  }
-
-  private degToRad(degrees: number): number {
-    return degrees * (Math.PI / 180);
-  }
-
-  async startLocationTracking(
-    callback: (location: GhanaLocation) => void,
-    options?: {
-      accuracy?: Location.Accuracy;
-      timeInterval?: number;
-      distanceInterval?: number;
-    }
-  ): Promise<boolean> {
+  // Start watching location changes
+  async startWatchingLocation(callback: (location: UserLocation) => void): Promise<boolean> {
     try {
       const hasPermission = await this.requestPermissions();
-      if (!hasPermission) {
-        return false;
-      }
+      if (!hasPermission) return false;
 
       this.watchId = await Location.watchPositionAsync(
         {
-          accuracy: options?.accuracy || Location.Accuracy.Balanced,
-          timeInterval: options?.timeInterval || 30000, // 30 seconds
-          distanceInterval: options?.distanceInterval || 100, // 100 meters
+          accuracy: Location.Accuracy.Balanced,
+          timeInterval: 10000, // 10 seconds
+          distanceInterval: 50, // 50 meters
         },
         async (location) => {
-          const ghanaLocation: GhanaLocation = {
+          const coordinates: LocationCoordinates = {
             latitude: location.coords.latitude,
             longitude: location.coords.longitude,
-            accuracy: location.coords.accuracy ?? undefined,
+          };
+
+          const address = await this.reverseGeocode(coordinates);
+
+          const userLocation: UserLocation = {
+            coordinates,
+            address,
+            accuracy: location.coords.accuracy || undefined,
             timestamp: location.timestamp,
           };
 
-          if (this.isLocationInGhana(ghanaLocation)) {
-            const address = await this.reverseGeocode(ghanaLocation);
-            ghanaLocation.address = address;
-            this.currentLocation = ghanaLocation;
-            callback(ghanaLocation);
-          }
+          this.currentLocation = userLocation;
+          callback(userLocation);
         }
       );
 
       return true;
     } catch (error) {
-      console.error('Error starting location tracking:', error);
+      console.error('Error starting location watch:', error);
       return false;
     }
   }
 
-  stopLocationTracking(): void {
+  // Stop watching location changes
+  stopWatchingLocation(): void {
     if (this.watchId) {
       this.watchId.remove();
       this.watchId = null;
     }
   }
 
-  getCachedLocation(): GhanaLocation | null {
+  // Calculate distance between two coordinates (in kilometers)
+  calculateDistance(coord1: LocationCoordinates, coord2: LocationCoordinates): number {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = this.toRadians(coord2.latitude - coord1.latitude);
+    const dLon = this.toRadians(coord2.longitude - coord1.longitude);
+
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.toRadians(coord1.latitude)) * Math.cos(this.toRadians(coord2.latitude)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  private toRadians(degrees: number): number {
+    return degrees * (Math.PI / 180);
+  }
+
+  // Get cached current location
+  getCachedLocation(): UserLocation | null {
     return this.currentLocation;
   }
 
-  // Get popular delivery areas in Ghana
-  getPopularDeliveryAreas(): Array<{ name: string; coordinates: LocationCoordinates }> {
-    return [
-      // Accra areas
-      { name: 'East Legon, Accra', coordinates: { latitude: 5.6037, longitude: -0.1870 } },
-      { name: 'Cantonments, Accra', coordinates: { latitude: 5.5720, longitude: -0.1820 } },
-      { name: 'Airport Residential, Accra', coordinates: { latitude: 5.6050, longitude: -0.1717 } },
-      { name: 'Osu, Accra', coordinates: { latitude: 5.5562, longitude: -0.1759 } },
-      { name: 'Adabraka, Accra', coordinates: { latitude: 5.5735, longitude: -0.2007 } },
-      { name: 'Tema', coordinates: { latitude: 5.6698, longitude: -0.0166 } },
-      
-      // Kumasi areas
-      { name: 'Asokwa, Kumasi', coordinates: { latitude: 6.6885, longitude: -1.6244 } },
-      { name: 'Adum, Kumasi', coordinates: { latitude: 6.6959, longitude: -1.6143 } },
-      { name: 'KNUST, Kumasi', coordinates: { latitude: 6.6745, longitude: -1.5716 } },
-      
-      // Other major cities
-      { name: 'Takoradi', coordinates: { latitude: 4.8845, longitude: -1.7554 } },
-      { name: 'Cape Coast', coordinates: { latitude: 5.1053, longitude: -1.2466 } },
-      { name: 'Tamale', coordinates: { latitude: 9.4008, longitude: -0.8393 } },
-    ];
-  }
-
-  // Get Ghana delivery zones for compatibility
-  getGhanaDeliveryZones() {
-    return this.getPopularDeliveryAreas();
-  }
-
-  // Check if delivery is available in the area
-  isDeliveryAvailable(coordinates: LocationCoordinates): boolean {
-    if (!this.isLocationInGhana(coordinates)) {
+  // Check if location services are enabled
+  async isLocationEnabled(): Promise<boolean> {
+    try {
+      return await Location.hasServicesEnabledAsync();
+    } catch (error) {
+      console.error('Error checking location services:', error);
       return false;
     }
+  }
 
-    const deliveryAreas = this.getPopularDeliveryAreas();
-    
-    // Check if location is within 10km of any delivery area
-    return deliveryAreas.some(area => 
-      this.calculateDistance(coordinates, area.coordinates) <= 10
+  // Get location accuracy description
+  getAccuracyDescription(accuracy?: number): string {
+    if (!accuracy) return 'Unknown accuracy';
+
+    if (accuracy <= 5) return 'Very high accuracy';
+    if (accuracy <= 10) return 'High accuracy';
+    if (accuracy <= 50) return 'Good accuracy';
+    if (accuracy <= 100) return 'Fair accuracy';
+    return 'Low accuracy';
+  }
+
+  // Ghana-specific location validation
+  isLocationInGhana(coordinates: LocationCoordinates): boolean {
+    // Ghana's approximate bounding box
+    const ghana = {
+      north: 11.2,
+      south: 4.5,
+      east: 1.3,
+      west: -3.3
+    };
+
+    return (
+      coordinates.latitude >= ghana.south &&
+      coordinates.latitude <= ghana.north &&
+      coordinates.longitude >= ghana.west &&
+      coordinates.longitude <= ghana.east
     );
   }
 
-  // Format location for display
-  formatLocationDisplay(location: GhanaLocation): string {
-    if (location.address) {
-      const parts = [];
-      if (location.address.name) parts.push(location.address.name);
-      if (location.address.street) parts.push(location.address.street);
-      if (location.address.city) parts.push(location.address.city);
-      if (location.address.region) parts.push(location.address.region);
-      
-      return parts.join(', ') || 'Current Location';
+  // Get Ghana regions based on coordinates (simplified)
+  getGhanaRegion(coordinates: LocationCoordinates): string {
+    // This is a simplified version - in production, you'd use a proper geocoding service
+    if (!this.isLocationInGhana(coordinates)) return 'Unknown';
+
+    // Greater Accra region (approximate)
+    if (coordinates.latitude >= 5.3 && coordinates.latitude <= 6.0 &&
+      coordinates.longitude >= -0.5 && coordinates.longitude <= 0.5) {
+      return 'Greater Accra';
     }
-    
-    return `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`;
-  }
 
-  // Get estimated delivery time based on distance
-  getEstimatedDeliveryTime(
-    restaurantLocation: LocationCoordinates,
-    deliveryLocation: LocationCoordinates
-  ): string {
-    const distance = this.calculateDistance(restaurantLocation, deliveryLocation);
-    
-    if (distance <= 2) return '15-25 mins';
-    if (distance <= 5) return '25-35 mins';
-    if (distance <= 10) return '35-50 mins';
-    return '50+ mins';
-  }
+    // Ashanti region (approximate)
+    if (coordinates.latitude >= 6.0 && coordinates.latitude <= 7.5 &&
+      coordinates.longitude >= -2.5 && coordinates.longitude <= -0.5) {
+      return 'Ashanti';
+    }
 
-  // Get delivery fee based on distance
-  getDeliveryFee(
-    restaurantLocation: LocationCoordinates,
-    deliveryLocation: LocationCoordinates
-  ): number {
-    const distance = this.calculateDistance(restaurantLocation, deliveryLocation);
-    
-    if (distance <= 2) return 2; // GHS 2
-    if (distance <= 5) return 5; // GHS 5
-    if (distance <= 10) return 8; // GHS 8
-    return 12; // GHS 12 for longer distances
+    // Add more regions as needed
+    return 'Other';
   }
 }
 

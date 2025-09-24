@@ -28,7 +28,7 @@ router.use(authenticate);
 
 // Hotel owner and admin routes
 router.post('/', 
-  authorize('hotel_owner', 'admin'),
+  authorize(['hotel_owner', 'admin']),
   uploadLimiter,
   uploadMultiple('images', 10),
   hotelValidation,
@@ -37,7 +37,7 @@ router.post('/',
 );
 
 router.put('/:id',
-  authorize('hotel_owner', 'admin'),
+  authorize(['hotel_owner', 'admin']),
   uploadLimiter,
   uploadMultiple('images', 10),
   mongoIdValidation('id'),
@@ -46,14 +46,14 @@ router.put('/:id',
 );
 
 router.delete('/:id',
-  authorize('hotel_owner', 'admin'),
+  authorize(['hotel_owner', 'admin']),
   mongoIdValidation('id'),
   handleValidationErrors,
   deleteHotel
 );
 
 router.get('/owner/my-hotels',
-  authorize('hotel_owner', 'admin'),
+  authorize(['hotel_owner', 'admin']),
   getMyHotels
 );
 

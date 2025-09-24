@@ -1,444 +1,304 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  Image,
   TouchableOpacity,
-  Dimensions,
   Alert,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { Button, Card, ReviewSummary } from '../../components';
-import { theme } from '../../styles/theme';
-import { globalStyles } from '../../styles/globalStyles';
-import { useHotel } from '../../contexts/HotelContext';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+
+// Components
+import { Button, Card, StarRating } from '../../components';
+
+// Services
 import { useAuth } from '../../contexts/AuthContext';
+import { useHotel } from '../../contexts/HotelContext';
 import { useReview } from '../../contexts/ReviewContext';
-import { Hotel, Room } from '../../types';
 
-const { width } = Dimensions.get('window');
+// Navigation types
+import { HotelsStackParamList } from '../../navigation/HotelsStackNavigator';
 
-interface HotelDetailScreenProps {
-  route: {
-    params: {
-      hotel: Hotel;
-    };
-  };
-  navigation: any;
+type HotelDetailRouteProp = RouteProp<HotelsStackParamList, 'HotelDetail'>;
+type HotelDetailNavigationProp = StackNavigationProp<HotelsStackParamList, 'HotelDetail'>;
+
+interface Props {
+  navigation: HotelDetailNavigationProp;
+  route: HotelDetailRouteProp;
 }
 
-const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation }) => {
+const HotelDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { hotel } = route.params;
   const { user } = useAuth();
-  const { getRoomsByHotelId, createBooking } = useHotel();
-  const { getReviewSummary, canUserReview } = useReview();
-  
-  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
-  const [checkInDate, setCheckInDate] = useState(new Date());
-  const [checkOutDate, setCheckOutDate] = useState(new Date(Date.now() + 24 * 60 * 60 * 1000));
-  const [guests, setGuests] = useState(1);
-  const [roomQuantity, setRoomQuantity] = useState(1);
-  const [showCheckInPicker, setShowCheckInPicker] = useState(false);
-  const [showCheckOutPicker, setShowCheckOutPicker] = useState(false);
-  const [isBooking, setIsBooking] = useState(false);
+  const { rooms, getHotelById } = useHotel();
+  const { getReviewSummary } = useReview();
+  const [hotelRooms, setHotelRooms] = useState<any[]>([]);
+  const [reviewSummary, setReviewSummary] = useState<any>(null);
+  const [selectedDates, setSelectedDates] = useState<{checkIn: Date | null, checkOut: Date | null}>({
+    checkIn: null,
+    checkOut: null
+  });
+  const [guests, setGuests] = useState(2);
+  const [roomsCount, setRoomsCount] = useState(1);
 
-  const rooms = useMemo(() => {
-    const hotelRooms = getRoomsByHotelId(hotel.id);
-    console.log(`🛏️ Rooms for ${hotel.name}:`, hotelRooms.length);
-    return hotelRooms;
-  }, [hotel.id]);
-  const reviewSummary = useMemo(() => getReviewSummary(hotel.id, 'hotel'), [hotel.id]);
-  const canWriteReview = user ? canUserReview(user.id, hotel.id, 'hotel') : false;
-  
-  const nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24));
-  const totalPrice = selectedRoom ? selectedRoom.price * nights * roomQuantity : 0;
-
-  const handleDateChange = (event: any, selectedDate?: Date, type: 'checkIn' | 'checkOut' = 'checkIn') => {
-    const currentDate = selectedDate || (type === 'checkIn' ? checkInDate : checkOutDate);
+  useEffect(() => {
+    // Get rooms for this hotel
+    const hotelRooms = rooms.filter(room => room.hotelId === hotel.id);
+    setHotelRooms(hotelRooms);
     
-    if (type === 'checkIn') {
-      setShowCheckInPicker(false);
-      if (currentDate >= new Date()) {
-        setCheckInDate(currentDate);
-        // Auto-adjust checkout if it's before new check-in
-        if (currentDate >= checkOutDate) {
-          setCheckOutDate(new Date(currentDate.getTime() + 24 * 60 * 60 * 1000));
-        }
-      }
-    } else {
-      setShowCheckOutPicker(false);
-      if (currentDate > checkInDate) {
-        setCheckOutDate(currentDate);
-      }
-    }
-  };
+    // Get review summary
+    const summary = getReviewSummary(hotel.id, 'hotel');
+    setReviewSummary(summary);
+  }, [hotel.id, rooms, getReviewSummary]);
 
-  const handleAddToBookingCart = async () => {
-    if (!selectedRoom || !user) {
-      Alert.alert('Error', 'Please select a room and ensure you are logged in.');
+  const handleBookNow = (room: any) => {
+    if (!selectedDates.checkIn || !selectedDates.checkOut) {
+      Alert.alert('Select Dates', 'Please select check-in and check-out dates.');
       return;
     }
 
-    try {
-      setIsBooking(true);
-      
-      // Create a pending booking (like adding to cart)
-      const bookingData = {
-        userId: user.id,
-        roomId: selectedRoom.id,
-        hotelId: hotel.id,
-        checkIn: checkInDate,
-        checkOut: checkOutDate,
-        guests,
-        roomQuantity,
-        totalPrice,
-        status: 'pending' as const, // Pending status like cart
-        paymentStatus: 'pending' as const,
-        specialRequests: ''
-      };
+    // Calculate number of nights
+    const nights = Math.ceil(
+      (selectedDates.checkOut.getTime() - selectedDates.checkIn.getTime()) / (1000 * 60 * 60 * 24)
+    );
 
-      await createBooking(bookingData);
-
-      Alert.alert(
-        'Room Added to Cart! 🛒',
-        `${roomQuantity} x ${selectedRoom.name} at ${hotel.name}\nTotal: GH₵${totalPrice.toFixed(2)} for ${nights} night${nights > 1 ? 's' : ''}\n\nComplete your booking in the Bookings tab.`,
-        [
-          {
-            text: 'Continue Browsing',
-            style: 'cancel'
-          },
-          {
-            text: 'Complete Booking',
-            onPress: () => navigation.navigate('Bookings'),
-            style: 'default'
-          }
-        ]
-      );
-    } catch (error) {
-      Alert.alert('Error', 'Failed to add booking to cart. Please try again.');
-    } finally {
-      setIsBooking(false);
-    }
-  };
-
-  // This function will be called after successful payment
-  const handlePaymentSuccess = async (paymentMethod: string, transactionId: string) => {
-    if (!selectedRoom || !user) {
-      Alert.alert('Error', 'Missing required information for booking.');
+    if (nights <= 0) {
+      Alert.alert('Invalid Dates', 'Check-out date must be after check-in date.');
       return;
     }
-    
-    try {
-      await createBooking({
-        userId: user.id,
-        roomId: selectedRoom.id,
-        hotelId: hotel.id,
-        checkIn: checkInDate,
-        checkOut: checkOutDate,
-        guests,
-        totalPrice,
-        status: 'confirmed',
-        paymentStatus: 'paid',
-        paymentMethod,
-        transactionId,
-        paymentDate: new Date(),
-      });
 
-      Alert.alert(
-        'Booking Confirmed!',
-        `Your booking at ${hotel.name} has been confirmed. You will receive a confirmation email shortly.`,
-        [
-          {
-            text: 'View Bookings',
-            onPress: () => navigation.navigate('Bookings'),
-          },
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
-    } catch (error) {
-      Alert.alert('Error', 'Failed to create booking. Please try again.');
-    }
+    // Calculate total price
+    const totalPrice = nights * room.price;
+
+    // Navigate to payment screen
+    navigation.navigate('Payment', {
+      amount: totalPrice,
+      currency: 'GHS',
+      paymentFor: 'booking',
+      referenceId: `booking_${Date.now()}` // In a real app, this would be generated by the backend
+    });
   };
 
-  // This function will be called if payment fails
-  const handlePaymentFailure = () => {
-    Alert.alert(
-      'Payment Failed',
-      'Your payment could not be processed. Would you like to try again?',
-      [
-        { text: 'Cancel', onPress: () => navigation.goBack() },
-        { text: 'Try Again', onPress: handleAddToBookingCart }
-      ]
+  const renderRoom = ({ item }: { item: any }) => {
+    return (
+      <Card style={styles.roomCard}>
+        <View style={styles.roomContent}>
+          {item.image ? (
+            <View style={styles.roomImagePlaceholder}>
+              <Ionicons name="bed" size={24} color="#666" />
+            </View>
+          ) : (
+            <View style={styles.roomImagePlaceholder}>
+              <Ionicons name="bed" size={24} color="#666" />
+            </View>
+          )}
+          
+          <View style={styles.roomInfo}>
+            <Text style={styles.roomName}>{item.name}</Text>
+            <Text style={styles.roomDescription} numberOfLines={2}>
+              {item.description}
+            </Text>
+            <Text style={styles.roomPrice}>₵{item.price.toFixed(2)}/night</Text>
+          </View>
+        </View>
+        
+        <View style={styles.roomActions}>
+          <Button
+            title="Book Now"
+            onPress={() => handleBookNow(item)}
+            style={styles.bookButton}
+            size="small"
+          />
+        </View>
+      </Card>
     );
   };
 
-  const handleWriteReview = () => {
-    // @ts-ignore - Navigation will be properly typed in actual navigation setup
-    navigation.navigate('WriteReview', {
-      targetId: hotel.id,
-      targetType: 'hotel',
-      targetName: hotel.name,
-    });
-  };
-
-  const handleSeeAllReviews = () => {
-    // @ts-ignore - Navigation will be properly typed in actual navigation setup
-    navigation.navigate('ReviewsList', {
-      targetId: hotel.id,
-      targetType: 'hotel',
-      targetName: hotel.name,
-    });
-  };
-
-  const renderAmenity = (amenity: string, index: number) => (
-    <View key={index} style={styles.amenityItem}>
-      <Ionicons name="checkmark-circle" size={16} color={theme.colors.success[500]} />
-      <Text style={styles.amenityText}>{amenity}</Text>
-    </View>
-  );
-
-  const renderRoom = (room: Room, index: number) => (
-    <TouchableOpacity
-      key={room.id}
-      style={[
-        styles.roomCard,
-        selectedRoom?.id === room.id && styles.selectedRoomCard
-      ]}
-      onPress={() => setSelectedRoom(room)}
-    >
-      <Image source={{ uri: room.images[0] }} style={styles.roomImage} />
-      <View style={styles.roomInfo}>
-        <Text style={styles.roomName}>{room.name}</Text>
-        <Text style={styles.roomDescription}>{room.description}</Text>
-        <Text style={styles.roomCapacity}>Max Guests: {room.capacity}</Text>
-        <View style={styles.roomPricing}>
-          <Text style={styles.roomPrice}>GH₵{room.price}</Text>
-          <Text style={styles.roomPriceUnit}>/ night</Text>
-        </View>
-        <View style={styles.roomAmenities}>
-          {room.amenities.slice(0, 3).map((amenity, idx) => (
-            <Text key={idx} style={styles.roomAmenityTag}>
-              {amenity}
-            </Text>
-          ))}
-        </View>
-      </View>
-      {selectedRoom?.id === room.id && (
-        <View style={styles.selectedIndicator}>
-          <Ionicons name="checkmark-circle" size={24} color={theme.colors.primary[500]} />
-        </View>
-      )}
-    </TouchableOpacity>
-  );
-
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView 
-        style={styles.content} 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Hotel Images */}
-        <View style={styles.imageContainer}>
-          <Image source={{ uri: hotel.images[0] }} style={styles.heroImage} />
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color={theme.colors.neutral[0]} />
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
+          <Text style={styles.headerTitle}>{hotel.name}</Text>
+          <TouchableOpacity 
+            style={styles.favoriteButton}
+            onPress={() => Alert.alert('Save Hotel', 'Hotel saved to favorites!')}
+          >
+            <Ionicons name="heart-outline" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Hotel Image */}
+        <View style={styles.hotelImageContainer}>
+          {hotel.image ? (
+            <View style={styles.hotelImagePlaceholder}>
+              <Ionicons name="bed" size={48} color="#fff" />
+            </View>
+          ) : (
+            <View style={styles.hotelImagePlaceholder}>
+              <Ionicons name="bed" size={48} color="#fff" />
+            </View>
+          )}
         </View>
 
         {/* Hotel Info */}
         <View style={styles.hotelInfo}>
-          <Text style={[globalStyles.h1, styles.hotelName]}>{hotel.name}</Text>
-          <View style={styles.ratingRow}>
-            <View style={styles.rating}>
-              <Ionicons name="star" size={16} color={theme.colors.warning[500]} />
-              <Text style={styles.ratingText}>{hotel.rating}</Text>
-            </View>
-            <Text style={styles.address}>{hotel.address}</Text>
+          <Text style={styles.hotelName}>{hotel.name}</Text>
+          
+          <View style={styles.ratingContainer}>
+            <StarRating 
+              rating={reviewSummary?.averageRating || 0} 
+              size={16}
+              interactive={false}
+            />
+            <Text style={styles.ratingText}>
+              {reviewSummary?.averageRating?.toFixed(1) || '0.0'} 
+              {reviewSummary?.totalReviews ? ` (${reviewSummary.totalReviews})` : ''}
+            </Text>
           </View>
-          <Text style={[globalStyles.bodyLarge, styles.description]}>{hotel.description}</Text>
+          
+          <View style={styles.hotelDetails}>
+            <View style={styles.detailRow}>
+              <Ionicons name="location" size={16} color="#666" />
+              <Text style={styles.detailText}>{hotel.address}</Text>
+            </View>
+            
+            <View style={styles.detailRow}>
+              <Ionicons name="star" size={16} color="#666" />
+              <Text style={styles.detailText}>{hotel.rating} Star Hotel</Text>
+            </View>
+          </View>
         </View>
 
-        {/* Amenities */}
-        <Card style={styles.section}>
-          <Text style={[globalStyles.h3, styles.sectionTitle]}>Amenities</Text>
-          <View style={styles.amenitiesGrid}>
-            {hotel.amenities.map(renderAmenity)}
-          </View>
-        </Card>
-
-        {/* Reviews Section */}
-        <ReviewSummary
-          summary={reviewSummary}
-          canWriteReview={canWriteReview}
-          onWriteReviewPress={handleWriteReview}
-          onSeeAllReviewsPress={handleSeeAllReviews}
-        />
-
-        {/* Booking Section */}
-        <Card style={styles.section}>
-          <Text style={[globalStyles.h3, styles.sectionTitle]}>Book Your Stay</Text>
+        {/* Booking Options */}
+        <Card style={styles.bookingCard}>
+          <Text style={styles.sectionTitle}>Booking Options</Text>
           
-          {/* Date Selection */}
-          <View style={styles.dateRow}>
-            <TouchableOpacity
+          <View style={styles.dateSelection}>
+            <TouchableOpacity 
               style={styles.dateButton}
-              onPress={() => setShowCheckInPicker(true)}
+              onPress={() => Alert.alert('Select Date', 'In a complete implementation, this would open a date picker')}
             >
               <Text style={styles.dateLabel}>Check-in</Text>
-              <Text style={styles.dateValue}>{checkInDate.toLocaleDateString()}</Text>
+              <Text style={styles.dateValue}>
+                {selectedDates.checkIn ? selectedDates.checkIn.toLocaleDateString() : 'Select date'}
+              </Text>
             </TouchableOpacity>
             
-            <TouchableOpacity
+            <TouchableOpacity 
               style={styles.dateButton}
-              onPress={() => setShowCheckOutPicker(true)}
+              onPress={() => Alert.alert('Select Date', 'In a complete implementation, this would open a date picker')}
             >
               <Text style={styles.dateLabel}>Check-out</Text>
-              <Text style={styles.dateValue}>{checkOutDate.toLocaleDateString()}</Text>
+              <Text style={styles.dateValue}>
+                {selectedDates.checkOut ? selectedDates.checkOut.toLocaleDateString() : 'Select date'}
+              </Text>
             </TouchableOpacity>
           </View>
-
-          {/* Guest Selection */}
-          <View style={styles.guestRow}>
-            <Text style={styles.guestLabel}>Guests</Text>
-            <View style={styles.guestControls}>
-              <TouchableOpacity
-                style={styles.guestButton}
-                onPress={() => setGuests(Math.max(1, guests - 1))}
-              >
-                <Ionicons name="remove" size={20} color={theme.colors.primary[500]} />
-              </TouchableOpacity>
-              <Text style={styles.guestCount}>{guests}</Text>
-              <TouchableOpacity
-                style={styles.guestButton}
-                onPress={() => setGuests(Math.min(8, guests + 1))}
-              >
-                <Ionicons name="add" size={20} color={theme.colors.primary[500]} />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Room Quantity Selection */}
-          <View style={styles.guestRow}>
-            <Text style={styles.guestLabel}>Rooms</Text>
-            <View style={styles.guestControls}>
-              <TouchableOpacity
-                style={styles.guestButton}
-                onPress={() => setRoomQuantity(Math.max(1, roomQuantity - 1))}
-              >
-                <Ionicons name="remove" size={20} color={theme.colors.primary[500]} />
-              </TouchableOpacity>
-              <Text style={styles.guestCount}>{roomQuantity}</Text>
-              <TouchableOpacity
-                style={styles.guestButton}
-                onPress={() => setRoomQuantity(Math.min(5, roomQuantity + 1))}
-              >
-                <Ionicons name="add" size={20} color={theme.colors.primary[500]} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Card>
-
-        {/* Room Selection */}
-        <Card style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={[globalStyles.h3, styles.sectionTitle]}>Available Rooms</Text>
-            {!selectedRoom && rooms.length > 0 && (
-              <Text style={styles.selectPrompt}>👆 Tap to select a room</Text>
-            )}
-          </View>
-          {rooms.filter(room => room.isAvailable && room.capacity >= guests).map(renderRoom)}
-          {rooms.filter(room => room.isAvailable && room.capacity >= guests).length === 0 && (
-            <Text style={styles.noRoomsText}>
-              No rooms available for {guests} guest{guests > 1 ? 's' : ''}
-            </Text>
-          )}
-        </Card>
-
-        {/* Booking Summary */}
-        {selectedRoom && (
-          <Card style={StyleSheet.flatten([styles.section, styles.bookingSummaryCard])}>
-            <Text style={[globalStyles.h3, styles.sectionTitle]}>Booking Summary</Text>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Room:</Text>
-              <Text style={styles.summaryValue}>{selectedRoom.name}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Dates:</Text>
-              <Text style={styles.summaryValue}>
-                {checkInDate.toLocaleDateString()} - {checkOutDate.toLocaleDateString()}
-              </Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Nights:</Text>
-              <Text style={styles.summaryValue}>{nights}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Guests:</Text>
-              <Text style={styles.summaryValue}>{guests}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Rooms:</Text>
-              <Text style={styles.summaryValue}>{roomQuantity}</Text>
-            </View>
-            <View style={[styles.summaryRow, styles.totalRow]}>
-              <Text style={styles.totalLabel}>Total:</Text>
-              <Text style={styles.totalValue}>GH₵{totalPrice.toFixed(2)}</Text>
+          
+          <View style={styles.guestSelection}>
+            <View style={styles.guestControl}>
+              <Text style={styles.guestLabel}>Guests</Text>
+              <View style={styles.quantityControl}>
+                <TouchableOpacity 
+                  style={styles.quantityButton}
+                  onPress={() => setGuests(Math.max(1, guests - 1))}
+                >
+                  <Ionicons name="remove" size={20} color="#fff" />
+                </TouchableOpacity>
+                <Text style={styles.quantityText}>{guests}</Text>
+                <TouchableOpacity 
+                  style={styles.quantityButton}
+                  onPress={() => setGuests(guests + 1)}
+                >
+                  <Ionicons name="add" size={20} color="#fff" />
+                </TouchableOpacity>
+              </View>
             </View>
             
-            {/* Book Now Button - Inside Summary Card */}
-            <View style={styles.bookingButtonContainer}>
-              <Button
-                title={isBooking ? "Adding to Cart..." : "Book Now 🛒"}
-                onPress={handleAddToBookingCart}
-                disabled={isBooking}
-                style={styles.summaryBookButton}
-              />
+            <View style={styles.guestControl}>
+              <Text style={styles.guestLabel}>Rooms</Text>
+              <View style={styles.quantityControl}>
+                <TouchableOpacity 
+                  style={styles.quantityButton}
+                  onPress={() => setRoomsCount(Math.max(1, roomsCount - 1))}
+                >
+                  <Ionicons name="remove" size={20} color="#fff" />
+                </TouchableOpacity>
+                <Text style={styles.quantityText}>{roomsCount}</Text>
+                <TouchableOpacity 
+                  style={styles.quantityButton}
+                  onPress={() => setRoomsCount(roomsCount + 1)}
+                >
+                  <Ionicons name="add" size={20} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Card>
+
+        {/* Room Types */}
+        <View style={styles.roomsSection}>
+          <Text style={styles.sectionTitle}>Room Types</Text>
+          <FlatList
+            data={hotelRooms}
+            renderItem={renderRoom}
+            keyExtractor={(item) => item.id}
+            scrollEnabled={false}
+            contentContainerStyle={styles.roomsList}
+          />
+        </View>
+
+        {/* Hotel Description */}
+        <Card style={styles.descriptionCard}>
+          <Text style={styles.sectionTitle}>About {hotel.name}</Text>
+          <Text style={styles.descriptionText}>
+            {hotel.description || 'This hotel offers comfortable accommodation in a prime location. Enjoy excellent service and amenities during your stay.'}
+          </Text>
+        </Card>
+
+        {/* Reviews Summary */}
+        {reviewSummary && reviewSummary.totalReviews > 0 && (
+          <Card style={styles.reviewsCard}>
+            <Text style={styles.sectionTitle}>Customer Reviews</Text>
+            
+            <View style={styles.reviewSummary}>
+              <View style={styles.averageRating}>
+                <Text style={styles.averageRatingValue}>
+                  {reviewSummary.averageRating.toFixed(1)}
+                </Text>
+                <StarRating 
+                  rating={reviewSummary.averageRating} 
+                  size={16}
+                  interactive={false}
+                />
+                <Text style={styles.reviewCount}>
+                  {reviewSummary.totalReviews} {reviewSummary.totalReviews === 1 ? 'review' : 'reviews'}
+                </Text>
+              </View>
+              
+              <TouchableOpacity 
+                style={styles.viewReviewsButton}
+                onPress={() => Alert.alert('View Reviews', 'In a complete implementation, this would show all reviews')}
+              >
+                <Text style={styles.viewReviewsText}>View all reviews</Text>
+                <Ionicons name="chevron-forward" size={16} color="#2196F3" />
+              </TouchableOpacity>
             </View>
           </Card>
         )}
       </ScrollView>
-
-      {/* Bottom Price Bar - Simple price display only */}
-      {selectedRoom && (
-        <View style={styles.bottomBar}>
-          <View style={styles.priceInfo}>
-            <Text style={styles.bottomPrice}>GH₵{totalPrice.toFixed(2)}</Text>
-            <Text style={styles.bottomPriceUnit}>
-              {roomQuantity} room{roomQuantity > 1 ? 's' : ''} × {nights} night{nights > 1 ? 's' : ''}
-            </Text>
-          </View>
-          <Text style={styles.bookingHint}>👆 Book in summary above</Text>
-        </View>
-      )}
-
-      {/* Date Pickers */}
-      {showCheckInPicker && (
-        <DateTimePicker
-          value={checkInDate}
-          mode="date"
-          display="default"
-          onChange={(event, date) => handleDateChange(event, date, 'checkIn')}
-          minimumDate={new Date()}
-        />
-      )}
-      
-      {showCheckOutPicker && (
-        <DateTimePicker
-          value={checkOutDate}
-          mode="date"
-          display="default"
-          onChange={(event, date) => handleDateChange(event, date, 'checkOut')}
-          minimumDate={new Date(checkInDate.getTime() + 24 * 60 * 60 * 1000)}
-        />
-      )}
     </SafeAreaView>
   );
 };
@@ -446,316 +306,239 @@ const HotelDetailScreen: React.FC<HotelDetailScreenProps> = ({ route, navigation
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.primary,
+    backgroundColor: '#f5f5f5',
   },
-  content: {
+  scrollView: {
     flex: 1,
   },
-  scrollContent: {
-    paddingBottom: 150, // Extra padding to ensure content is not hidden behind bottom bar (increased)
-  },
-  imageContainer: {
-    position: 'relative',
-    height: 250,
-  },
-  heroImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#007AFF',
   },
   backButton: {
-    position: 'absolute',
-    top: 40,
-    left: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  favoriteButton: {
+    padding: 8,
+  },
+  hotelImageContainer: {
+    height: 200,
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  hotelImagePlaceholder: {
+    width: '100%',
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
   },
   hotelInfo: {
-    padding: theme.spacing.lg,
+    backgroundColor: '#fff',
+    padding: 16,
+    marginBottom: 16,
   },
   hotelName: {
-    marginBottom: theme.spacing.sm,
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 8,
   },
-  ratingRow: {
+  ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: theme.spacing.md,
-  },
-  rating: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: theme.spacing.md,
+    marginBottom: 12,
   },
   ratingText: {
-    marginLeft: theme.spacing.xs,
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.medium as '500',
-    color: theme.colors.text.primary,
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 8,
   },
-  address: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
-    flex: 1,
+  hotelDetails: {
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    paddingTop: 12,
   },
-  description: {
-    color: theme.colors.text.secondary,
-    lineHeight: 24,
-  },
-  section: {
-    margin: theme.spacing.lg,
-    marginTop: 0,
-  },
-  sectionTitle: {
-    marginBottom: theme.spacing.md,
-  },
-  amenitiesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  amenityItem: {
+  detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: theme.spacing.lg,
-    marginBottom: theme.spacing.sm,
-    width: '45%',
+    marginBottom: 8,
   },
-  amenityText: {
-    marginLeft: theme.spacing.xs,
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.primary,
+  detailText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 8,
   },
-  dateRow: {
+  bookingCard: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 16,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 16,
+  },
+  dateSelection: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: theme.spacing.md,
+    marginBottom: 16,
   },
   dateButton: {
     flex: 1,
-    padding: theme.spacing.md,
-    backgroundColor: theme.colors.background.secondary,
-    borderRadius: theme.borderRadius.md,
-    marginHorizontal: theme.spacing.xs,
+    padding: 12,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    marginHorizontal: 4,
   },
   dateLabel: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
-    marginBottom: theme.spacing.xs,
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
   },
   dateValue: {
-    fontSize: theme.typography.fontSize.md,
-    fontWeight: theme.typography.fontWeight.medium as '500',
-    color: theme.colors.text.primary,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
   },
-  guestRow: {
+  guestSelection: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+  },
+  guestControl: {
+    flex: 1,
     alignItems: 'center',
-    marginBottom: theme.spacing.md,
   },
   guestLabel: {
-    fontSize: theme.typography.fontSize.md,
-    fontWeight: theme.typography.fontWeight.medium as '500',
-    color: theme.colors.text.primary,
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
   },
-  guestControls: {
+  quantityControl: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  guestButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: theme.colors.background.secondary,
+  quantityButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#007AFF',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  guestCount: {
-    marginHorizontal: theme.spacing.md,
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.medium as '500',
-    color: theme.colors.text.primary,
-    minWidth: 30,
+  quantityText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginHorizontal: 12,
+    minWidth: 20,
     textAlign: 'center',
   },
+  roomsSection: {
+    backgroundColor: '#fff',
+    marginBottom: 16,
+  },
+  roomsList: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
   roomCard: {
+    marginBottom: 12,
+    padding: 12,
+  },
+  roomContent: {
     flexDirection: 'row',
-    backgroundColor: theme.colors.background.secondary,
-    borderRadius: theme.borderRadius.lg,
-    marginBottom: theme.spacing.md,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'transparent',
   },
-  selectedRoomCard: {
-    borderColor: theme.colors.primary[500],
-  },
-  roomImage: {
-    width: 120,
-    height: 120,
-    resizeMode: 'cover',
+  roomImagePlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   roomInfo: {
     flex: 1,
-    padding: theme.spacing.md,
   },
   roomName: {
-    fontSize: theme.typography.fontSize.md,
-    fontWeight: theme.typography.fontWeight.semiBold as '600',
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.xs,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
   },
   roomDescription: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
-    marginBottom: theme.spacing.xs,
-  },
-  roomCapacity: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.tertiary,
-    marginBottom: theme.spacing.sm,
-  },
-  roomPricing: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginBottom: theme.spacing.sm,
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+    lineHeight: 18,
   },
   roomPrice: {
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.bold as '700',
-    color: theme.colors.primary[500],
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#007AFF',
   },
-  roomPriceUnit: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
-    marginLeft: theme.spacing.xs,
-  },
-  roomAmenities: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  roomAmenityTag: {
-    fontSize: theme.typography.fontSize.xs,
-    color: theme.colors.text.tertiary,
-    backgroundColor: theme.colors.background.primary,
-    paddingHorizontal: theme.spacing.xs,
-    paddingVertical: 2,
-    borderRadius: theme.borderRadius.sm,
-    marginRight: theme.spacing.xs,
-    marginBottom: theme.spacing.xs,
-  },
-  selectedIndicator: {
-    position: 'absolute',
-    top: theme.spacing.sm,
-    right: theme.spacing.sm,
-  },
-  noRoomsText: {
-    textAlign: 'center',
-    fontSize: theme.typography.fontSize.md,
-    color: theme.colors.text.secondary,
-    fontStyle: 'italic',
-    padding: theme.spacing.xl,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: theme.spacing.sm,
-  },
-  summaryLabel: {
-    fontSize: theme.typography.fontSize.md,
-    color: theme.colors.text.secondary,
-  },
-  summaryValue: {
-    fontSize: theme.typography.fontSize.md,
-    color: theme.colors.text.primary,
-    fontWeight: theme.typography.fontWeight.medium as '500',
-  },
-  totalRow: {
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border.light,
-    paddingTop: theme.spacing.sm,
-    marginTop: theme.spacing.sm,
-  },
-  totalLabel: {
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.semiBold as '600',
-    color: theme.colors.text.primary,
-  },
-  totalValue: {
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.bold as '700',
-    color: theme.colors.primary[500],
-  },
-  bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: theme.spacing.lg,
-    backgroundColor: theme.colors.background.primary,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border.light,
-    ...theme.shadows.md,
-    zIndex: 1000,
-  },
-  priceInfo: {
-    flex: 1,
-  },
-  bottomPrice: {
-    fontSize: theme.typography.fontSize.xl,
-    fontWeight: theme.typography.fontWeight.bold as '700',
-    color: theme.colors.primary[500],
-  },
-  bottomPriceUnit: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
+  roomActions: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    marginTop: 8,
   },
   bookButton: {
-    minWidth: 120,
+    minWidth: 100,
   },
-  disabledButton: {
-    opacity: 0.6,
+  descriptionCard: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 16,
   },
-  selectRoomText: {
-    fontSize: theme.typography.fontSize.md,
-    color: theme.colors.text.secondary,
-    fontStyle: 'italic',
+  descriptionText: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
   },
-  sectionHeader: {
+  reviewsCard: {
+    marginHorizontal: 16,
+    marginBottom: 32,
+    padding: 16,
+  },
+  reviewSummary: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.md,
   },
-  selectPrompt: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.primary[500],
-    fontWeight: '600',
+  averageRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  bookingSummaryCard: {
-    marginBottom: theme.spacing.xl, // Extra margin for the last card
+  averageRatingValue: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#333',
+    marginRight: 8,
   },
-  bookingButtonContainer: {
-    marginTop: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border.light,
+  reviewCount: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 8,
   },
-  summaryBookButton: {
-    width: '100%',
-    paddingVertical: theme.spacing.md,
+  viewReviewsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  bookingHint: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
-    fontStyle: 'italic',
-    textAlign: 'center',
+  viewReviewsText: {
+    fontSize: 14,
+    color: '#2196F3',
+    marginRight: 4,
   },
 });
 

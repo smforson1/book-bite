@@ -23,6 +23,9 @@ import bookingRoutes from '@/routes/bookings';
 import restaurantRoutes from '@/routes/restaurants';
 import menuItemRoutes from '@/routes/menuItems';
 import orderRoutes from '@/routes/orders';
+import paymentRoutes from '@/routes/payments';
+import notificationRoutes from '@/routes/notifications';
+import reviewRoutes from '@/routes/reviews';
 import uploadRoutes from '@/routes/upload';
 
 const app = express();
@@ -82,6 +85,9 @@ app.use(`/api/${API_VERSION}/bookings`, bookingRoutes);
 app.use(`/api/${API_VERSION}/restaurants`, restaurantRoutes);
 app.use(`/api/${API_VERSION}/menu-items`, menuItemRoutes);
 app.use(`/api/${API_VERSION}/orders`, orderRoutes);
+app.use(`/api/${API_VERSION}/payments`, paymentRoutes);
+app.use(`/api/${API_VERSION}/notifications`, notificationRoutes);
+app.use(`/api/${API_VERSION}/reviews`, reviewRoutes);
 app.use(`/api/${API_VERSION}/upload`, uploadRoutes);
 
 // Socket.IO status endpoint

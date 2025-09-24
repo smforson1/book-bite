@@ -10,6 +10,7 @@ import { initializeMockData } from './src/services/mockDataService';
 import { ErrorBoundary, OfflineIndicator } from './src/components/ErrorBoundary';
 import { errorHandlingService } from './src/services/errorHandlingService';
 import { ghanaAnalyticsService } from './src/services/ghanaAnalyticsService';
+import OfflineStatusIndicator from './src/components/OfflineStatusIndicator';
 
 export default function App() {
   useEffect(() => {
@@ -72,6 +73,7 @@ export default function App() {
         <HotelProvider>
           <RestaurantProvider>
             <ReviewProvider>
+              <OfflineStatusIndicator />
               <AppNavigator />
               <OfflineIndicator />
               <StatusBar style="auto" />

@@ -4,16 +4,27 @@ import { theme } from '../styles/theme';
 import HotelsScreen from '../screens/user/HotelsScreen';
 import HotelDetailScreen from '../screens/user/HotelDetailScreen';
 import PaymentScreen from '../screens/user/PaymentScreen';
+import PaymentVerificationScreen from '../screens/user/PaymentVerificationScreen';
 import PaymentConfirmationScreen from '../screens/user/PaymentConfirmationScreen';
+import BookingDetailsScreen from '../screens/user/BookingDetailsScreen';
 
 export type HotelsStackParamList = {
   HotelsList: undefined;
   HotelDetail: {
     hotel: any;
   };
+  BookingDetail: {
+    bookingId: string;
+  };
   Payment: {
     amount: number;
     currency: string;
+    paymentFor: 'booking' | 'order';
+    referenceId: string;
+  };
+  PaymentVerification: {
+    transactionId: string;
+    amount: number;
     paymentFor: 'booking' | 'order';
     referenceId: string;
   };
@@ -46,19 +57,27 @@ const HotelsStackNavigator: React.FC = () => {
         },
       }}
     >
-      <Stack.Screen 
-        name="HotelsList" 
+      <Stack.Screen
+        name="HotelsList"
         component={HotelsScreen}
-        options={{ 
+        options={{
           title: 'Hotels',
           headerShown: false // Tab navigator already shows header
         }}
       />
-      <Stack.Screen 
-        name="HotelDetail" 
+      <Stack.Screen
+        name="HotelDetail"
         component={HotelDetailScreen}
-        options={{ 
+        options={{
           title: 'Hotel Details',
+          headerShown: false // Detail screen has custom header
+        }}
+      />
+      <Stack.Screen
+        name="BookingDetail"
+        component={BookingDetailsScreen}
+        options={{
+          title: 'Booking Details',
           headerShown: false // Detail screen has custom header
         }}
       />
@@ -68,6 +87,14 @@ const HotelsStackNavigator: React.FC = () => {
         options={{
           title: 'Payment',
           headerShown: true // Show header for payment screen
+        }}
+      />
+      <Stack.Screen
+        name="PaymentVerification"
+        component={PaymentVerificationScreen}
+        options={{
+          title: 'Payment Verification',
+          headerShown: false // Custom header in component
         }}
       />
       <Stack.Screen

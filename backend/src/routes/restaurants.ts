@@ -28,7 +28,7 @@ router.use(authenticate);
 
 // Restaurant owner and admin routes
 router.post('/', 
-  authorize('restaurant_owner', 'admin'),
+  authorize(['restaurant_owner', 'admin']),
   uploadLimiter,
   uploadMultiple('images', 10),
   restaurantValidation,
@@ -37,7 +37,7 @@ router.post('/',
 );
 
 router.put('/:id',
-  authorize('restaurant_owner', 'admin'),
+  authorize(['restaurant_owner', 'admin']),
   uploadLimiter,
   uploadMultiple('images', 10),
   mongoIdValidation('id'),
@@ -46,14 +46,14 @@ router.put('/:id',
 );
 
 router.delete('/:id',
-  authorize('restaurant_owner', 'admin'),
+  authorize(['restaurant_owner', 'admin']),
   mongoIdValidation('id'),
   handleValidationErrors,
   deleteRestaurant
 );
 
 router.get('/owner/my-restaurants',
-  authorize('restaurant_owner', 'admin'),
+  authorize(['restaurant_owner', 'admin']),
   getMyRestaurants
 );
 

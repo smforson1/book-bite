@@ -1,380 +1,292 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  Image,
   TouchableOpacity,
   Alert,
-  Modal,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Button, Card, Input, ReviewSummary } from '../../components';
-import { theme } from '../../styles/theme';
-import { globalStyles } from '../../styles/globalStyles';
-import { useRestaurant } from '../../contexts/RestaurantContext';
-import { useAuth } from '../../contexts/AuthContext';
-import { useReview } from '../../contexts/ReviewContext';
-import { Restaurant, MenuItem } from '../../types';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 
-interface RestaurantDetailScreenProps {
-  route: {
-    params: {
-      restaurant: Restaurant;
-    };
-  };
-  navigation: any;
+// Components
+import { Button, Card, StarRating } from '../../components';
+
+// Services
+import { useAuth } from '../../contexts/AuthContext';
+import { useRestaurant } from '../../contexts/RestaurantContext';
+import { useReview } from '../../contexts/ReviewContext';
+
+// Navigation types
+import { RestaurantsStackParamList } from '../../navigation/RestaurantsStackNavigator';
+
+type RestaurantDetailRouteProp = RouteProp<RestaurantsStackParamList, 'RestaurantDetail'>;
+type RestaurantDetailNavigationProp = StackNavigationProp<RestaurantsStackParamList, 'RestaurantDetail'>;
+
+interface Props {
+  navigation: RestaurantDetailNavigationProp;
+  route: RestaurantDetailRouteProp;
 }
 
-const RestaurantDetailScreen: React.FC<RestaurantDetailScreenProps> = ({ route, navigation }) => {
+const RestaurantDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { restaurant } = route.params;
   const { user } = useAuth();
-  const { 
-    getMenuByRestaurantId, 
-    addToCart, 
-    cart, 
-    getCartTotal,
-    createOrder,
-    clearCart
-  } = useRestaurant();
-  const { getReviewSummary, canUserReview } = useReview();
-  
-  const [selectedCategory, setSelectedCategory] = useState<string>('All');
-  const [showCartModal, setShowCartModal] = useState(false);
-  const [isOrdering, setIsOrdering] = useState(false);
-  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const { menuItems, getRestaurantById } = useRestaurant();
+  const { getReviewSummary } = useReview();
+  const [restaurantMenu, setRestaurantMenu] = useState<any[]>([]);
+  const [reviewSummary, setReviewSummary] = useState<any>(null);
+  const [cart, setCart] = useState<{[key: string]: number}>({});
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPrice, setTotalPrice] = useState(0);
 
-  const menuItems = useMemo(() => {
-    const items = getMenuByRestaurantId(restaurant.id);
-    console.log(`🍕 Menu items for ${restaurant.name}:`, items.length);
-    return items;
-  }, [restaurant.id]);
-  const categories = useMemo(() => {
-    const cats = ['All', ...new Set(menuItems.map(item => item.category))];
-    return cats;
-  }, [menuItems]);
-  
-  const filteredMenuItems = useMemo(() => {
-    const filtered = selectedCategory === 'All' 
-      ? menuItems.filter(item => item.isAvailable)
-      : menuItems.filter(item => item.category === selectedCategory && item.isAvailable);
+  useEffect(() => {
+    // Get menu items for this restaurant
+    const items = menuItems.filter(item => item.restaurantId === restaurant.id);
+    setRestaurantMenu(items);
     
-    console.log(`🔍 Filtered menu items (${selectedCategory}):`, filtered.length);
-    return filtered;
-  }, [menuItems, selectedCategory]);
+    // Get review summary
+    const summary = getReviewSummary(restaurant.id, 'restaurant');
+    setReviewSummary(summary);
+  }, [restaurant.id, menuItems, getReviewSummary]);
 
-  const cartTotal = getCartTotal();
-  const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const restaurantCartItems = cart.filter(item => item.restaurantId === restaurant.id);
-  const reviewSummary = useMemo(() => getReviewSummary(restaurant.id, 'restaurant'), [restaurant.id]);
-  const canWriteReview = user ? canUserReview(user.id, restaurant.id, 'restaurant') : false;
+  useEffect(() => {
+    // Calculate cart totals
+    let items = 0;
+    let price = 0;
+    
+    Object.keys(cart).forEach(itemId => {
+      const quantity = cart[itemId];
+      const item = restaurantMenu.find(menuItem => menuItem.id === itemId);
+      if (item) {
+        items += quantity;
+        price += quantity * item.price;
+      }
+    });
+    
+    setTotalItems(items);
+    setTotalPrice(price);
+  }, [cart, restaurantMenu]);
 
-  const handleAddToCart = (menuItem: MenuItem) => {
-    if (cart.length > 0 && cart[0].restaurantId !== restaurant.id) {
-      Alert.alert(
-        'Different Restaurant',
-        'You have items from another restaurant in your cart. Clear cart to add items from this restaurant?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Clear Cart',
-            onPress: () => {
-              clearCart();
-              addToCart({
-                menuItemId: menuItem.id,
-                restaurantId: restaurant.id,
-                name: menuItem.name,
-                price: menuItem.price,
-                quantity: 1,
-              });
-            },
-          },
-        ]
-      );
-      return;
-    }
+  const handleAddToCart = (itemId: string) => {
+    setCart(prev => ({
+      ...prev,
+      [itemId]: (prev[itemId] || 0) + 1
+    }));
+  };
 
-    addToCart({
-      menuItemId: menuItem.id,
-      restaurantId: restaurant.id,
-      name: menuItem.name,
-      price: menuItem.price,
-      quantity: 1,
+  const handleRemoveFromCart = (itemId: string) => {
+    setCart(prev => {
+      const newCart = { ...prev };
+      if (newCart[itemId] > 1) {
+        newCart[itemId] -= 1;
+      } else {
+        delete newCart[itemId];
+      }
+      return newCart;
     });
   };
 
-  const handleOrder = async () => {
-    if (!user || restaurantCartItems.length === 0) {
-      Alert.alert('Error', 'Please add items to cart and ensure you are logged in.');
+  const handlePlaceOrder = () => {
+    if (totalItems === 0) {
+      Alert.alert('Empty Cart', 'Please add items to your cart before placing an order.');
       return;
     }
 
-    if (!deliveryAddress.trim()) {
-      Alert.alert('Error', 'Please enter a delivery address.');
-      return;
-    }
-
-    setIsOrdering(true);
-    try {
-      const orderItems = restaurantCartItems.map(cartItem => ({
-        menuItemId: cartItem.menuItemId,
-        quantity: cartItem.quantity,
-        price: cartItem.price,
-        specialInstructions: cartItem.specialInstructions,
-      }));
-
-      await createOrder({
-        userId: user.id,
-        restaurantId: restaurant.id,
-        items: orderItems,
-        totalPrice: cartTotal + restaurant.deliveryFee,
-        deliveryAddress: deliveryAddress.trim(),
-        status: 'pending',
-        paymentStatus: 'pending',
-        estimatedDeliveryTime: new Date(Date.now() + 45 * 60 * 1000),
-      });
-
-      clearCart();
-      setShowCartModal(false);
-      
-      Alert.alert(
-        'Order Placed!',
-        `Your order from ${restaurant.name} has been placed successfully. Estimated delivery time: 45 minutes.`,
-        [
-          {
-            text: 'View Orders',
-            onPress: () => navigation.navigate('Orders'),
-          },
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
-    } catch (error) {
-      Alert.alert('Error', 'Failed to place order. Please try again.');
-    } finally {
-      setIsOrdering(false);
-    }
-  };
-
-  const handleWriteReview = () => {
-    // @ts-ignore - Navigation will be properly typed in actual navigation setup
-    navigation.navigate('WriteReview', {
-      targetId: restaurant.id,
-      targetType: 'restaurant',
-      targetName: restaurant.name,
+    // Navigate to payment screen
+    navigation.navigate('Payment', {
+      amount: totalPrice + restaurant.deliveryFee,
+      currency: 'GHS',
+      paymentFor: 'order',
+      referenceId: `order_${Date.now()}` // In a real app, this would be generated by the backend
     });
   };
 
-  const handleSeeAllReviews = () => {
-    // @ts-ignore - Navigation will be properly typed in actual navigation setup
-    navigation.navigate('ReviewsList', {
-      targetId: restaurant.id,
-      targetType: 'restaurant',
-      targetName: restaurant.name,
-    });
-  };
-
-  const renderCategory = (category: string, index: number) => (
-    <TouchableOpacity
-      key={index}
-      style={[
-        styles.categoryChip,
-        selectedCategory === category && styles.selectedCategoryChip
-      ]}
-      onPress={() => setSelectedCategory(category)}
-    >
-      <Text style={[
-        styles.categoryText,
-        selectedCategory === category && styles.selectedCategoryText
-      ]}>
-        {category}
-      </Text>
-    </TouchableOpacity>
-  );
-
-  const renderMenuItem = (item: MenuItem, index: number) => (
-    <Card key={item.id} style={styles.menuItemCard}>
-      <View style={styles.menuItemContent}>
-        {item.images.length > 0 && (
-          <Image source={{ uri: item.images[0] }} style={styles.menuItemImage} />
-        )}
-        <View style={styles.menuItemInfo}>
-          <Text style={styles.menuItemName}>{item.name}</Text>
-          <Text style={styles.menuItemDescription} numberOfLines={2}>
-            {item.description}
-          </Text>
-          <View style={styles.menuItemDetails}>
-            <Text style={styles.preparationTime}>
-              <Ionicons name="time-outline" size={14} color={theme.colors.text.tertiary} />
-              {' '}{item.preparationTime}
+  const renderMenuItem = ({ item }: { item: any }) => {
+    const quantity = cart[item.id] || 0;
+    
+    return (
+      <Card style={styles.menuItemCard}>
+        <View style={styles.menuItemContent}>
+          {item.image ? (
+            <View style={styles.itemImagePlaceholder}>
+              <Ionicons name="fast-food" size={24} color="#666" />
+            </View>
+          ) : (
+            <View style={styles.itemImagePlaceholder}>
+              <Ionicons name="fast-food" size={24} color="#666" />
+            </View>
+          )}
+          
+          <View style={styles.itemInfo}>
+            <Text style={styles.itemName}>{item.name}</Text>
+            <Text style={styles.itemDescription} numberOfLines={2}>
+              {item.description}
             </Text>
-            {item.allergens.length > 0 && (
-              <Text style={styles.allergens}>
-                <Ionicons name="warning-outline" size={14} color={theme.colors.warning[500]} />
-                {' '}Contains: {item.allergens.join(', ')}
-              </Text>
-            )}
+            <Text style={styles.itemPrice}>₵{item.price.toFixed(2)}</Text>
           </View>
-          <View style={styles.priceRow}>
-            <Text style={styles.menuItemPrice}>GH₵{item.price.toFixed(2)}</Text>
+        </View>
+        
+        <View style={styles.cartControls}>
+          {quantity > 0 ? (
+            <View style={styles.quantityControl}>
+              <TouchableOpacity 
+                style={styles.quantityButton}
+                onPress={() => handleRemoveFromCart(item.id)}
+              >
+                <Ionicons name="remove" size={20} color="#fff" />
+              </TouchableOpacity>
+              <Text style={styles.quantityText}>{quantity}</Text>
+              <TouchableOpacity 
+                style={styles.quantityButton}
+                onPress={() => handleAddToCart(item.id)}
+              >
+                <Ionicons name="add" size={20} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          ) : (
             <Button
-              title="Add to Cart"
-              onPress={() => handleAddToCart(item)}
+              title="Add"
+              onPress={() => handleAddToCart(item.id)}
               style={styles.addButton}
               size="small"
             />
-          </View>
+          )}
         </View>
-      </View>
-    </Card>
-  );
+      </Card>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{restaurant.name}</Text>
-        {cartItemCount > 0 && (
-          <TouchableOpacity style={styles.cartButton} onPress={() => setShowCartModal(true)}>
-            <Ionicons name="bag" size={24} color={theme.colors.primary[500]} />
-            <View style={styles.cartBadge}>
-              <Text style={styles.cartBadgeText}>{cartItemCount}</Text>
-            </View>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
-        )}
-      </View>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Restaurant Info */}
-        <View style={styles.restaurantInfo}>
-          <Image source={{ uri: restaurant.images[0] }} style={styles.restaurantImage} />
-          <View style={styles.restaurantDetails}>
-            <View style={styles.ratingRow}>
-              <View style={styles.rating}>
-                <Ionicons name="star" size={16} color={theme.colors.warning[500]} />
-                <Text style={styles.ratingText}>{restaurant.rating}</Text>
-              </View>
-              <Text style={styles.cuisineText}>{restaurant.cuisine.join(', ')}</Text>
-            </View>
-            <Text style={styles.description}>{restaurant.description}</Text>
-            <View style={styles.deliveryInfo}>
-              <View style={styles.deliveryItem}>
-                <Ionicons name="time" size={16} color={theme.colors.text.secondary} />
-                <Text style={styles.deliveryText}>{restaurant.deliveryTime}</Text>
-              </View>
-              <View style={styles.deliveryItem}>
-                <Ionicons name="car" size={16} color={theme.colors.text.secondary} />
-                <Text style={styles.deliveryText}>GH₵{restaurant.deliveryFee.toFixed(2)} delivery</Text>
-              </View>
-              <View style={styles.deliveryItem}>
-                <Ionicons name="card" size={16} color={theme.colors.text.secondary} />
-                <Text style={styles.deliveryText}>GH₵{restaurant.minimumOrder} min</Text>
-              </View>
-            </View>
-          </View>
+          <Text style={styles.headerTitle}>{restaurant.name}</Text>
+          <TouchableOpacity 
+            style={styles.favoriteButton}
+            onPress={() => Alert.alert('Save Restaurant', 'Restaurant saved to favorites!')}
+          >
+            <Ionicons name="heart-outline" size={24} color="#fff" />
+          </TouchableOpacity>
         </View>
 
-        {/* Reviews Section */}
-        <ReviewSummary
-          summary={reviewSummary}
-          canWriteReview={canWriteReview}
-          onWriteReviewPress={handleWriteReview}
-          onSeeAllReviewsPress={handleSeeAllReviews}
-        />
+        {/* Restaurant Image */}
+        <View style={styles.restaurantImageContainer}>
+          {restaurant.image ? (
+            <View style={styles.restaurantImagePlaceholder}>
+              <Ionicons name="restaurant" size={48} color="#fff" />
+            </View>
+          ) : (
+            <View style={styles.restaurantImagePlaceholder}>
+              <Ionicons name="restaurant" size={48} color="#fff" />
+            </View>
+          )}
+        </View>
 
-        {/* Categories */}
-        <View style={styles.categoriesSection}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesContainer}>
-            {categories.map(renderCategory)}
-          </ScrollView>
+        {/* Restaurant Info */}
+        <View style={styles.restaurantInfo}>
+          <Text style={styles.restaurantName}>{restaurant.name}</Text>
+          
+          <View style={styles.ratingContainer}>
+            <StarRating 
+              rating={reviewSummary?.averageRating || 0} 
+              size={16}
+              interactive={false}
+            />
+            <Text style={styles.ratingText}>
+              {reviewSummary?.averageRating?.toFixed(1) || '0.0'} 
+              {reviewSummary?.totalReviews ? ` (${reviewSummary.totalReviews})` : ''}
+            </Text>
+          </View>
+          
+          <View style={styles.restaurantDetails}>
+            <View style={styles.detailRow}>
+              <Ionicons name="location" size={16} color="#666" />
+              <Text style={styles.detailText}>{restaurant.address}</Text>
+            </View>
+            
+            <View style={styles.detailRow}>
+              <Ionicons name="time" size={16} color="#666" />
+              <Text style={styles.detailText}>
+                {restaurant.openingTime} - {restaurant.closingTime}
+              </Text>
+            </View>
+            
+            <View style={styles.detailRow}>
+              <Ionicons name="bicycle" size={16} color="#666" />
+              <Text style={styles.detailText}>Delivery: ₵{restaurant.deliveryFee.toFixed(2)}</Text>
+            </View>
+          </View>
         </View>
 
         {/* Menu Items */}
         <View style={styles.menuSection}>
-          <Text style={[globalStyles.h3, styles.sectionTitle]}>Menu</Text>
-          {filteredMenuItems.map((item, index) => renderMenuItem(item, index))}
-          {filteredMenuItems.length === 0 && (
-            <Text style={styles.noItemsText}>
-              No items available in {selectedCategory === 'All' ? 'this restaurant' : selectedCategory}
-            </Text>
-          )}
+          <Text style={styles.sectionTitle}>Menu</Text>
+          <FlatList
+            data={restaurantMenu}
+            renderItem={renderMenuItem}
+            keyExtractor={(item) => item.id}
+            scrollEnabled={false}
+            contentContainerStyle={styles.menuList}
+          />
         </View>
+
+        {/* Reviews Summary */}
+        {reviewSummary && reviewSummary.totalReviews > 0 && (
+          <Card style={styles.reviewsCard}>
+            <Text style={styles.sectionTitle}>Customer Reviews</Text>
+            
+            <View style={styles.reviewSummary}>
+              <View style={styles.averageRating}>
+                <Text style={styles.averageRatingValue}>
+                  {reviewSummary.averageRating.toFixed(1)}
+                </Text>
+                <StarRating 
+                  rating={reviewSummary.averageRating} 
+                  size={16}
+                  interactive={false}
+                />
+                <Text style={styles.reviewCount}>
+                  {reviewSummary.totalReviews} {reviewSummary.totalReviews === 1 ? 'review' : 'reviews'}
+                </Text>
+              </View>
+              
+              <TouchableOpacity 
+                style={styles.viewReviewsButton}
+                onPress={() => Alert.alert('View Reviews', 'In a complete implementation, this would show all reviews')}
+              >
+                <Text style={styles.viewReviewsText}>View all reviews</Text>
+                <Ionicons name="chevron-forward" size={16} color="#2196F3" />
+              </TouchableOpacity>
+            </View>
+          </Card>
+        )}
       </ScrollView>
 
-      {/* Cart Modal */}
-      <Modal
-        visible={showCartModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-      >
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Your Order</Text>
-            <TouchableOpacity onPress={() => setShowCartModal(false)}>
-              <Ionicons name="close" size={24} color={theme.colors.text.primary} />
-            </TouchableOpacity>
+      {/* Cart Summary */}
+      {totalItems > 0 && (
+        <View style={styles.cartSummary}>
+          <View style={styles.cartInfo}>
+            <Text style={styles.cartItems}>{totalItems} {totalItems === 1 ? 'item' : 'items'}</Text>
+            <Text style={styles.cartTotal}>₵{totalPrice.toFixed(2)}</Text>
           </View>
-          
-          <ScrollView style={styles.modalContent}>
-            {restaurantCartItems.map((item, index) => (
-              <View key={index} style={styles.cartItem}>
-                <Text style={styles.cartItemName}>{item.name}</Text>
-                <View style={styles.cartItemRow}>
-                  <Text style={styles.cartItemPrice}>GH₵{item.price.toFixed(2)} x {item.quantity}</Text>
-                  <Text style={styles.cartItemTotal}>GH₵{(item.price * item.quantity).toFixed(2)}</Text>
-                </View>
-              </View>
-            ))}
-            
-            <View style={styles.orderSummary}>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Subtotal:</Text>
-                <Text style={styles.summaryValue}>GH₵{cartTotal.toFixed(2)}</Text>
-              </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Delivery Fee:</Text>
-                <Text style={styles.summaryValue}>GH₵{restaurant.deliveryFee.toFixed(2)}</Text>
-              </View>
-              <View style={[styles.summaryRow, styles.totalRow]}>
-                <Text style={styles.totalLabel}>Total:</Text>
-                <Text style={styles.totalValue}>GH₵{(cartTotal + restaurant.deliveryFee).toFixed(2)}</Text>
-              </View>
-            </View>
-
-            <View style={styles.addressSection}>
-              <Text style={styles.addressLabel}>Delivery Address</Text>
-              <Input
-                placeholder="Enter your delivery address"
-                value={deliveryAddress}
-                onChangeText={setDeliveryAddress}
-                multiline
-                style={styles.addressInput}
-              />
-            </View>
-          </ScrollView>
-
-          <View style={styles.modalFooter}>
-            <Button
-              title={isOrdering ? "Placing Order..." : "Place Order"}
-              onPress={handleOrder}
-              disabled={isOrdering || cartTotal < restaurant.minimumOrder}
-              style={styles.orderButton}
-            />
-            {cartTotal < restaurant.minimumOrder && (
-              <Text style={styles.minimumOrderText}>
-                Minimum order: GH₵{restaurant.minimumOrder.toFixed(2)}
-              </Text>
-            )}
-          </View>
-        </SafeAreaView>
-      </Modal>
+          <Button
+            title={`Place Order • ₵${(totalPrice + restaurant.deliveryFee).toFixed(2)}`}
+            onPress={handlePlaceOrder}
+            style={styles.placeOrderButton}
+          />
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -382,308 +294,214 @@ const RestaurantDetailScreen: React.FC<RestaurantDetailScreenProps> = ({ route, 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.primary,
+    backgroundColor: '#f5f5f5',
+  },
+  scrollView: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    padding: theme.spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.light,
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#007AFF',
   },
   backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 8,
   },
   headerTitle: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.semiBold as '600',
-    color: theme.colors.text.primary,
-    marginHorizontal: theme.spacing.md,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
   },
-  cartButton: {
-    position: 'relative',
-    width: 40,
-    height: 40,
+  favoriteButton: {
+    padding: 8,
+  },
+  restaurantImageContainer: {
+    height: 200,
+    backgroundColor: '#007AFF',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  cartBadge: {
-    position: 'absolute',
-    top: -2,
-    right: -2,
-    backgroundColor: theme.colors.danger[500],
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
+  restaurantImagePlaceholder: {
+    width: '100%',
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  cartBadgeText: {
-    color: theme.colors.neutral[0],
-    fontSize: theme.typography.fontSize.xs,
-    fontWeight: theme.typography.fontWeight.bold as '700',
-  },
-  content: {
-    flex: 1,
   },
   restaurantInfo: {
-    padding: theme.spacing.lg,
+    backgroundColor: '#fff',
+    padding: 16,
+    marginBottom: 16,
   },
-  restaurantImage: {
-    width: '100%',
-    height: 200,
-    borderRadius: theme.borderRadius.lg,
-    marginBottom: theme.spacing.md,
+  restaurantName: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 8,
   },
-  restaurantDetails: {
-    marginBottom: theme.spacing.md,
-  },
-  ratingRow: {
+  ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: theme.spacing.sm,
-  },
-  rating: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: theme.spacing.md,
+    marginBottom: 12,
   },
   ratingText: {
-    marginLeft: theme.spacing.xs,
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.medium as '500',
-    color: theme.colors.text.primary,
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 8,
   },
-  cuisineText: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
-    fontStyle: 'italic',
+  restaurantDetails: {
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    paddingTop: 12,
   },
-  description: {
-    fontSize: theme.typography.fontSize.md,
-    color: theme.colors.text.secondary,
-    lineHeight: 20,
-    marginBottom: theme.spacing.md,
-  },
-  deliveryInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  deliveryItem: {
+  detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
+    marginBottom: 8,
   },
-  deliveryText: {
-    marginLeft: theme.spacing.xs,
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
-  },
-  categoriesSection: {
-    marginBottom: theme.spacing.lg,
-  },
-  categoriesContainer: {
-    paddingHorizontal: theme.spacing.lg,
-  },
-  categoryChip: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.background.secondary,
-    borderRadius: theme.borderRadius.full,
-    marginRight: theme.spacing.sm,
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  selectedCategoryChip: {
-    backgroundColor: theme.colors.primary[500],
-    borderColor: theme.colors.primary[500],
-  },
-  categoryText: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.medium as '500',
-    color: theme.colors.text.primary,
-  },
-  selectedCategoryText: {
-    color: theme.colors.neutral[0],
+  detailText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 8,
   },
   menuSection: {
-    padding: theme.spacing.lg,
-    paddingTop: 0,
+    backgroundColor: '#fff',
+    marginBottom: 16,
   },
   sectionTitle: {
-    marginBottom: theme.spacing.md,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#333',
+    padding: 16,
+    paddingBottom: 8,
+  },
+  menuList: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   menuItemCard: {
-    marginBottom: theme.spacing.md,
+    marginBottom: 12,
+    padding: 12,
   },
   menuItemContent: {
     flexDirection: 'row',
   },
-  menuItemImage: {
-    width: 80,
-    height: 80,
-    borderRadius: theme.borderRadius.md,
-    marginRight: theme.spacing.md,
+  itemImagePlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
-  menuItemInfo: {
+  itemInfo: {
     flex: 1,
   },
-  menuItemName: {
-    fontSize: theme.typography.fontSize.md,
-    fontWeight: theme.typography.fontWeight.semiBold as '600',
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.xs,
+  itemName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
   },
-  menuItemDescription: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
-    marginBottom: theme.spacing.sm,
+  itemDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
     lineHeight: 18,
   },
-  menuItemDetails: {
-    marginBottom: theme.spacing.sm,
+  itemPrice: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#007AFF',
   },
-  preparationTime: {
-    fontSize: theme.typography.fontSize.xs,
-    color: theme.colors.text.tertiary,
-    marginBottom: theme.spacing.xs,
+  cartControls: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
   },
-  allergens: {
-    fontSize: theme.typography.fontSize.xs,
-    color: theme.colors.warning[600],
-  },
-  priceRow: {
+  quantityControl: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  menuItemPrice: {
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.bold as '700',
-    color: theme.colors.primary[500],
+  quantityButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quantityText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginHorizontal: 12,
+    minWidth: 20,
+    textAlign: 'center',
   },
   addButton: {
-    minWidth: 100,
+    minWidth: 80,
   },
-  noItemsText: {
-    textAlign: 'center',
-    fontSize: theme.typography.fontSize.md,
-    color: theme.colors.text.secondary,
-    fontStyle: 'italic',
-    padding: theme.spacing.xl,
+  reviewsCard: {
+    marginHorizontal: 16,
+    marginBottom: 32,
+    padding: 16,
   },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: theme.colors.background.primary,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: theme.spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.light,
-  },
-  modalTitle: {
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.semiBold as '600',
-    color: theme.colors.text.primary,
-  },
-  modalContent: {
-    flex: 1,
-    padding: theme.spacing.lg,
-  },
-  cartItem: {
-    marginBottom: theme.spacing.md,
-    paddingBottom: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.light,
-  },
-  cartItemName: {
-    fontSize: theme.typography.fontSize.md,
-    fontWeight: theme.typography.fontWeight.medium as '500',
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.xs,
-  },
-  cartItemRow: {
+  reviewSummary: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  cartItemPrice: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
+  averageRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  cartItemTotal: {
-    fontSize: theme.typography.fontSize.md,
-    fontWeight: theme.typography.fontWeight.medium as '500',
-    color: theme.colors.text.primary,
+  averageRatingValue: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#333',
+    marginRight: 8,
   },
-  orderSummary: {
-    marginTop: theme.spacing.lg,
-    paddingTop: theme.spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border.light,
+  reviewCount: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 8,
   },
-  summaryRow: {
+  viewReviewsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  viewReviewsText: {
+    fontSize: 14,
+    color: '#2196F3',
+    marginRight: 4,
+  },
+  cartSummary: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: theme.spacing.sm,
-  },
-  summaryLabel: {
-    fontSize: theme.typography.fontSize.md,
-    color: theme.colors.text.secondary,
-  },
-  summaryValue: {
-    fontSize: theme.typography.fontSize.md,
-    color: theme.colors.text.primary,
-  },
-  totalRow: {
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: theme.colors.border.light,
-    paddingTop: theme.spacing.sm,
-    marginTop: theme.spacing.sm,
+    borderTopColor: '#eee',
   },
-  totalLabel: {
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.semiBold as '600',
-    color: theme.colors.text.primary,
+  cartInfo: {
+    flex: 1,
   },
-  totalValue: {
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.bold as '700',
-    color: theme.colors.primary[500],
+  cartItems: {
+    fontSize: 14,
+    color: '#666',
   },
-  addressSection: {
-    marginTop: theme.spacing.lg,
+  cartTotal: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#333',
   },
-  addressLabel: {
-    fontSize: theme.typography.fontSize.md,
-    fontWeight: theme.typography.fontWeight.medium as '500',
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.sm,
-  },
-  addressInput: {
-    marginBottom: theme.spacing.md,
-  },
-  modalFooter: {
-    padding: theme.spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border.light,
-  },
-  orderButton: {
-    marginBottom: theme.spacing.sm,
-  },
-  minimumOrderText: {
-    textAlign: 'center',
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.warning[600],
+  placeOrderButton: {
+    flex: 2,
+    marginLeft: 16,
   },
 });
 

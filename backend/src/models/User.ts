@@ -14,8 +14,8 @@ const userSchema = new Schema<IUser>({
   password: {
     type: String,
     required: [true, 'Password is required'],
-    minlength: [8, 'Password must be at least 8 characters long'],
-    select: false
+    minlength: [6, 'Password must be at least 6 characters long'],
+    select: false // Don't include password in queries by default
   },
   name: {
     type: String,
@@ -31,12 +31,14 @@ const userSchema = new Schema<IUser>({
   },
   phone: {
     type: String,
-    match: [/^(\+233|0)[2-9]\d{8}$/, 'Please provide a valid Ghanaian phone number'],
-    sparse: true
+    match: [/^(\+233|0)[2-9]\d{8}$/, 'Please provide a valid Ghanaian phone number']
   },
   avatar: {
+    type: String
+  },
+  pushToken: {
     type: String,
-    default: null
+    sparse: true // Allow multiple null values but unique non-null values
   },
   isActive: {
     type: Boolean,
@@ -48,36 +50,52 @@ const userSchema = new Schema<IUser>({
   }
 }, {
   timestamps: true,
-  toJSON: {
-    transform: function(doc, ret) {
-      delete (ret as any).password;
-      delete (ret as any).__v;
-      return ret;
-    }
-  }
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
-// Index for performance
+// Indexes for performance
 userSchema.index({ email: 1 });
 userSchema.index({ role: 1 });
 userSchema.index({ isActive: 1 });
+userSchema.index({ pushToken: 1 });
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {
+  // Only hash the password if it has been modified (or is new)
   if (!this.isModified('password')) return next();
-  
+
   try {
+    // Hash password with cost of 12
     const salt = await bcrypt.genSalt(12);
-    this.password = await bcrypt.hash(this.password, salt);
+    (this as any).password = await bcrypt.hash((this as any).password, salt);
     next();
-  } catch (error) {
-    next(error as Error);
+  } catch (error: any) {
+    next(error);
   }
 });
 
-// Compare password method
+// Instance method to check password
 userSchema.methods.comparePassword = async function(candidatePassword: string): Promise<boolean> {
-  return bcrypt.compare(candidatePassword, this.password);
+  try {
+    return await bcrypt.compare(candidatePassword, (this as any).password);
+  } catch (error) {
+    return false;
+  }
 };
+
+// Virtual for hotels (if user is hotel owner)
+userSchema.virtual('hotels', {
+  ref: 'Hotel',
+  localField: '_id',
+  foreignField: 'ownerId'
+});
+
+// Virtual for restaurants (if user is restaurant owner)
+userSchema.virtual('restaurants', {
+  ref: 'Restaurant',
+  localField: '_id',
+  foreignField: 'ownerId'
+});
 
 export const User = mongoose.model<IUser>('User', userSchema);

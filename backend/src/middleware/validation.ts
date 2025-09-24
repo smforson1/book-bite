@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { validationResult } from 'express-validator';
 import { ApiResponse } from '@/types';
 
-export const handleValidationErrors = (
+export const validateRequest = (
   req: Request,
   res: Response,
   next: NextFunction
@@ -12,17 +12,20 @@ export const handleValidationErrors = (
   if (!errors.isEmpty()) {
     const errorMessages = errors.array().map(error => ({
       field: error.type === 'field' ? (error as any).path : 'unknown',
-      message: error.msg
+      message: error.msg,
+      value: error.type === 'field' ? (error as any).value : undefined
     }));
 
     res.status(400).json({
       success: false,
       message: 'Validation failed',
-      error: 'Invalid input data',
-      data: errorMessages
+      errors: errorMessages
     } as ApiResponse);
     return;
   }
-  
+
   next();
 };
+
+// Legacy function name for backward compatibility
+export const handleValidationErrors = validateRequest;

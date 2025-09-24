@@ -51,6 +51,8 @@ interface RestaurantFilters {
   minRating?: number;
   maxDeliveryTime?: number;
   maxDeliveryFee?: number;
+  minPrice?: number;
+  maxPrice?: number;
   location?: string;
 }
 
@@ -349,6 +351,22 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
       if (filters.maxDeliveryFee) {
         filteredRestaurants = filteredRestaurants.filter(restaurant => restaurant.deliveryFee <= filters.maxDeliveryFee!);
       }
+      
+      if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
+        // Filter restaurants based on menu item prices
+        filteredRestaurants = filteredRestaurants.filter(restaurant => {
+          const restaurantMenu = getMenuByRestaurantId(restaurant.id);
+          if (restaurantMenu.length === 0) return false;
+          
+          // Check if any menu item falls within the price range
+          return restaurantMenu.some(item => {
+            if (filters.minPrice !== undefined && item.price < filters.minPrice!) return false;
+            if (filters.maxPrice !== undefined && item.price > filters.maxPrice!) return false;
+            return true;
+          });
+        });
+      }
+
       if (filters.cuisine && filters.cuisine.length > 0) {
         filteredRestaurants = filteredRestaurants.filter(restaurant =>
           filters.cuisine!.some(cuisine =>
@@ -566,15 +584,11 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
         clearCart();
         
         // Send order confirmation notification
-        await notificationService.sendOrderNotification({
-          orderId: newOrder.id,
-          userId: newOrder.userId,
-          restaurantId: newOrder.restaurantId,
-          type: 'order_placed',
-          title: 'Order Confirmed!',
-          message: `Your order from ${getRestaurantById(newOrder.restaurantId)?.name || 'restaurant'} has been confirmed.`,
-          data: { orderId: newOrder.id }
-        });
+        await notificationService.scheduleLocalNotification(
+          'Order Confirmed!',
+          `Your order from ${getRestaurantById(newOrder.restaurantId)?.name || 'restaurant'} has been confirmed.`,
+          { orderId: newOrder.id, type: 'order_placed' }
+        );
         
         return newOrder;
       } else {
@@ -653,15 +667,11 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
             cancelled: 'Your order has been cancelled'
           };
           
-          await notificationService.sendOrderNotification({
-            orderId,
-            userId: order.userId,
-            restaurantId: order.restaurantId,
-            type: 'order_status_update',
-            title: 'Order Update',
-            message: statusMessages[status] || `Order status updated to ${status}`,
-            data: { orderId, status }
-          });
+          await notificationService.scheduleLocalNotification(
+            'Order Update',
+            statusMessages[status] || `Order status updated to ${status}`,
+            { orderId, status, type: 'order_status_update' }
+          );
         }
         
         return true;
@@ -739,13 +749,13 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
   const getReviews = async (restaurantId: string): Promise<Review[]> => {
     try {
       setLoading(true);
-      const response = await apiService.getReviews(restaurantId);
+      const response = await apiService.getReviews({ targetId: restaurantId, targetType: 'restaurant' });
       
       if (response.success && response.data) {
-        setReviews(response.data);
+        setReviews(response.data.reviews);
         // Cache locally for offline access
-        await AsyncStorage.setItem('reviews', JSON.stringify(response.data));
-        return response.data;
+        await AsyncStorage.setItem('reviews', JSON.stringify(response.data.reviews));
+        return response.data.reviews;
       } else {
         console.error('Failed to fetch reviews:', response.error);
         // Return empty array if API fails
@@ -766,8 +776,8 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
       
       if (response.success && response.data) {
         const newReview = response.data;
-        setReviews(prev => [...prev, newReview]);
-        return newReview;
+        setReviews(prev => [...prev, newReview.review]);
+        return newReview.review;
       } else {
         throw new Error(response.error || 'Failed to create review');
       }

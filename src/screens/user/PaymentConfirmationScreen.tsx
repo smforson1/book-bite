@@ -3,232 +3,358 @@ import {
   View,
   Text,
   StyleSheet,
+  ScrollView,
   TouchableOpacity,
-  Image,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Button, Card } from '../../components';
-import { theme } from '../../styles/theme';
-import { globalStyles } from '../../styles/globalStyles';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { HotelsStackParamList } from '../../navigation/HotelsStackNavigator';
+
+// Components
+import { Button, Card } from '../../components';
+
+// Services
+import { useAuth } from '../../contexts/AuthContext';
+
+// Navigation types
 import { RestaurantsStackParamList } from '../../navigation/RestaurantsStackNavigator';
+import { HotelsStackParamList } from '../../navigation/HotelsStackNavigator';
 
-type PaymentConfirmationScreenRouteProp = RouteProp<HotelsStackParamList | RestaurantsStackParamList, 'PaymentConfirmation'>;
-type PaymentConfirmationScreenNavigationProp = StackNavigationProp<HotelsStackParamList | RestaurantsStackParamList, 'PaymentConfirmation'>;
+type PaymentConfirmationRouteProp = RouteProp<RestaurantsStackParamList & HotelsStackParamList, 'PaymentConfirmation'>;
+type PaymentConfirmationNavigationProp = StackNavigationProp<RestaurantsStackParamList & HotelsStackParamList, 'PaymentConfirmation'>;
 
-const PaymentConfirmationScreen: React.FC = () => {
-  const navigation = useNavigation<PaymentConfirmationScreenNavigationProp>();
-  const route = useRoute<PaymentConfirmationScreenRouteProp>();
-  
-  const { 
-    amount, 
-    currency, 
-    paymentFor, 
-    referenceId, 
-    paymentMethod, 
-    transactionId 
-  } = route.params;
-  
-  // Format date as MM/DD/YYYY
-  const currentDate = new Date();
-  const formattedDate = `${currentDate.getMonth() + 1}/${currentDate.getDate()}/${currentDate.getFullYear()}`;
-  
-  // Navigate back to home or appropriate screen
-  const handleDone = () => {
-    // Navigate back to the previous screens by popping the stack
-    navigation.popToTop();
+interface Props {
+  navigation: PaymentConfirmationNavigationProp;
+  route: PaymentConfirmationRouteProp;
+}
+
+const PaymentConfirmationScreen: React.FC<Props> = ({ navigation, route }) => {
+  const { amount, currency, paymentFor, referenceId, paymentMethod, transactionId } = route.params;
+  const { user } = useAuth();
+
+  const handleGoHome = () => {
+    // Navigate back to the main user screen
+    navigation.navigate('Restaurants' as any, { screen: 'RestaurantsList' });
   };
-  
-  // Print receipt
-  const handlePrintReceipt = () => {
-    Alert.alert(
-      'Receipt Printed',
-      'Your receipt has been successfully printed.',
-      [{ text: 'OK' }]
-    );
+
+  const handleViewDetails = () => {
+    if (paymentFor === 'order') {
+      navigation.navigate('Orders' as any);
+    } else {
+      navigation.navigate('Bookings' as any);
+    }
   };
-  
+
+  const getPaymentMethodIcon = () => {
+    switch (paymentMethod) {
+      case 'paystack':
+        return 'card';
+      case 'mtn_momo':
+        return 'phone-portrait';
+      case 'palmpay':
+        return 'wallet';
+      default:
+        return 'card';
+    }
+  };
+
+  const getPaymentMethodLabel = () => {
+    switch (paymentMethod) {
+      case 'paystack':
+        return 'Paystack (Card)';
+      case 'mtn_momo':
+        return 'MTN Mobile Money';
+      case 'palmpay':
+        return 'PalmPay';
+      default:
+        return 'Card Payment';
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Payment Confirmation</Text>
-        <View style={{ width: 24 }} /> {/* Spacer to balance header */}
-      </View>
-      
-      <View style={styles.content}>
-        <View style={styles.receiptContainer}>
-          <View style={styles.receiptHeader}>
-            <Ionicons name="checkmark-circle" size={64} color={theme.colors.success[500]} />
-            <Text style={styles.successText}>Payment Successful!</Text>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Success Icon */}
+        <View style={styles.iconContainer}>
+          <View style={styles.successIcon}>
+            <Ionicons name="checkmark" size={60} color="#FFFFFF" />
+          </View>
+        </View>
+
+        {/* Success Message */}
+        <View style={styles.messageContainer}>
+          <Text style={styles.title}>Payment Successful!</Text>
+          <Text style={styles.subtitle}>
+            Your payment has been processed successfully.
+          </Text>
+        </View>
+
+        {/* Payment Details */}
+        <Card style={styles.detailsCard}>
+          <Text style={styles.sectionTitle}>Payment Details</Text>
+          
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Amount:</Text>
+            <Text style={styles.detailValue}>₵{amount.toFixed(2)}</Text>
           </View>
           
-          <View style={styles.receiptDetails}>
-            <View style={styles.receiptRow}>
-              <Text style={styles.label}>Transaction ID:</Text>
-              <Text style={styles.value}>{transactionId}</Text>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Payment Method:</Text>
+            <View style={styles.methodContainer}>
+              <Ionicons 
+                name={getPaymentMethodIcon()} 
+                size={16} 
+                color="#666" 
+                style={styles.methodIcon}
+              />
+              <Text style={styles.detailValue}>{getPaymentMethodLabel()}</Text>
             </View>
-            
-            <View style={styles.receiptRow}>
-              <Text style={styles.label}>Date:</Text>
-              <Text style={styles.value}>{formattedDate}</Text>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Transaction ID:</Text>
+            <Text style={styles.detailValue} numberOfLines={1} ellipsizeMode="tail">
+              {transactionId}
+            </Text>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>For:</Text>
+            <Text style={styles.detailValue}>
+              {paymentFor === 'order' ? 'Restaurant Order' : 'Hotel Booking'}
+            </Text>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Reference:</Text>
+            <Text style={styles.detailValue} numberOfLines={1} ellipsizeMode="tail">
+              {referenceId}
+            </Text>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Date:</Text>
+            <Text style={styles.detailValue}>
+              {new Date().toLocaleDateString()}
+            </Text>
+          </View>
+        </Card>
+
+        {/* User Info */}
+        <Card style={styles.userCard}>
+          <Text style={styles.sectionTitle}>Paid By</Text>
+          <View style={styles.userRow}>
+            <Ionicons name="person" size={20} color="#666" style={styles.userIcon} />
+            <View style={styles.userInfo}>
+              <Text style={styles.userName}>{user?.name || 'User'}</Text>
+              <Text style={styles.userEmail}>{user?.email || 'user@example.com'}</Text>
             </View>
-            
-            <View style={styles.receiptRow}>
-              <Text style={styles.label}>Amount:</Text>
-              <Text style={styles.value}>{currency} ${amount.toFixed(2)}</Text>
+          </View>
+        </Card>
+
+        {/* Next Steps */}
+        <Card style={styles.stepsCard}>
+          <Text style={styles.sectionTitle}>Next Steps</Text>
+          <View style={styles.step}>
+            <View style={styles.stepIcon}>
+              <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
             </View>
-            
-            <View style={styles.receiptRow}>
-              <Text style={styles.label}>Payment For:</Text>
-              <Text style={styles.value}>{paymentFor === 'booking' ? 'Hotel Booking' : 'Restaurant Order'}</Text>
-            </View>
-            
-            <View style={styles.receiptRow}>
-              <Text style={styles.label}>Reference ID:</Text>
-              <Text style={styles.value}>{referenceId}</Text>
-            </View>
-            
-            <View style={styles.receiptRow}>
-              <Text style={styles.label}>Payment Method:</Text>
-              <Text style={styles.value}>
-                {paymentMethod === 'new_card' ? 'New Credit Card' : 'Saved Method'}
+            <View style={styles.stepContent}>
+              <Text style={styles.stepTitle}>Payment Confirmed</Text>
+              <Text style={styles.stepDescription}>
+                Your payment has been successfully processed
               </Text>
             </View>
           </View>
           
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              Thank you for your payment. Your {paymentFor === 'booking' ? 'hotel booking' : 'restaurant order'} is now confirmed.
-            </Text>
+          <View style={styles.step}>
+            <View style={styles.stepIcon}>
+              <Ionicons name="time" size={20} color="#FF9800" />
+            </View>
+            <View style={styles.stepContent}>
+              <Text style={styles.stepTitle}>
+                {paymentFor === 'order' ? 'Order Processing' : 'Booking Confirmation'}
+              </Text>
+              <Text style={styles.stepDescription}>
+                {paymentFor === 'order' 
+                  ? 'Your order is being prepared' 
+                  : 'Your booking is being confirmed'}
+              </Text>
+            </View>
           </View>
-        </View>
-        
-        <Button 
-          title="Done" 
-          onPress={handleDone} 
-          style={styles.doneButton}
+          
+          <View style={styles.step}>
+            <View style={styles.stepIcon}>
+              <Ionicons name="notifications" size={20} color="#2196F3" />
+            </View>
+            <View style={styles.stepContent}>
+              <Text style={styles.stepTitle}>Status Updates</Text>
+              <Text style={styles.stepDescription}>
+                You'll receive notifications about status changes
+              </Text>
+            </View>
+          </View>
+        </Card>
+      </ScrollView>
+
+      {/* Action Buttons */}
+      <View style={styles.buttonContainer}>
+        <Button
+          title="View Details"
+          onPress={handleViewDetails}
+          variant="outline"
+          style={styles.detailsButton}
         />
-        
-        <TouchableOpacity 
-          style={styles.printButton} 
-          onPress={handlePrintReceipt}
-        >
-          <Ionicons name="print" size={20} color={theme.colors.primary[500]} />
-          <Text style={styles.printButtonText}>Print Receipt</Text>
-        </TouchableOpacity>
+        <Button
+          title="Go to Home"
+          onPress={handleGoHome}
+          style={styles.homeButton}
+        />
       </View>
     </SafeAreaView>
   );
 };
 
-export default PaymentConfirmationScreen;
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.primary,
+    backgroundColor: '#f5f5f5',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: theme.spacing.lg,
-    backgroundColor: theme.colors.background.secondary,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.light,
-  },
-  backButton: {
-    padding: theme.spacing.sm,
-  },
-  headerTitle: {
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.semiBold,
-    color: theme.colors.text.primary,
-  },
-  content: {
+  scrollView: {
     flex: 1,
-    padding: theme.spacing.md,
+  },
+  iconContainer: {
+    alignItems: 'center',
+    marginVertical: 30,
+  },
+  successIcon: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#4CAF50',
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  receiptContainer: {
-    width: '100%',
-    maxWidth: 400,
-    backgroundColor: theme.colors.background.secondary,
-    borderRadius: theme.borderRadius.xl,
-    padding: theme.spacing.lg,
-    marginBottom: theme.spacing.lg,
-  },
-  receiptHeader: {
+  messageContainer: {
     alignItems: 'center',
-    marginBottom: theme.spacing.lg,
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
-  successText: {
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text.primary,
-    marginTop: theme.spacing.md,
-  },
-  receiptDetails: {
-    width: '100%',
-    backgroundColor: theme.colors.background.primary,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.lg,
-  },
-  receiptRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: theme.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.light,
-  },
-  label: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
-  },
-  value: {
-    fontSize: theme.typography.fontSize.sm,
-    fontWeight: theme.typography.fontWeight.medium,
-    color: theme.colors.text.primary,
-  },
-  footer: {
-    paddingTop: theme.spacing.md,
-  },
-  footerText: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
     textAlign: 'center',
   },
-  doneButton: {
-    width: '100%',
-    maxWidth: 400,
-    marginBottom: theme.spacing.md,
+  subtitle: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
   },
-  printButton: {
+  detailsCard: {
+    margin: 16,
+    padding: 16,
+  },
+  userCard: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 16,
+  },
+  stepsCard: {
+    marginHorizontal: 16,
+    marginBottom: 32,
+    padding: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 16,
+    color: '#333',
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  detailLabel: {
+    fontSize: 16,
+    color: '#666',
+    flex: 1,
+  },
+  detailValue: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+    flex: 1,
+    textAlign: 'right',
+  },
+  methodContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-    backgroundColor: theme.colors.background.secondary,
-    borderRadius: theme.borderRadius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border.light,
+    justifyContent: 'flex-end',
   },
-  printButtonText: {
-    marginLeft: theme.spacing.sm,
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.primary,
+  methodIcon: {
+    marginRight: 6,
+  },
+  userRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  userIcon: {
+    marginRight: 12,
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  userEmail: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
+  },
+  step: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  stepIcon: {
+    marginRight: 12,
+    marginTop: 2,
+  },
+  stepContent: {
+    flex: 1,
+  },
+  stepTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  stepDescription: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+  },
+  detailsButton: {
+    flex: 1,
+    marginRight: 8,
+  },
+  homeButton: {
+    flex: 1,
+    marginLeft: 8,
   },
 });
+
+export default PaymentConfirmationScreen;

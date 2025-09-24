@@ -3,7 +3,6 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { lightTheme as theme } from '../styles/theme';
 import RestaurantDashboardScreen from '../screens/restaurant/RestaurantDashboardScreen';
-import RestaurantMenuScreen from '../screens/restaurant/RestaurantMenuScreen';
 import RestaurantOrdersScreen from '../screens/restaurant/RestaurantOrdersScreen';
 import RestaurantProfileScreen from '../screens/restaurant/RestaurantProfileScreen';
 import RestaurantMenuManagementScreen from '../screens/restaurant/RestaurantMenuManagementScreen';

@@ -29,8 +29,8 @@ const level = () => {
   return isDevelopment ? 'debug' : 'warn';
 };
 
-// Define format
-const format = winston.format.combine(
+// Define different log formats
+const logFormat = winston.format.combine(
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss:ms' }),
   winston.format.colorize({ all: true }),
   winston.format.printf(
@@ -38,34 +38,63 @@ const format = winston.format.combine(
   ),
 );
 
-// Define transports
-const transports = [
+// Define which transports the logger must use
+const transports: winston.transport[] = [
   // Console transport
-  new winston.transports.Console(),
-  
-  // File transport for errors
-  new winston.transports.File({
-    filename: path.join(process.cwd(), 'logs', 'error.log'),
-    level: 'error',
-  }),
-  
-  // File transport for all logs
-  new winston.transports.File({
-    filename: path.join(process.cwd(), 'logs', 'all.log'),
+  new winston.transports.Console({
+    format: logFormat,
   }),
 ];
 
-// Create logger
-export const logger = winston.createLogger({
+// Add file transports in production
+if (process.env.NODE_ENV === 'production') {
+  // Ensure logs directory exists
+  const logsDir = path.join(process.cwd(), 'logs');
+  
+  // Error log file
+  transports.push(
+    new winston.transports.File({
+      filename: path.join(logsDir, 'error.log'),
+      level: 'error',
+      format: winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.json()
+      ),
+      maxsize: 5242880, // 5MB
+      maxFiles: 5,
+    })
+  );
+  
+  // Combined log file
+  transports.push(
+    new winston.transports.File({
+      filename: path.join(logsDir, 'combined.log'),
+      format: winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.json()
+      ),
+      maxsize: 5242880, // 5MB
+      maxFiles: 5,
+    })
+  );
+}
+
+// Create the logger
+const logger = winston.createLogger({
   level: level(),
   levels,
-  format,
   transports,
+  // Handle exceptions and rejections
+  handleExceptions: true,
+  handleRejections: true,
+  exitOnError: false,
 });
 
 // Create a stream object for Morgan HTTP logger
-export const morganStream = {
+const morganStream = {
   write: (message: string) => {
     logger.http(message.trim());
   },
 };
+
+export { logger, morganStream };

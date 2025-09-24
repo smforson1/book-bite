@@ -2,7 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { useAuth } from '../contexts/AuthContext';
-import { OnboardingScreen } from '../screens/onboarding/OnboardingScreen';
+import { SimpleOnboardingScreen } from '../screens/onboarding/SimpleOnboardingScreen';
 import AuthNavigator from './AuthNavigator';
 import UserNavigator from './UserNavigator';
 import AdminNavigator from './AdminNavigator';
@@ -45,7 +45,7 @@ const AppNavigator: React.FC = () => {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {!hasSeenOnboarding ? (
           <Stack.Screen name="Onboarding">
-            {() => <OnboardingScreen onComplete={completeOnboarding} />}
+            {() => <SimpleOnboardingScreen onComplete={completeOnboarding} />}
           </Stack.Screen>
         ) : !user ? (
           <Stack.Screen name="Auth" component={AuthNavigator} />

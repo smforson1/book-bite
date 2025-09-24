@@ -4,6 +4,7 @@ import { theme } from '../styles/theme';
 import RestaurantsScreen from '../screens/user/RestaurantsScreen';
 import RestaurantDetailScreen from '../screens/user/RestaurantDetailScreen';
 import PaymentScreen from '../screens/user/PaymentScreen';
+import PaymentVerificationScreen from '../screens/user/PaymentVerificationScreen';
 import PaymentConfirmationScreen from '../screens/user/PaymentConfirmationScreen';
 
 export type RestaurantsStackParamList = {
@@ -14,6 +15,12 @@ export type RestaurantsStackParamList = {
   Payment: {
     amount: number;
     currency: string;
+    paymentFor: 'booking' | 'order';
+    referenceId: string;
+  };
+  PaymentVerification: {
+    transactionId: string;
+    amount: number;
     paymentFor: 'booking' | 'order';
     referenceId: string;
   };
@@ -68,6 +75,14 @@ const RestaurantsStackNavigator: React.FC = () => {
         options={{
           title: 'Payment',
           headerShown: true // Show header for payment screen
+        }}
+      />
+      <Stack.Screen
+        name="PaymentVerification"
+        component={PaymentVerificationScreen}
+        options={{
+          title: 'Payment Verification',
+          headerShown: false // Custom header in component
         }}
       />
       <Stack.Screen

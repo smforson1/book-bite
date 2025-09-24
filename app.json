@@ -13,7 +13,13 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "BookBite needs location access to provide accurate food delivery and show nearby restaurants.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "BookBite needs location access to provide accurate food delivery and show nearby restaurants.",
+        "NSCameraUsageDescription": "BookBite needs camera access to take photos for reviews and profile pictures.",
+        "NSPhotoLibraryUsageDescription": "BookBite needs photo library access to select images for reviews and profile pictures."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -21,10 +27,39 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ],
+      "package": "com.samspeedy.bookbite"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "BookBite needs location access to provide accurate food delivery and show nearby restaurants.",
+          "locationWhenInUsePermission": "BookBite needs location access to provide accurate food delivery and show nearby restaurants."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "BookBite needs photo library access to select images for reviews and profile pictures.",
+          "cameraPermission": "BookBite needs camera access to take photos for reviews and profile pictures."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "66a4c143-5f96-4e72-b879-5651e267852a"
+      }
     }
   }
 }

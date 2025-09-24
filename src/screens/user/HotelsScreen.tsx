@@ -40,6 +40,21 @@ const HotelsScreen: React.FC<HotelsScreenProps> = ({ navigation }) => {
       filtered = filtered.filter(hotel => hotel.rating >= filters.rating!);
     }
 
+    if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
+      // Filter hotels based on room prices
+      filtered = filtered.filter(hotel => {
+        const hotelRooms = getRoomsByHotelId(hotel.id);
+        if (hotelRooms.length === 0) return false;
+        
+        // Check if any room falls within the price range
+        return hotelRooms.some((room: any) => {
+          if (filters.minPrice !== undefined && room.price < filters.minPrice!) return false;
+          if (filters.maxPrice !== undefined && room.price > filters.maxPrice!) return false;
+          return true;
+        });
+      });
+    }
+
     if (filters.amenities && filters.amenities.length > 0) {
       filtered = filtered.filter(hotel =>
         filters.amenities!.some(amenity =>
@@ -59,7 +74,7 @@ const HotelsScreen: React.FC<HotelsScreenProps> = ({ navigation }) => {
     return filtered;
   };
 
-  const { hotels, getHotels, searchHotels } = useHotel();
+  const { hotels, getHotels, searchHotels, getRoomsByHotelId } = useHotel();
   const {
     loading,
     searchQuery,

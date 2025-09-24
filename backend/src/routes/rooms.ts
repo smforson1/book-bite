@@ -40,7 +40,7 @@ router.use(authenticate);
 
 // Hotel owner and admin routes
 router.post('/',
-  authorize('hotel_owner', 'admin'),
+  authorize(['hotel_owner', 'admin']),
   uploadLimiter,
   uploadMultiple('images', 5),
   [
@@ -54,7 +54,7 @@ router.post('/',
 );
 
 router.put('/:id',
-  authorize('hotel_owner', 'admin'),
+  authorize(['hotel_owner', 'admin']),
   uploadLimiter,
   uploadMultiple('images', 5),
   mongoIdValidation('id'),
@@ -63,19 +63,19 @@ router.put('/:id',
 );
 
 router.delete('/:id',
-  authorize('hotel_owner', 'admin'),
+  authorize(['hotel_owner', 'admin']),
   mongoIdValidation('id'),
   handleValidationErrors,
   deleteRoom
 );
 
 router.get('/owner/my-rooms',
-  authorize('hotel_owner', 'admin'),
+  authorize(['hotel_owner', 'admin']),
   getMyRooms
 );
 
 router.patch('/:id/availability',
-  authorize('hotel_owner', 'admin'),
+  authorize(['hotel_owner', 'admin']),
   mongoIdValidation('id'),
   [
     body('isAvailable')

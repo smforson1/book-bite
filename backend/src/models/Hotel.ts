@@ -41,7 +41,8 @@ const hotelSchema = new Schema<IHotel>({
   }],
   amenities: [{
     type: String,
-    trim: true
+    trim: true,
+    required: true
   }],
   ownerId: {
     type: Schema.Types.ObjectId,

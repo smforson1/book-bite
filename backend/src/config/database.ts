@@ -3,19 +3,15 @@ import { logger } from '@/utils/logger';
 
 const connectDB = async (): Promise<void> => {
   try {
-    const mongoURI = process.env.NODE_ENV === 'test' 
-      ? process.env.MONGODB_TEST_URI 
-      : process.env.MONGODB_URI;
-
-    if (!mongoURI) {
-      throw new Error('MongoDB URI is not defined in environment variables');
-    }
-
+    const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/bookbite';
+    
     const conn = await mongoose.connect(mongoURI, {
       // Remove deprecated options
+      // useNewUrlParser and useUnifiedTopology are now default
     });
 
-    logger.info(`MongoDB Connected: ${conn.connection.host}`);
+    logger.info(`🍃 MongoDB Connected: ${conn.connection.host}`);
+    logger.info(`📊 Database: ${conn.connection.name}`);
 
     // Handle connection events
     mongoose.connection.on('error', (err) => {
@@ -26,15 +22,26 @@ const connectDB = async (): Promise<void> => {
       logger.warn('MongoDB disconnected');
     });
 
-    // Graceful shutdown
-    process.on('SIGINT', async () => {
-      await mongoose.connection.close();
-      logger.info('MongoDB connection closed through app termination');
-      process.exit(0);
+    mongoose.connection.on('reconnected', () => {
+      logger.info('MongoDB reconnected');
     });
 
-  } catch (error) {
-    logger.error('Error connecting to MongoDB:', error);
+    // Graceful shutdown
+    process.on('SIGINT', async () => {
+      try {
+        await mongoose.connection.close();
+        logger.info('MongoDB connection closed through app termination');
+        process.exit(0);
+      } catch (err) {
+        logger.error('Error during MongoDB disconnection:', err);
+        process.exit(1);
+      }
+    });
+
+  } catch (error: any) {
+    logger.error('MongoDB connection failed:', error.message);
+    
+    // Exit process with failure
     process.exit(1);
   }
 };

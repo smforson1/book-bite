@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import { verifyAccessToken } from '@/utils/jwt';
 import { User } from '@/models/User';
 import { AuthenticatedRequest, ApiResponse } from '@/types';
@@ -26,20 +26,21 @@ export const authenticate = async (
       const decoded = verifyAccessToken(token);
       
       // Get user from database
-      const user = await User.findById(decoded.userId).select('+password');
+      const user = await User.findById(decoded.userId);
       
       if (!user || !user.isActive) {
         res.status(401).json({
           success: false,
-          message: 'Invalid token or user not found'
+          message: 'Invalid or inactive user'
         } as ApiResponse);
         return;
       }
 
+      // Attach user to request
       req.user = user;
       next();
-    } catch (jwtError) {
-      logger.error('JWT verification error:', jwtError);
+    } catch (tokenError) {
+      logger.warn('Token verification failed:', tokenError);
       res.status(401).json({
         success: false,
         message: 'Invalid or expired token'
@@ -47,15 +48,15 @@ export const authenticate = async (
       return;
     }
   } catch (error) {
-    logger.error('Authentication error:', error);
+    logger.error('Authentication middleware error:', error);
     res.status(500).json({
       success: false,
-      message: 'Authentication failed'
+      message: 'Authentication error'
     } as ApiResponse);
   }
 };
 
-export const authorize = (...roles: string[]) => {
+export const authorize = (roles: string[]) => {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {
       res.status(401).json({
@@ -77,24 +78,37 @@ export const authorize = (...roles: string[]) => {
   };
 };
 
-// Middleware to check if user owns the resource
-export const checkOwnership = (resourceField: string = 'ownerId') => {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
-    if (!req.user) {
-      res.status(401).json({
-        success: false,
-        message: 'Authentication required'
-      } as ApiResponse);
-      return;
-    }
-
-    // Admin can access everything
-    if (req.user.role === 'admin') {
+export const optionalAuth = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      // No token provided, continue without authentication
       next();
       return;
     }
 
-    // Check if user owns the resource (will be validated in controller)
+    const token = authHeader.substring(7);
+    
+    try {
+      const decoded = verifyAccessToken(token);
+      const user = await User.findById(decoded.userId);
+      
+      if (user && user.isActive) {
+        req.user = user;
+      }
+    } catch (tokenError) {
+      // Invalid token, but continue without authentication
+      logger.warn('Optional auth token verification failed:', tokenError);
+    }
+
     next();
-  };
+  } catch (error) {
+    logger.error('Optional authentication middleware error:', error);
+    next(); // Continue even if there's an error
+  }
 };

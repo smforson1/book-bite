@@ -300,6 +300,22 @@ export const HotelProvider: React.FC<HotelProviderProps> = ({ children }) => {
       if (filters.rating) {
         filteredHotels = filteredHotels.filter(hotel => hotel.rating >= filters.rating!);
       }
+      
+      if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
+        // Filter hotels based on room prices
+        filteredHotels = filteredHotels.filter(hotel => {
+          const hotelRooms = getRoomsByHotelId(hotel.id);
+          if (hotelRooms.length === 0) return false;
+          
+          // Check if any room falls within the price range
+          return hotelRooms.some(room => {
+            if (filters.minPrice !== undefined && room.price < filters.minPrice!) return false;
+            if (filters.maxPrice !== undefined && room.price > filters.maxPrice!) return false;
+            return true;
+          });
+        });
+      }
+
       if (filters.location) {
         filteredHotels = filteredHotels.filter(hotel =>
           hotel.address.toLowerCase().includes(filters.location!.toLowerCase())
@@ -329,15 +345,11 @@ export const HotelProvider: React.FC<HotelProviderProps> = ({ children }) => {
         setBookings(prev => [...prev, newBooking]);
         
         // Send booking confirmation notification
-        await notificationService.sendBookingNotification({
-          bookingId: newBooking.id,
-          userId: newBooking.userId,
-          hotelId: newBooking.hotelId,
-          type: 'booking_confirmed',
-          title: 'Booking Confirmed!',
-          message: `Your booking at ${getHotelById(newBooking.hotelId)?.name || 'hotel'} has been confirmed.`,
-          data: { bookingId: newBooking.id }
-        });
+        await notificationService.scheduleLocalNotification(
+          'Booking Confirmed!',
+          `Your booking at ${getHotelById(newBooking.hotelId)?.name || 'hotel'} has been confirmed.`,
+          { bookingId: newBooking.id, type: 'booking_confirmed' }
+        );
         
         return newBooking;
       } else {
@@ -412,15 +424,11 @@ export const HotelProvider: React.FC<HotelProviderProps> = ({ children }) => {
             completed: 'Your booking has been completed. Thank you for staying with us!'
           };
           
-          await notificationService.sendBookingNotification({
-            bookingId,
-            userId: booking.userId,
-            hotelId: booking.hotelId,
-            type: 'booking_status_update',
-            title: 'Booking Update',
-            message: statusMessages[status] || `Booking status updated to ${status}`,
-            data: { bookingId, status }
-          });
+          await notificationService.scheduleLocalNotification(
+            'Booking Update',
+            statusMessages[status] || `Booking status updated to ${status}`,
+            { bookingId, status, type: 'booking_status_update' }
+          );
         }
         
         return true;

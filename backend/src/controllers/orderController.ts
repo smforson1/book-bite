@@ -6,12 +6,19 @@ import { ApiResponse, AuthenticatedRequest } from '@/types';
 import { asyncHandler } from '@/middleware/errorHandler';
 import { logger } from '@/utils/logger';
 import { getSocketService } from '@/services/socketService';
+import { notificationService, NotificationService } from '@/services/notificationService';
 
 export const createOrder = asyncHandler(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const userId = req.user!._id;
-  const { restaurantId, items, deliveryAddress, deliveryCoordinates, deliveryInstructions } = req.body;
+  const { 
+    restaurantId, 
+    items, 
+    deliveryAddress, 
+    deliveryCoordinates, 
+    deliveryInstructions 
+  } = req.body;
 
-  // Validate restaurant exists
+  // Validate restaurant exists and is active
   const restaurant = await Restaurant.findById(restaurantId);
   if (!restaurant || !restaurant.isActive) {
     res.status(404).json({
@@ -57,19 +64,19 @@ export const createOrder = asyncHandler(async (req: AuthenticatedRequest, res: R
   // Add delivery fee
   totalPrice += restaurant.deliveryFee;
 
-  // Check minimum order
+  // Check minimum order amount
   if (totalPrice < restaurant.minimumOrder) {
     res.status(400).json({
       success: false,
-      message: `Minimum order amount is GH₵${restaurant.minimumOrder}`
+      message: `Minimum order amount is GH₵${restaurant.minimumOrder.toFixed(2)}`
     } as ApiResponse);
     return;
   }
 
   // Calculate estimated delivery time
-  const estimatedDeliveryTime = new Date();
-  const deliveryMinutes = parseInt(restaurant.deliveryTime.match(/\d+/)?.[0] || '30');
-  estimatedDeliveryTime.setMinutes(estimatedDeliveryTime.getMinutes() + deliveryMinutes);
+  const now = new Date();
+  const deliveryTimeMinutes = parseInt(restaurant.deliveryTime.match(/\d+/)?.[0] || '30');
+  const estimatedDeliveryTime = new Date(now.getTime() + deliveryTimeMinutes * 60000);
 
   const order = new Order({
     userId,
@@ -87,10 +94,11 @@ export const createOrder = asyncHandler(async (req: AuthenticatedRequest, res: R
   // Populate order data
   await order.populate([
     { path: 'userId', select: 'name email phone' },
-    { path: 'restaurantId', select: 'name address phone email deliveryTime' }
+    { path: 'restaurantId', select: 'name address phone email deliveryFee' },
+    { path: 'items.menuItemId', select: 'name price images' }
   ]);
 
-  // Emit order update
+  // Emit order update and send push notifications
   try {
     const socketService = getSocketService();
     socketService.emitOrderUpdate(order._id.toString(), order.status, order.estimatedDeliveryTime);
@@ -100,6 +108,30 @@ export const createOrder = asyncHandler(async (req: AuthenticatedRequest, res: R
       `Your order from ${restaurant.name} has been placed successfully`,
       'success'
     );
+
+    // Send push notification to user
+    await notificationService.sendToUser(userId.toString(), {
+      title: 'Order Placed! 🛒',
+      body: `Your order from ${restaurant.name} has been placed successfully`,
+      data: { type: 'order_update', orderId: order._id.toString(), status: 'pending' },
+      channelId: 'orders'
+    });
+
+    // Notify restaurant owner
+    socketService.sendNotificationToUser(
+      restaurant.ownerId.toString(),
+      'New Order',
+      `New order received from ${req.user!.name}`,
+      'info'
+    );
+
+    // Send push notification to restaurant owner
+    await notificationService.sendToUser(restaurant.ownerId.toString(), {
+      title: 'New Order! 📋',
+      body: `New order received from ${req.user!.name}`,
+      data: { type: 'new_order', orderId: order._id.toString() },
+      channelId: 'orders'
+    });
   } catch (error) {
     logger.warn('Failed to emit order update:', error);
   }
@@ -155,7 +187,8 @@ export const getOrders = asyncHandler(async (req: AuthenticatedRequest, res: Res
 
   const orders = await Order.find(filter)
     .populate('userId', 'name email phone')
-    .populate('restaurantId', 'name address phone email')
+    .populate('restaurantId', 'name address phone email images deliveryFee')
+    .populate('items.menuItemId', 'name price images')
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit);
@@ -180,7 +213,9 @@ export const getOrderById = asyncHandler(async (req: AuthenticatedRequest, res: 
 
   const order = await Order.findById(id)
     .populate('userId', 'name email phone')
-    .populate('restaurantId', 'name address phone email deliveryTime deliveryFee');
+    .populate('restaurantId', 'name address phone email images deliveryFee')
+    .populate('items.menuItemId', 'name price images description')
+    .populate('driverId', 'name phone');
 
   if (!order) {
     res.status(404).json({
@@ -246,8 +281,8 @@ export const updateOrderStatus = asyncHandler(async (req: AuthenticatedRequest, 
     'ready': ['picked_up', 'cancelled'],
     'picked_up': ['on_the_way'],
     'on_the_way': ['delivered'],
-    'delivered': [],
-    'cancelled': []
+    'delivered': [], // Cannot change from delivered
+    'cancelled': [] // Cannot change from cancelled
   };
 
   if (!validTransitions[order.status].includes(status)) {
@@ -258,7 +293,7 @@ export const updateOrderStatus = asyncHandler(async (req: AuthenticatedRequest, 
     return;
   }
 
-  // Update delivery time if delivered
+  // Update actual delivery time if delivered
   const updateData: any = { status };
   if (status === 'delivered') {
     updateData.actualDeliveryTime = new Date();
@@ -270,34 +305,67 @@ export const updateOrderStatus = asyncHandler(async (req: AuthenticatedRequest, 
     { new: true }
   ).populate([
     { path: 'userId', select: 'name email phone' },
-    { path: 'restaurantId', select: 'name address' }
+    { path: 'restaurantId', select: 'name address' },
+    { path: 'items.menuItemId', select: 'name price' }
   ]);
 
-  // Emit order update
+  // Emit order update and send push notifications
   try {
     const socketService = getSocketService();
     socketService.emitOrderUpdate(id, status, updatedOrder!.estimatedDeliveryTime);
     
     // Send notification to user
     let notificationMessage = '';
+    let pushNotification;
+    
     switch (status) {
       case 'confirmed':
         notificationMessage = `Your order from ${restaurant.name} has been confirmed`;
+        pushNotification = NotificationService.templates.orderConfirmed(restaurant.name);
         break;
       case 'preparing':
-        notificationMessage = `Your order from ${restaurant.name} is being prepared`;
+        notificationMessage = `Your order is being prepared`;
+        pushNotification = {
+          title: 'Order Being Prepared! 👨‍🍳',
+          body: 'Your order is being prepared with care',
+          data: { type: 'order_update', orderId: id, status },
+          channelId: 'orders'
+        };
         break;
       case 'ready':
-        notificationMessage = `Your order from ${restaurant.name} is ready for pickup`;
+        notificationMessage = `Your order is ready for pickup`;
+        pushNotification = NotificationService.templates.orderReady(restaurant.name);
+        break;
+      case 'picked_up':
+        notificationMessage = `Your order has been picked up and is on the way`;
+        pushNotification = {
+          title: 'Order On The Way! 🚗',
+          body: 'Your order has been picked up and is on the way',
+          data: { type: 'order_update', orderId: id, status },
+          channelId: 'orders'
+        };
         break;
       case 'on_the_way':
-        notificationMessage = `Your order from ${restaurant.name} is on the way`;
+        notificationMessage = `Your order is on the way`;
+        pushNotification = {
+          title: 'Order On The Way! 🚗',
+          body: 'Your order is on the way to you',
+          data: { type: 'order_update', orderId: id, status },
+          channelId: 'orders'
+        };
         break;
       case 'delivered':
-        notificationMessage = `Your order from ${restaurant.name} has been delivered. Enjoy!`;
+        notificationMessage = `Your order has been delivered. Enjoy your meal!`;
+        pushNotification = NotificationService.templates.orderDelivered();
         break;
       case 'cancelled':
         notificationMessage = `Your order from ${restaurant.name} has been cancelled`;
+        pushNotification = {
+          title: 'Order Cancelled ❌',
+          body: `Your order from ${restaurant.name} has been cancelled`,
+          data: { type: 'order_update', orderId: id, status },
+          channelId: 'orders'
+        };
         break;
     }
     
@@ -306,8 +374,13 @@ export const updateOrderStatus = asyncHandler(async (req: AuthenticatedRequest, 
         order.userId.toString(),
         'Order Update',
         notificationMessage,
-        status === 'cancelled' ? 'warning' : 'info'
+        status === 'cancelled' ? 'warning' : status === 'delivered' ? 'success' : 'info'
       );
+
+      // Send push notification
+      if (pushNotification) {
+        await notificationService.sendToUser(order.userId.toString(), pushNotification);
+      }
     }
   } catch (error) {
     logger.warn('Failed to emit order update:', error);
@@ -344,10 +417,19 @@ export const cancelOrder = asyncHandler(async (req: AuthenticatedRequest, res: R
   }
 
   // Check if order can be cancelled
-  if (!['pending', 'confirmed'].includes(order.status)) {
+  if (order.status === 'cancelled' || order.status === 'delivered') {
     res.status(400).json({
       success: false,
       message: `Cannot cancel order with status: ${order.status}`
+    } as ApiResponse);
+    return;
+  }
+
+  // Check cancellation policy (e.g., cannot cancel after preparing)
+  if (['preparing', 'ready', 'picked_up', 'on_the_way'].includes(order.status)) {
+    res.status(400).json({
+      success: false,
+      message: 'Cannot cancel order that is already being prepared or delivered'
     } as ApiResponse);
     return;
   }
@@ -358,7 +440,8 @@ export const cancelOrder = asyncHandler(async (req: AuthenticatedRequest, res: R
     { new: true }
   ).populate([
     { path: 'userId', select: 'name email phone' },
-    { path: 'restaurantId', select: 'name address' }
+    { path: 'restaurantId', select: 'name address' },
+    { path: 'items.menuItemId', select: 'name price' }
   ]);
 
   // Emit order update
@@ -398,7 +481,8 @@ export const getUserOrders = asyncHandler(async (req: AuthenticatedRequest, res:
   }
 
   const orders = await Order.find(filter)
-    .populate('restaurantId', 'name address phone email images')
+    .populate('restaurantId', 'name address phone email images deliveryFee')
+    .populate('items.menuItemId', 'name price images')
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit);
@@ -408,6 +492,46 @@ export const getUserOrders = asyncHandler(async (req: AuthenticatedRequest, res:
   res.status(200).json({
     success: true,
     message: 'User orders retrieved successfully',
+    data: { orders },
+    pagination: {
+      page,
+      limit,
+      total,
+      pages: Math.ceil(total / limit)
+    }
+  } as ApiResponse);
+});
+
+export const getRestaurantOrders = asyncHandler(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  const ownerId = req.user!._id;
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 10;
+  const skip = (page - 1) * limit;
+
+  // Get restaurants owned by the user
+  const restaurants = await Restaurant.find({ ownerId }).select('_id');
+  const restaurantIds = restaurants.map(restaurant => restaurant._id);
+
+  const filter: any = { restaurantId: { $in: restaurantIds } };
+
+  // Filter by status
+  if (req.query.status) {
+    filter.status = req.query.status;
+  }
+
+  const orders = await Order.find(filter)
+    .populate('userId', 'name email phone')
+    .populate('restaurantId', 'name address')
+    .populate('items.menuItemId', 'name price images')
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit);
+
+  const total = await Order.countDocuments(filter);
+
+  res.status(200).json({
+    success: true,
+    message: 'Restaurant orders retrieved successfully',
     data: { orders },
     pagination: {
       page,

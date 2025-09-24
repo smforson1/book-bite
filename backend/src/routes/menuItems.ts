@@ -24,7 +24,7 @@ router.use(authenticate);
 
 // Restaurant owner and admin routes
 router.post('/',
-  authorize('restaurant_owner', 'admin'),
+  authorize(['restaurant_owner', 'admin']),
   uploadLimiter,
   uploadMultiple('images', 5),
   [
@@ -38,7 +38,7 @@ router.post('/',
 );
 
 router.put('/:id',
-  authorize('restaurant_owner', 'admin'),
+  authorize(['restaurant_owner', 'admin']),
   uploadLimiter,
   uploadMultiple('images', 5),
   mongoIdValidation('id'),
@@ -47,19 +47,19 @@ router.put('/:id',
 );
 
 router.delete('/:id',
-  authorize('restaurant_owner', 'admin'),
+  authorize(['restaurant_owner', 'admin']),
   mongoIdValidation('id'),
   handleValidationErrors,
   deleteMenuItem
 );
 
 router.get('/owner/my-items',
-  authorize('restaurant_owner', 'admin'),
+  authorize(['restaurant_owner', 'admin']),
   getMyMenuItems
 );
 
 router.patch('/:id/availability',
-  authorize('restaurant_owner', 'admin'),
+  authorize(['restaurant_owner', 'admin']),
   mongoIdValidation('id'),
   [
     body('isAvailable')
