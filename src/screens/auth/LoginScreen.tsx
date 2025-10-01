@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -12,13 +11,15 @@ import {
   Button, 
   Input, 
   Container, 
-  LoadingState 
+  LoadingState,
+  ErrorFeedback
 } from '../../components';
 import { theme } from '../../styles/theme';
 import { globalStyles } from '../../styles/globalStyles';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import { ConnectionTest } from '../../components/ConnectionTest';
+import { useErrorHandling } from '../../hooks/useErrorHandling';
 
 const LoginScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -26,33 +27,43 @@ const LoginScreen: React.FC = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const { error, clearError, withErrorHandling, showUserFeedback } = useErrorHandling();
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
+  const handleLogin = withErrorHandling(
+    async () => {
+      if (!email || !password) {
+        showUserFeedback('Please fill in all fields', 'warning');
+        throw new Error('Missing fields');
+      }
+
+      const success = await login(email, password);
+      
+      if (!success) {
+        throw new Error('Invalid email or password');
+      }
+      
+      showUserFeedback('Login successful!', 'success');
+    },
+    {
+      errorMessage: 'Login failed. Please check your credentials and try again.',
+      successMessage: 'Login successful!',
+      showSuccessToast: true,
+      showErrorToast: true
     }
-
-    setLoading(true);
-    const success = await login(email, password);
-    setLoading(false);
-
-    if (!success) {
-      Alert.alert('Error', 'Invalid email or password');
-    }
-  };
+  );
 
   const [showConnectionTest, setShowConnectionTest] = useState(false);
 
   const showDemoCredentials = () => {
-    Alert.alert(
-      'Demo Credentials',
+    showUserFeedback(
       'Try these demo accounts:\n\n' +
       '🔐 Admin: admin@bookbite.com\n' +
       '🏨 Hotel Owner: hotel@bookbite.com\n' +
       '🍕 Restaurant Owner: restaurant@bookbite.com\n' +
       '👤 User: user@bookbite.com\n\n' +
-      'Password: password123'
+      'Password: password123',
+      'info',
+      5000
     );
   };
 
@@ -66,6 +77,14 @@ const LoginScreen: React.FC = () => {
         style={styles.content}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
+        {error && (
+          <ErrorFeedback
+            message={error.message}
+            type={error.type}
+            onDismiss={clearError}
+          />
+        )}
+        
         <LoadingState loading={loading}>
           {/* Header Section */}
           <View style={styles.header}>
@@ -105,7 +124,7 @@ const LoginScreen: React.FC = () => {
 
             <Button
               title={loading ? 'Signing In...' : 'Sign In'}
-              onPress={handleLogin}
+              onPress={() => handleLogin()}
               loading={loading}
               fullWidth
               style={styles.loginButton}

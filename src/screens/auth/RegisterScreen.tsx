@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -11,11 +10,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
-import { Button, Input, Card } from '../../components';
+import { Button, Input, Card, ErrorFeedback } from '../../components';
 import { theme } from '../../styles/theme';
 import { globalStyles } from '../../styles/globalStyles';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
+import { useErrorHandling } from '../../hooks/useErrorHandling';
 
 const RegisterScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -34,8 +34,7 @@ const RegisterScreen: React.FC = () => {
   const [businessDescription, setBusinessDescription] = useState('');
   const [businessPhone, setBusinessPhone] = useState('');
   
-  const [loading, setLoading] = useState(false);
-  const { register } = useAuth();
+  const { error, clearError, withErrorHandling, showUserFeedback } = useErrorHandling();
 
   const validateManagerId = (id: string, userRole: string): boolean => {
     // These would be the special IDs you provide to managers
@@ -52,78 +51,94 @@ const RegisterScreen: React.FC = () => {
     return true; // Users don't need ID validation
   };
 
-  const handleNextStep = () => {
-    // Validate step 1
-    if (!name || !email || !password || !confirmPassword || !phone) {
-      Alert.alert('Error', 'Please fill in all required fields');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
-      return;
-    }
-
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
-      return;
-    }
-
-    // Validate manager ID for business accounts
-    if ((role === 'hotel_owner' || role === 'restaurant_owner')) {
-      if (!managerId) {
-        Alert.alert('Error', 'Please enter your Manager ID');
-        return;
+  const handleNextStep = withErrorHandling(
+    async () => {
+      // Validate step 1
+      if (!name || !email || !password || !confirmPassword || !phone) {
+        showUserFeedback('Please fill in all required fields', 'warning');
+        throw new Error('Missing fields');
       }
-      if (!validateManagerId(managerId, role)) {
-        Alert.alert('Error', 'Invalid Manager ID. Please contact support for a valid ID.');
-        return;
-      }
-    }
 
-    // For users, register directly. For managers, go to step 2
-    if (role === 'user') {
-      handleRegister();
-    } else {
-      setStep(2);
+      if (password !== confirmPassword) {
+        showUserFeedback('Passwords do not match', 'warning');
+        throw new Error('Password mismatch');
+      }
+
+      if (password.length < 6) {
+        showUserFeedback('Password must be at least 6 characters', 'warning');
+        throw new Error('Password too short');
+      }
+
+      // Validate manager ID for business accounts
+      if ((role === 'hotel_owner' || role === 'restaurant_owner')) {
+        if (!managerId) {
+          showUserFeedback('Please enter your Manager ID', 'warning');
+          throw new Error('Missing Manager ID');
+        }
+        if (!validateManagerId(managerId, role)) {
+          showUserFeedback('Invalid Manager ID. Please contact support for a valid ID.', 'error');
+          throw new Error('Invalid Manager ID');
+        }
+      }
+
+      // For users, register directly. For managers, go to step 2
+      if (role === 'user') {
+        await handleRegister();
+      } else {
+        setStep(2);
+      }
+    },
+    {
+      errorMessage: 'Failed to proceed to next step. Please check your information and try again.',
+      showErrorToast: false // We're handling errors with showUserFeedback
     }
-  };
+  );
 
   const handlePreviousStep = () => {
     setStep(1);
   };
 
-  const handleRegister = async () => {
-    // Validate business info for step 2
-    if (step === 2 && (role === 'hotel_owner' || role === 'restaurant_owner')) {
-      if (!businessName || !businessAddress || !businessDescription) {
-        Alert.alert('Error', 'Please fill in all business information fields');
-        return;
+  const handleRegister = withErrorHandling(
+    async () => {
+      // Validate business info for step 2
+      if (step === 2 && (role === 'hotel_owner' || role === 'restaurant_owner')) {
+        if (!businessName || !businessAddress || !businessDescription) {
+          showUserFeedback('Please fill in all business information fields', 'warning');
+          throw new Error('Missing business information');
+        }
       }
-    }
 
-    setLoading(true);
-    const userData = {
-      name,
-      email,
-      phone,
-      role,
-      managerId: (role !== 'user') ? managerId : undefined,
-      businessInfo: (role !== 'user') ? {
-        name: businessName,
-        address: businessAddress,
-        description: businessDescription,
-        phone: businessPhone
-      } : undefined
-    };
-    
-    const success = await register(userData, password);
-    setLoading(false);
+      const userData = {
+        name,
+        email,
+        phone,
+        role,
+        managerId: (role !== 'user') ? managerId : undefined,
+        businessInfo: (role !== 'user') ? {
+          name: businessName,
+          address: businessAddress,
+          description: businessDescription,
+          phone: businessPhone
+        } : undefined
+      };
+      
+      const success = await register(userData, password);
 
-    if (!success) {
-      Alert.alert('Error', 'Registration failed. Please try again.');
+      if (!success) {
+        throw new Error('Registration failed. Please try again.');
+      }
+      
+      showUserFeedback('Registration successful!', 'success');
+    },
+    {
+      errorMessage: 'Registration failed. Please try again.',
+      successMessage: 'Registration successful!',
+      showSuccessToast: true,
+      showErrorToast: true
     }
-  };
+  );
+
+  const { register } = useAuth();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -131,6 +146,13 @@ const RegisterScreen: React.FC = () => {
         style={styles.content}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
+        {error && (
+          <ErrorFeedback
+            message={error.message}
+            type={error.type}
+            onDismiss={clearError}
+          />
+        )}
         <ScrollView 
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
@@ -233,9 +255,8 @@ const RegisterScreen: React.FC = () => {
                   />
 
                   <Button
-                    title={loading ? 'Processing...' : (role === 'user' ? 'Create Account' : 'Next')}
-                    onPress={handleNextStep}
-                    loading={loading}
+                    title={step === 1 && (role === 'user') ? 'Create Account' : 'Next'}
+                    onPress={() => handleNextStep()}
                     fullWidth
                     style={styles.registerButton}
                   />
@@ -289,9 +310,8 @@ const RegisterScreen: React.FC = () => {
                       style={styles.backButton}
                     />
                     <Button
-                      title={loading ? 'Creating Account...' : 'Create Account'}
-                      onPress={handleRegister}
-                      loading={loading}
+                      title="Create Account"
+                      onPress={() => handleRegister()}
                       style={styles.registerButton}
                     />
                   </View>

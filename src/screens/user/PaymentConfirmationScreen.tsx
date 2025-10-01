@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,10 +12,11 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 
 // Components
-import { Button, Card } from '../../components';
+import { Button, Card, ErrorFeedback } from '../../components';
 
 // Services
 import { useAuth } from '../../contexts/AuthContext';
+import { useErrorHandling } from '../../hooks/useErrorHandling';
 
 // Navigation types
 import { RestaurantsStackParamList } from '../../navigation/RestaurantsStackNavigator';
@@ -33,19 +33,38 @@ interface Props {
 const PaymentConfirmationScreen: React.FC<Props> = ({ navigation, route }) => {
   const { amount, currency, paymentFor, referenceId, paymentMethod, transactionId } = route.params;
   const { user } = useAuth();
+  const { error, clearError, withErrorHandling, showUserFeedback } = useErrorHandling();
 
-  const handleGoHome = () => {
-    // Navigate back to the main user screen
-    navigation.navigate('Restaurants' as any, { screen: 'RestaurantsList' });
-  };
-
-  const handleViewDetails = () => {
-    if (paymentFor === 'order') {
-      navigation.navigate('Orders' as any);
-    } else {
-      navigation.navigate('Bookings' as any);
+  const handleGoHome = withErrorHandling(
+    async () => {
+      // Navigate back to the main user screen
+      navigation.navigate('Restaurants' as any, { screen: 'RestaurantsList' });
+      showUserFeedback('Navigating to home screen', 'info');
+    },
+    {
+      errorMessage: 'Failed to navigate to home screen. Please try again.',
+      successMessage: 'Navigating to home screen',
+      showSuccessToast: false,
+      showErrorToast: true
     }
-  };
+  );
+
+  const handleViewDetails = withErrorHandling(
+    async () => {
+      if (paymentFor === 'order') {
+        navigation.navigate('Orders' as any);
+      } else {
+        navigation.navigate('Bookings' as any);
+      }
+      showUserFeedback('Navigating to details screen', 'info');
+    },
+    {
+      errorMessage: 'Failed to navigate to details screen. Please try again.',
+      successMessage: 'Navigating to details screen',
+      showSuccessToast: false,
+      showErrorToast: true
+    }
+  );
 
   const getPaymentMethodIcon = () => {
     switch (paymentMethod) {
@@ -75,6 +94,15 @@ const PaymentConfirmationScreen: React.FC<Props> = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Error Feedback */}
+      {error && (
+        <ErrorFeedback
+          message={error.message}
+          type={error.type}
+          onDismiss={clearError}
+        />
+      )}
+      
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Success Icon */}
         <View style={styles.iconContainer}>

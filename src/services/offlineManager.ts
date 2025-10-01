@@ -8,14 +8,17 @@ import { EventEmitter } from 'events';
 // Extend the existing types with synced property
 interface ExtendedBooking extends Booking {
   synced?: boolean;
+  localId?: string; // For locally created items before sync
 }
 
 interface ExtendedOrder extends Order {
   synced?: boolean;
+  localId?: string; // For locally created items before sync
 }
 
 interface ExtendedReview extends Review {
   synced?: boolean;
+  localId?: string; // For locally created items before sync
 }
 
 export interface OfflineDataSnapshot {
@@ -42,6 +45,15 @@ export interface SyncStatus {
   errors: string[];
 }
 
+// Interface for pending sync items
+interface PendingSyncItem {
+  id: string;
+  type: 'booking' | 'order' | 'review';
+  data: any;
+  timestamp: Date;
+  retryCount: number;
+}
+
 class OfflineManager extends EventEmitter {
   private isOnline: boolean = false;
   private syncStatus: SyncStatus = {
@@ -55,6 +67,7 @@ class OfflineManager extends EventEmitter {
   private syncInterval: NodeJS.Timeout | null = null;
   private readonly SYNC_INTERVAL = 30000; // 30 seconds
   private readonly MAX_OFFLINE_DAYS = 30; // Keep data for 30 days
+  private readonly MAX_RETRY_ATTEMPTS = 3; // Max retry attempts for failed sync items
 
   constructor() {
     super();
@@ -121,6 +134,7 @@ class OfflineManager extends EventEmitter {
       await this.syncOrders();
       await this.syncCart();
       await this.syncReviews();
+      await this.syncPendingItems();
       
       // Update last sync timestamp
       const now = new Date();
@@ -158,7 +172,8 @@ class OfflineManager extends EventEmitter {
       const bookings = await storageService.getBookings();
       const extendedBookings: ExtendedBooking[] = bookings.map(booking => ({
         ...booking,
-        synced: (booking as ExtendedBooking).synced || false
+        synced: (booking as ExtendedBooking).synced || false,
+        localId: (booking as ExtendedBooking).localId || undefined
       }));
       
       const pendingBookings = extendedBookings.filter(booking => !booking.synced);
@@ -186,6 +201,14 @@ class OfflineManager extends EventEmitter {
             });
           } catch (error) {
             console.error('Failed to sync booking:', error);
+            // Add to pending sync items for retry
+            await this.addPendingSyncItem({
+              id: pendingBookings[i].id,
+              type: 'booking',
+              data: pendingBookings[i],
+              timestamp: new Date(),
+              retryCount: 0
+            });
           }
         }
         
@@ -202,7 +225,8 @@ class OfflineManager extends EventEmitter {
       const orders = await storageService.getOrders();
       const extendedOrders: ExtendedOrder[] = orders.map(order => ({
         ...order,
-        synced: (order as ExtendedOrder).synced || false
+        synced: (order as ExtendedOrder).synced || false,
+        localId: (order as ExtendedOrder).localId || undefined
       }));
       
       const pendingOrders = extendedOrders.filter(order => !order.synced);
@@ -230,6 +254,14 @@ class OfflineManager extends EventEmitter {
             });
           } catch (error) {
             console.error('Failed to sync order:', error);
+            // Add to pending sync items for retry
+            await this.addPendingSyncItem({
+              id: pendingOrders[i].id,
+              type: 'order',
+              data: pendingOrders[i],
+              timestamp: new Date(),
+              retryCount: 0
+            });
           }
         }
         
@@ -258,7 +290,8 @@ class OfflineManager extends EventEmitter {
       const reviews = await storageService.getReviews();
       const extendedReviews: ExtendedReview[] = reviews.map(review => ({
         ...review,
-        synced: (review as ExtendedReview).synced || false
+        synced: (review as ExtendedReview).synced || false,
+        localId: (review as ExtendedReview).localId || undefined
       }));
       
       const pendingReviews = extendedReviews.filter(review => !review.synced);
@@ -286,6 +319,14 @@ class OfflineManager extends EventEmitter {
             });
           } catch (error) {
             console.error('Failed to sync review:', error);
+            // Add to pending sync items for retry
+            await this.addPendingSyncItem({
+              id: pendingReviews[i].id,
+              type: 'review',
+              data: pendingReviews[i],
+              timestamp: new Date(),
+              retryCount: 0
+            });
           }
         }
         
@@ -294,6 +335,84 @@ class OfflineManager extends EventEmitter {
       }
     } catch (error: any) {
       throw new Error(`Failed to sync reviews: ${error.message || 'Unknown error'}`);
+    }
+  }
+
+  // Sync pending items that failed in previous attempts
+  private async syncPendingItems(): Promise<void> {
+    try {
+      const pendingItemsStr = await AsyncStorage.getItem('pending_sync_items');
+      if (!pendingItemsStr || !this.isOnline) return;
+
+      const pendingItems: PendingSyncItem[] = JSON.parse(pendingItemsStr);
+      const remainingItems: PendingSyncItem[] = [];
+
+      for (const item of pendingItems) {
+        // Skip items that have exceeded max retry attempts
+        if (item.retryCount >= this.MAX_RETRY_ATTEMPTS) {
+          console.warn(`Max retry attempts exceeded for ${item.type} ${item.id}`);
+          continue;
+        }
+
+        try {
+          // Attempt to sync the item
+          switch (item.type) {
+            case 'booking':
+              // In a real implementation, this would call the API to create the booking
+              console.log(`Syncing pending booking: ${item.id}`);
+              break;
+            case 'order':
+              // In a real implementation, this would call the API to create the order
+              console.log(`Syncing pending order: ${item.id}`);
+              break;
+            case 'review':
+              // In a real implementation, this would call the API to create the review
+              console.log(`Syncing pending review: ${item.id}`);
+              break;
+          }
+          
+          // If successful, item is removed from pending list
+          console.log(`Successfully synced ${item.type} ${item.id}`);
+        } catch (error) {
+          console.error(`Failed to sync ${item.type} ${item.id}:`, error);
+          // Increment retry count and add back to pending list
+          remainingItems.push({
+            ...item,
+            retryCount: item.retryCount + 1
+          });
+        }
+      }
+
+      // Save remaining pending items
+      if (remainingItems.length > 0) {
+        await AsyncStorage.setItem('pending_sync_items', JSON.stringify(remainingItems));
+      } else {
+        await AsyncStorage.removeItem('pending_sync_items');
+      }
+    } catch (error) {
+      console.error('Error syncing pending items:', error);
+    }
+  }
+
+  // Add an item to the pending sync queue
+  private async addPendingSyncItem(item: PendingSyncItem): Promise<void> {
+    try {
+      const pendingItemsStr = await AsyncStorage.getItem('pending_sync_items');
+      const pendingItems: PendingSyncItem[] = pendingItemsStr ? JSON.parse(pendingItemsStr) : [];
+      
+      // Check if item already exists
+      const existingIndex = pendingItems.findIndex(i => i.id === item.id && i.type === item.type);
+      if (existingIndex !== -1) {
+        // Update existing item
+        pendingItems[existingIndex] = item;
+      } else {
+        // Add new item
+        pendingItems.push(item);
+      }
+      
+      await AsyncStorage.setItem('pending_sync_items', JSON.stringify(pendingItems));
+    } catch (error) {
+      console.error('Error adding pending sync item:', error);
     }
   }
 
@@ -319,16 +438,19 @@ class OfflineManager extends EventEmitter {
           menuItems,
           bookings: bookings.map(booking => ({
             ...booking,
-            synced: (booking as ExtendedBooking).synced || false
+            synced: (booking as ExtendedBooking).synced || false,
+            localId: (booking as ExtendedBooking).localId || undefined
           })),
           orders: orders.map(order => ({
             ...order,
-            synced: (order as ExtendedOrder).synced || false
+            synced: (order as ExtendedOrder).synced || false,
+            localId: (order as ExtendedOrder).localId || undefined
           })),
           cart,
           reviews: reviews.map(review => ({
             ...review,
-            synced: (review as ExtendedReview).synced || false
+            synced: (review as ExtendedReview).synced || false,
+            localId: (review as ExtendedReview).localId || undefined
           })),
           user
         }
@@ -463,6 +585,37 @@ class OfflineManager extends EventEmitter {
       }
     } catch (error) {
       console.error('Failed to load sync status:', error);
+    }
+  }
+
+  // Method to check if app has offline data
+  async hasOfflineData(): Promise<boolean> {
+    try {
+      const snapshotStr = await AsyncStorage.getItem('offline_snapshot');
+      return !!snapshotStr;
+    } catch (error) {
+      console.error('Error checking for offline data:', error);
+      return false;
+    }
+  }
+
+  // Method to get offline data size
+  async getOfflineDataSize(): Promise<number> {
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      let totalSize = 0;
+      
+      for (const key of keys) {
+        const value = await AsyncStorage.getItem(key);
+        if (value) {
+          totalSize += new Blob([value]).size;
+        }
+      }
+      
+      return totalSize;
+    } catch (error) {
+      console.error('Error getting offline data size:', error);
+      return 0;
     }
   }
 

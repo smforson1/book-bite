@@ -5,21 +5,22 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 // Components
-import { Button, Input, Card } from '../../components';
+import { Button, Input, Card, ErrorFeedback } from '../../components';
 
 // Services
 import { useAuth } from '../../contexts/AuthContext';
+import { useErrorHandling } from '../../hooks/useErrorHandling';
 
 const EditProfileScreen: React.FC = () => {
   const navigation = useNavigation();
   const { user, updateUser } = useAuth();
+  const { error, clearError, withErrorHandling, showUserFeedback } = useErrorHandling();
   const [loading, setLoading] = useState(false);
   
   const [name, setName] = useState(user?.name || '');
@@ -27,54 +28,60 @@ const EditProfileScreen: React.FC = () => {
   const [phone, setPhone] = useState(user?.phone || '');
   const [address, setAddress] = useState(''); // Not part of User model, but keeping for UI
 
-  const handleSaveProfile = async () => {
-    if (!name.trim()) {
-      Alert.alert('Validation Error', 'Please enter your name.');
-      return;
-    }
+  const handleSaveProfile = withErrorHandling(
+    async () => {
+      if (!name.trim()) {
+        showUserFeedback('Please enter your name.', 'warning');
+        return;
+      }
 
-    if (!email.trim()) {
-      Alert.alert('Validation Error', 'Please enter your email.');
-      return;
-    }
+      if (!email.trim()) {
+        showUserFeedback('Please enter your email.', 'warning');
+        return;
+      }
 
-    // Simple email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      Alert.alert('Validation Error', 'Please enter a valid email address.');
-      return;
-    }
+      // Simple email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        showUserFeedback('Please enter a valid email address.', 'warning');
+        return;
+      }
 
-    // Simple phone validation for Ghanaian numbers
-    const phoneRegex = /^(\+233|0)[\d]{9}$/;
-    if (phone && !phoneRegex.test(phone)) {
-      Alert.alert('Validation Error', 'Please enter a valid Ghanaian phone number.');
-      return;
-    }
+      // Simple phone validation for Ghanaian numbers
+      const phoneRegex = /^(\+233|0)[\d]{9}$/;
+      if (phone && !phoneRegex.test(phone)) {
+        showUserFeedback('Please enter a valid Ghanaian phone number.', 'warning');
+        return;
+      }
 
-    setLoading(true);
-    
-    try {
+      setLoading(true);
+      
       await updateUser({
         name: name.trim(),
         email: email.trim(),
         phone: phone.trim(),
       });
       
-      Alert.alert(
-        'Success', 
-        'Profile updated successfully!',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
-    } catch (error) {
-      Alert.alert('Error', 'Failed to update profile. Please try again.');
-    } finally {
-      setLoading(false);
+      showUserFeedback('Profile updated successfully!', 'success');
+      navigation.goBack();
+    },
+    {
+      errorMessage: 'Failed to update profile. Please try again.',
+      successMessage: 'Profile updated successfully!',
+      showSuccessToast: false,
+      showErrorToast: false
     }
-  };
+  );
 
   return (
     <SafeAreaView style={styles.container}>
+      {error && (
+        <ErrorFeedback
+          message={error.message}
+          type={error.type}
+          onDismiss={clearError}
+        />
+      )}
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton} 
@@ -151,7 +158,7 @@ const EditProfileScreen: React.FC = () => {
       <View style={styles.footer}>
         <Button
           title={loading ? "Saving..." : "Save Changes"}
-          onPress={handleSaveProfile}
+          onPress={() => handleSaveProfile()}
           disabled={loading}
           loading={loading}
           style={styles.saveButton}

@@ -4,6 +4,7 @@ import { storageService } from '../services/storageService';
 import { Hotel, Room, Booking } from '../types';
 import { apiService } from '../services/apiService';
 import { notificationService } from '../services/notificationService';
+import { offlineManager } from '../services/offlineManager';
 
 interface HotelContextType {
   hotels: Hotel[];
@@ -198,19 +199,51 @@ export const HotelProvider: React.FC<HotelProviderProps> = ({ children }) => {
         
         console.log(`✅ Loaded ${backendResponse.data.length} hotels from backend`);
       } else {
-        // If backend returns no data, show empty state instead of mock data
-        console.log('⚠️ Backend returned no data, showing empty state');
-        setHotels([]);
-        setRooms([]);
-        setBookings([]);
+        // If backend returns no data, try to load from offline storage
+        console.log('⚠️ Backend returned no data, checking offline storage...');
+        const offlineHotels = await storageService.getHotels();
+        const offlineRooms = await storageService.getRooms();
+        const offlineBookings = await storageService.getBookings();
+        
+        if (offlineHotels.length > 0) {
+          setHotels(offlineHotels);
+          setRooms(offlineRooms);
+          setBookings(offlineBookings);
+          console.log(`✅ Loaded ${offlineHotels.length} hotels from offline storage`);
+        } else {
+          // Show empty state if no offline data
+          setHotels([]);
+          setRooms([]);
+          setBookings([]);
+          console.log('⚠️ No offline data found, showing empty state');
+        }
       }
     } catch (error) {
       console.error('Error loading hotel data:', error);
       
-      // Show empty state on error instead of mock data
-      setHotels([]);
-      setRooms([]);
-      setBookings([]);
+      // Try to load from offline storage on error
+      try {
+        const offlineHotels = await storageService.getHotels();
+        const offlineRooms = await storageService.getRooms();
+        const offlineBookings = await storageService.getBookings();
+        
+        if (offlineHotels.length > 0) {
+          setHotels(offlineHotels);
+          setRooms(offlineRooms);
+          setBookings(offlineBookings);
+          console.log(`✅ Loaded ${offlineHotels.length} hotels from offline storage after error`);
+        } else {
+          setHotels([]);
+          setRooms([]);
+          setBookings([]);
+          console.log('⚠️ No offline data found after error, showing empty state');
+        }
+      } catch (offlineError) {
+        console.error('Error loading offline hotel data:', offlineError);
+        setHotels([]);
+        setRooms([]);
+        setBookings([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -246,12 +279,28 @@ export const HotelProvider: React.FC<HotelProviderProps> = ({ children }) => {
         return response.data;
       } else {
         console.error('Failed to fetch hotels:', response.error);
-        // Return empty array if API fails
+        // Try to return offline data
+        const offlineHotels = await storageService.getHotels();
+        if (offlineHotels.length > 0) {
+          console.log('✅ Returning offline hotels data');
+          return offlineHotels;
+        }
+        // Return empty array if no data available
         return [];
       }
     } catch (error) {
       console.error('Error fetching hotels:', error);
-      // Return empty array if API fails
+      // Try to return offline data
+      try {
+        const offlineHotels = await storageService.getHotels();
+        if (offlineHotels.length > 0) {
+          console.log('✅ Returning offline hotels data after error');
+          return offlineHotels;
+        }
+      } catch (offlineError) {
+        console.error('Error fetching offline hotels:', offlineError);
+      }
+      // Return empty array if API fails and no offline data
       return [];
     } finally {
       setLoading(false);
@@ -270,12 +319,28 @@ export const HotelProvider: React.FC<HotelProviderProps> = ({ children }) => {
         return response.data;
       } else {
         console.error('Failed to fetch my hotels:', response.error);
-        // Return empty array if API fails
+        // Try to return offline data
+        const offlineHotels = await storageService.getHotels();
+        if (offlineHotels.length > 0) {
+          console.log('✅ Returning offline hotels data');
+          return offlineHotels;
+        }
+        // Return empty array if no data available
         return [];
       }
     } catch (error) {
       console.error('Error fetching my hotels:', error);
-      // Return empty array if API fails
+      // Try to return offline data
+      try {
+        const offlineHotels = await storageService.getHotels();
+        if (offlineHotels.length > 0) {
+          console.log('✅ Returning offline hotels data after error');
+          return offlineHotels;
+        }
+      } catch (offlineError) {
+        console.error('Error fetching offline hotels:', offlineError);
+      }
+      // Return empty array if API fails and no offline data
       return [];
     } finally {
       setLoading(false);
@@ -357,19 +422,49 @@ export const HotelProvider: React.FC<HotelProviderProps> = ({ children }) => {
       }
     } catch (error) {
       console.error('Error creating booking:', error);
-      // Fallback to local booking creation
-      const newBooking: Booking = {
-        ...bookingData,
-        id: `local_${Date.now()}`,
-        createdAt: new Date(),
-        status: 'pending'
-      };
-      setBookings(prev => [...prev, newBooking]);
       
-      // Queue for retry when connection is restored
-      await AsyncStorage.setItem(`pending_booking_${newBooking.id}`, JSON.stringify(newBooking));
-      
-      return newBooking;
+      // Check if we're offline
+      const isOnline = offlineManager.getNetworkStatus();
+      if (!isOnline) {
+        // Create local booking for offline mode
+        const newBooking: Booking = {
+          ...bookingData,
+          id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          createdAt: new Date(),
+          status: 'pending',
+          paymentStatus: 'pending'
+        };
+        setBookings(prev => [...prev, newBooking]);
+        
+        // Save pending booking for sync when online
+        await storageService.savePendingBooking({
+          ...newBooking,
+          synced: false,
+          localId: newBooking.id
+        });
+        
+        console.log('💾 Booking saved locally for offline mode');
+        return newBooking;
+      } else {
+        // Fallback to local booking creation even when online (shouldn't happen)
+        const newBooking: Booking = {
+          ...bookingData,
+          id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          createdAt: new Date(),
+          status: 'pending',
+          paymentStatus: 'pending'
+        };
+        setBookings(prev => [...prev, newBooking]);
+        
+        // Queue for retry when connection is restored
+        await storageService.savePendingBooking({
+          ...newBooking,
+          synced: false,
+          localId: newBooking.id
+        });
+        
+        return newBooking;
+      }
     } finally {
       setLoading(false);
     }
@@ -391,12 +486,28 @@ export const HotelProvider: React.FC<HotelProviderProps> = ({ children }) => {
         return response.data;
       } else {
         console.error('Failed to fetch my bookings:', response.error);
-        // Return empty array if API fails
+        // Try to return offline data
+        const offlineBookings = await storageService.getBookings();
+        if (offlineBookings.length > 0) {
+          console.log('✅ Returning offline bookings data');
+          return offlineBookings;
+        }
+        // Return empty array if no data available
         return [];
       }
     } catch (error) {
       console.error('Error fetching my bookings:', error);
-      // Return empty array if API fails
+      // Try to return offline data
+      try {
+        const offlineBookings = await storageService.getBookings();
+        if (offlineBookings.length > 0) {
+          console.log('✅ Returning offline bookings data after error');
+          return offlineBookings;
+        }
+      } catch (offlineError) {
+        console.error('Error fetching offline bookings:', offlineError);
+      }
+      // Return empty array if API fails and no offline data
       return [];
     } finally {
       setLoading(false);
@@ -438,13 +549,38 @@ export const HotelProvider: React.FC<HotelProviderProps> = ({ children }) => {
       }
     } catch (error) {
       console.error('Error updating booking status:', error);
-      // Update locally even if API fails
-      setBookings(prev =>
-        prev.map(booking =>
-          booking.id === bookingId ? { ...booking, status } : booking
-        )
-      );
-      return false;
+      
+      // Check if we're offline
+      const isOnline = offlineManager.getNetworkStatus();
+      if (!isOnline) {
+        // Update locally even if offline
+        setBookings(prev =>
+          prev.map(booking =>
+            booking.id === bookingId ? { ...booking, status } : booking
+          )
+        );
+        
+        // Save pending status update for sync when online
+        const booking = bookings.find(b => b.id === bookingId);
+        if (booking) {
+          await storageService.savePendingBooking({
+            ...booking,
+            status,
+            synced: false
+          });
+        }
+        
+        console.log('💾 Booking status update saved locally for offline mode');
+        return true;
+      } else {
+        // Update locally even if API fails
+        setBookings(prev =>
+          prev.map(booking =>
+            booking.id === bookingId ? { ...booking, status } : booking
+          )
+        );
+        return false;
+      }
     }
   };
 
@@ -468,7 +604,7 @@ export const HotelProvider: React.FC<HotelProviderProps> = ({ children }) => {
       // Fallback to local creation
       const newHotel: Hotel = {
         ...hotelData,
-        id: `local_${Date.now()}`,
+        id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         createdAt: new Date(),
       };
       setHotels(prev => [...prev, newHotel]);
@@ -519,7 +655,7 @@ export const HotelProvider: React.FC<HotelProviderProps> = ({ children }) => {
       // Fallback to local creation
       const newRoom: Room = {
         ...roomData,
-        id: `local_${Date.now()}`,
+        id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       };
       setRooms(prev => [...prev, newRoom]);
       return newRoom;

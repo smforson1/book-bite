@@ -8,12 +8,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Button, Card } from '../../components';
+import { Button, Card, ErrorFeedback } from '../../components';
 import ImageUpload from '../../components/ImageUpload';
 import { theme } from '../../styles/theme';
 import { globalStyles } from '../../styles/globalStyles';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRestaurant } from '../../contexts/RestaurantContext';
+import { useErrorHandling } from '../../hooks/useErrorHandling';
 // ThemeContext import removed as part of dark mode revert
 
 const RestaurantProfileScreen: React.FC = () => {
@@ -22,19 +23,47 @@ const RestaurantProfileScreen: React.FC = () => {
   // Theme hook removed as part of dark mode revert
   const currentTheme = theme;
   const [restaurantImages, setRestaurantImages] = useState<string[]>([]);
+  const { error, clearError, withErrorHandling, showUserFeedback } = useErrorHandling();
 
-  const handleLogout = async () => {
-    await logout();
-  };
+  const handleLogout = withErrorHandling(
+    async () => {
+      await logout();
+      showUserFeedback('Logged out successfully', 'success');
+    },
+    {
+      errorMessage: 'Failed to logout. Please try again.',
+      successMessage: 'Logged out successfully',
+      showSuccessToast: true,
+      showErrorToast: true
+    }
+  );
 
-  const handleImagesUploaded = async (imageUrls: string[]) => {
-    setRestaurantImages(imageUrls);
-    // In a real app, we would update the restaurant with the new images
-    // await updateRestaurant(user?.id || '', { images: imageUrls });
-  };
+  const handleImagesUploaded = withErrorHandling(
+    async (imageUrls: string[]) => {
+      setRestaurantImages(imageUrls);
+      // In a real app, we would update the restaurant with the new images
+      // await updateRestaurant(user?.id || '', { images: imageUrls });
+      showUserFeedback('Images uploaded successfully!', 'success');
+    },
+    {
+      errorMessage: 'Failed to upload images. Please try again.',
+      successMessage: 'Images uploaded successfully!',
+      showSuccessToast: true,
+      showErrorToast: true
+    }
+  );
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: currentTheme.colors.background.secondary }]}>
+      {/* Error Feedback */}
+      {error && (
+        <ErrorFeedback
+          message={error.message}
+          type={error.type}
+          onDismiss={clearError}
+        />
+      )}
+      
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Header Section */}
         <View style={[styles.header, { backgroundColor: currentTheme.colors.background.primary }]}>

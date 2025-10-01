@@ -8,12 +8,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Button, Card } from '../../components';
+import { Button, Card, ErrorFeedback } from '../../components';
 import BasicImageUpload from '../../components/BasicImageUpload';
 import { theme } from '../../styles/theme';
 import { globalStyles } from '../../styles/globalStyles';
 import { useAuth } from '../../contexts/AuthContext';
 import { quickLogin } from '../../utils/authHelper';
+import { useErrorHandling } from '../../hooks/useErrorHandling';
 // ThemeContext import removed as part of dark mode revert
 
 const HotelProfileScreen: React.FC = () => {
@@ -21,19 +22,47 @@ const HotelProfileScreen: React.FC = () => {
   // Theme hook removed as part of dark mode revert
   const currentTheme = theme;
   const [hotelImages, setHotelImages] = useState<string[]>([]);
+  const { error, clearError, withErrorHandling, showUserFeedback } = useErrorHandling();
 
-  const handleLogout = async () => {
-    await logout();
-  };
+  const handleLogout = withErrorHandling(
+    async () => {
+      await logout();
+      showUserFeedback('Logged out successfully', 'success');
+    },
+    {
+      errorMessage: 'Failed to logout. Please try again.',
+      successMessage: 'Logged out successfully',
+      showSuccessToast: true,
+      showErrorToast: true
+    }
+  );
 
-  const handleImagesUploaded = async (imageUrls: string[]) => {
-    setHotelImages(imageUrls);
-    // In a real app, we would update the hotel with the new images
-    console.log('Hotel images updated:', imageUrls);
-  };
+  const handleImagesUploaded = withErrorHandling(
+    async (imageUrls: string[]) => {
+      setHotelImages(imageUrls);
+      // In a real app, we would update the hotel with the new images
+      console.log('Hotel images updated:', imageUrls);
+      showUserFeedback('Images uploaded successfully!', 'success');
+    },
+    {
+      errorMessage: 'Failed to upload images. Please try again.',
+      successMessage: 'Images uploaded successfully!',
+      showSuccessToast: true,
+      showErrorToast: true
+    }
+  );
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: currentTheme.colors.background.secondary }]}>
+      {/* Error Feedback */}
+      {error && (
+        <ErrorFeedback
+          message={error.message}
+          type={error.type}
+          onDismiss={clearError}
+        />
+      )}
+      
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Header Section */}
         <View style={[styles.header, { backgroundColor: currentTheme.colors.background.primary }]}>
@@ -125,7 +154,9 @@ const HotelProfileScreen: React.FC = () => {
               onPress={async () => {
                 const success = await quickLogin();
                 if (success) {
-                  // The auth context should automatically update
+                  showUserFeedback('Login successful!', 'success');
+                } else {
+                  showUserFeedback('Login failed. Please try again.', 'error');
                 }
               }}
               icon={<Ionicons name="log-in-outline" size={16} color={currentTheme.colors.text.inverse} />}

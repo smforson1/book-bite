@@ -11,6 +11,7 @@ import { ErrorBoundary, OfflineIndicator } from './src/components/ErrorBoundary'
 import { errorHandlingService } from './src/services/errorHandlingService';
 import { ghanaAnalyticsService } from './src/services/ghanaAnalyticsService';
 import OfflineStatusIndicator from './src/components/OfflineStatusIndicator';
+import OfflineCapabilitiesIndicator from './src/components/OfflineCapabilitiesIndicator';
 
 export default function App() {
   useEffect(() => {
@@ -74,6 +75,7 @@ export default function App() {
           <RestaurantProvider>
             <ReviewProvider>
               <OfflineStatusIndicator />
+              <OfflineCapabilitiesIndicator />
               <AppNavigator />
               <OfflineIndicator />
               <StatusBar style="auto" />

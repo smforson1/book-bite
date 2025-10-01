@@ -17,7 +17,9 @@ import {
   Header,
   Section,
   LoadingState,
-  ListItem
+  ListItem,
+  GhanaCulturalElement,
+  ErrorFeedback
 } from '../../components';
 import { theme } from '../../styles/theme';
 import { globalStyles } from '../../styles/globalStyles';
@@ -25,6 +27,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useHotel } from '../../contexts/HotelContext';
 import { useRestaurant } from '../../contexts/RestaurantContext';
 import { useNavigation } from '@react-navigation/native';
+import { useErrorHandling } from '../../hooks/useErrorHandling';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -37,6 +40,7 @@ const UserHomeScreen: React.FC = () => {
   const navigation = useNavigation();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { error, clearError } = useErrorHandling();
 
   // Calculate real statistics
   const userBookings = user ? bookings.filter(booking => booking.userId === user.id) : [];
@@ -74,6 +78,18 @@ const UserHomeScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Error Feedback */}
+      {error && (
+        <ErrorFeedback
+          message={error.message}
+          type={error.type}
+          onDismiss={clearError}
+        />
+      )}
+      
+      {/* Ghana cultural header element */}
+      <GhanaCulturalElement type="cultural-header" text="BookBite Ghana" />
+      
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -241,6 +257,11 @@ const UserHomeScreen: React.FC = () => {
             variant="card"
           />
         </Section>
+        
+        {/* Ghana cultural element at the bottom */}
+        <View style={styles.culturalElementContainer}>
+          <GhanaCulturalElement type="kente-border" />
+        </View>
       </LoadingState>
     </ScrollView>
   </SafeAreaView>
@@ -333,6 +354,10 @@ const styles = StyleSheet.create({
   
   statIcon: {
     marginTop: theme.spacing.xs,
+  },
+  
+  culturalElementContainer: {
+    marginVertical: theme.spacing.lg,
   },
 });
 

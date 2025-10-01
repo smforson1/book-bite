@@ -17,4 +17,6 @@ export { default as Section, type SectionProps } from './Section';
 export { default as LoadingState, type LoadingStateProps } from './LoadingState';
 export { default as ListItem, type ListItemProps } from './ListItem';
 export { default as ImageUpload, type ImageUploadProps } from './ImageUpload';
+export { default as GhanaCulturalElement } from './GhanaCulturalElement';
+export { default as ErrorFeedback } from './ErrorFeedback';
 // ThemeToggle export removed as part of dark mode revert

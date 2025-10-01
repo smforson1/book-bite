@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Card, RestaurantFilterModal, Header, SkeletonList } from '../../components';
+import { Card, RestaurantFilterModal, Header, SkeletonList, ErrorFeedback } from '../../components';
 import { theme } from '../../styles/theme';
 import { globalStyles } from '../../styles/globalStyles';
 import { useRestaurant } from '../../contexts/RestaurantContext';
@@ -19,6 +19,7 @@ import { googleMapsService } from '../../services/googleMapsService';
 import { ghanaPromotionService, GhanaPromotion } from '../../services/ghanaPromotionService';
 import { locationService, UserLocation } from '../../services/locationService';
 import { useListing } from '../../hooks';
+import { useErrorHandling } from '../../hooks/useErrorHandling';
 
 interface RestaurantsScreenProps {
   navigation: any;
@@ -35,6 +36,8 @@ interface RestaurantFilters {
 }
 
 const RestaurantsScreen: React.FC<RestaurantsScreenProps> = ({ navigation }) => {
+  const { error, clearError, withErrorHandling, showUserFeedback } = useErrorHandling();
+  
   const applyFiltersToRestaurants = (restaurantList: Restaurant[], filters: RestaurantFilters) => {
     let filtered = [...restaurantList];
 
@@ -118,91 +121,115 @@ const RestaurantsScreen: React.FC<RestaurantsScreenProps> = ({ navigation }) => 
     }
   }, [userLocation, filteredRestaurants]);
   
-  const updateDeliveryEstimates = async () => {
-    if (!userLocation) return;
-    
-    const estimates: { [restaurantId: string]: string } = {};
-    
-    for (const restaurant of filteredRestaurants.slice(0, 10)) {
-      try {
-        const restaurantLocation = await googleMapsService.geocodeAddress(restaurant.address);
-        const userLocationCoords = await googleMapsService.geocodeAddress(
-          `${userLocation.city}, ${userLocation.region}, Ghana`
-        );
-        
-        if (restaurantLocation && userLocationCoords) {
-          const estimate = await googleMapsService.calculateDeliveryEstimate(
-            restaurantLocation,
-            userLocationCoords
+  const updateDeliveryEstimates = withErrorHandling(
+    async () => {
+      if (!userLocation) return;
+      
+      const estimates: { [restaurantId: string]: string } = {};
+      
+      for (const restaurant of filteredRestaurants.slice(0, 10)) {
+        try {
+          const restaurantLocation = await googleMapsService.geocodeAddress(restaurant.address);
+          const userLocationCoords = await googleMapsService.geocodeAddress(
+            `${userLocation.city}, ${userLocation.region}, Ghana`
           );
-          estimates[restaurant.id] = estimate.estimatedTime;
+          
+          if (restaurantLocation && userLocationCoords) {
+            const estimate = await googleMapsService.calculateDeliveryEstimate(
+              restaurantLocation,
+              userLocationCoords
+            );
+            estimates[restaurant.id] = estimate.estimatedTime;
+          }
+        } catch (error) {
+          console.error(`Error calculating delivery estimate for ${restaurant.name}:`, error);
+          showUserFeedback(`Error calculating delivery estimate for ${restaurant.name}`, 'error');
         }
-      } catch (error) {
-        console.error(`Error calculating delivery estimate for ${restaurant.name}:`, error);
       }
+      
+      setDeliveryEstimates(estimates);
+    },
+    {
+      errorMessage: 'Failed to update delivery estimates. Please try again.',
+      showErrorToast: false
     }
-    
-    setDeliveryEstimates(estimates);
-  };
+  );
 
   const handleRestaurantPress = (restaurant: Restaurant) => {
     navigation.navigate('RestaurantDetail', { restaurant });
   };
 
-  const handleSortByDistance = async () => {
-    if (!userLocation) {
-      // Get current location if not available
-      try {
-        const currentLocation = await locationService.getCurrentLocation();
-        if (!currentLocation) return;
-        
-        sortRestaurantsByDistance(currentLocation);
-      } catch (error) {
-        console.error('Error getting current location:', error);
-      }
-      return;
-    }
-    
-    sortRestaurantsByDistance(userLocation);
-  };
-
-  const sortRestaurantsByDistance = async (currentLocation: any) => {
-    try {
-      const restaurantsWithDistance = await Promise.all(
-        filteredRestaurants.map(async (restaurant) => {
-          try {
-            // For demo purposes, we'll use mock coordinates
-            // In a real app, restaurants would have stored coordinates
-            const restaurantCoords = await locationService.geocodeAddress(restaurant.address);
-            
-            let distance = 0;
-            if (restaurantCoords.length > 0) {
-              distance = locationService.calculateDistance(
-                { latitude: currentLocation.latitude || 5.6037, longitude: currentLocation.longitude || -0.1870 },
-                restaurantCoords[0]
-              );
-            }
-            
-            return {
-              ...restaurant,
-              distance: distance
-            };
-          } catch (error) {
-            return {
-              ...restaurant,
-              distance: 999 // Put restaurants with geocoding errors at the end
-            };
+  const handleSortByDistance = withErrorHandling(
+    async () => {
+      if (!userLocation) {
+        // Get current location if not available
+        try {
+          const currentLocation = await locationService.getCurrentLocation();
+          if (!currentLocation) {
+            showUserFeedback('Unable to get your location. Please enable location services.', 'warning');
+            return;
           }
-        })
-      );
-
-      // Sort by distance
-      const sortedRestaurants = restaurantsWithDistance.sort((a, b) => a.distance - b.distance);
-      setFilteredItems(sortedRestaurants);
-    } catch (error) {
-      console.error('Error sorting by distance:', error);
+          
+          await sortRestaurantsByDistance(currentLocation);
+        } catch (error) {
+          showUserFeedback('Error getting your location. Please try again.', 'error');
+          throw error;
+        }
+        return;
+      }
+      
+      await sortRestaurantsByDistance(userLocation);
+    },
+    {
+      errorMessage: 'Failed to sort restaurants by distance. Please try again.',
+      showErrorToast: false
     }
-  };
+  );
+
+  const sortRestaurantsByDistance = withErrorHandling(
+    async (currentLocation: any) => {
+      try {
+        const restaurantsWithDistance = await Promise.all(
+          filteredRestaurants.map(async (restaurant) => {
+            try {
+              // For demo purposes, we'll use mock coordinates
+              // In a real app, restaurants would have stored coordinates
+              const restaurantCoords = await locationService.geocodeAddress(restaurant.address);
+              
+              let distance = 0;
+              if (restaurantCoords.length > 0) {
+                distance = locationService.calculateDistance(
+                  { latitude: currentLocation.latitude || 5.6037, longitude: currentLocation.longitude || -0.1870 },
+                  restaurantCoords[0]
+                );
+              }
+              
+              return {
+                ...restaurant,
+                distance: distance
+              };
+            } catch (error) {
+              return {
+                ...restaurant,
+                distance: 999 // Put restaurants with geocoding errors at the end
+              };
+            }
+          })
+        );
+
+        // Sort by distance
+        const sortedRestaurants = restaurantsWithDistance.sort((a, b) => a.distance - b.distance);
+        setFilteredItems(sortedRestaurants);
+      } catch (error) {
+        showUserFeedback('Error sorting by distance. Please try again.', 'error');
+        throw error;
+      }
+    },
+    {
+      errorMessage: 'Error sorting by distance. Please try again.',
+      showErrorToast: false
+    }
+  );
 
   const renderRestaurant = ({ item: restaurant }: { item: Restaurant }) => {
     const hasActivePromo = promotions.some((promo: GhanaPromotion) => 
@@ -290,6 +317,14 @@ const RestaurantsScreen: React.FC<RestaurantsScreenProps> = ({ navigation }) => 
 
   return (
     <SafeAreaView style={styles.container}>
+      {error && (
+        <ErrorFeedback
+          message={error.message}
+          type={error.type}
+          onDismiss={clearError}
+        />
+      )}
+      
       {/* Enhanced Header with Search */}
       <Header
         title="Restaurants"
@@ -365,7 +400,7 @@ const RestaurantsScreen: React.FC<RestaurantsScreenProps> = ({ navigation }) => 
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={handleRefresh}
+              onRefresh={() => handleRefresh()}
               tintColor={theme.colors.primary[500]}
             />
           }

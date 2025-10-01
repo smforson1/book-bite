@@ -5,16 +5,18 @@ import {
   StyleSheet,
   FlatList,
   RefreshControl,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Card, Button } from '../../components';
+import { Card, Button, ErrorFeedback } from '../../components';
 import { theme } from '../../styles/theme';
 import { useHotel } from '../../contexts/HotelContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import { Booking } from '../../types';
+import { useErrorHandling } from '../../hooks/useErrorHandling';
+import { useOfflineManager } from '../../hooks/useOfflineManager';
+import { offlineManager } from '../../services/offlineManager';
 
 // Navigation type for tab navigation
 type TabNavigationProp = {
@@ -28,6 +30,8 @@ const BookingsScreen: React.FC = () => {
   const [userBookings, setUserBookings] = useState<Booking[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation<TabNavigationProp>();
+  const { error, clearError, withErrorHandling, showUserFeedback } = useErrorHandling();
+  const { isOnline } = useOfflineManager();
 
   useEffect(() => {
     if (user) {
@@ -44,33 +48,35 @@ const BookingsScreen: React.FC = () => {
     !(booking.status === 'pending' && booking.paymentStatus === 'pending')
   );
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    // In a real app, this would refetch from server
-    setTimeout(() => setRefreshing(false), 1000);
-  };
+  const handleRefresh = withErrorHandling(
+    async () => {
+      setRefreshing(true);
+      // In a real app, this would refetch from server
+      setTimeout(() => setRefreshing(false), 1000);
+    },
+    {
+      errorMessage: 'Failed to refresh bookings. Please try again.',
+      showErrorToast: false
+    }
+  );
 
-  const handleCancelBooking = (booking: Booking) => {
-    Alert.alert(
-      'Cancel Booking',
-      'Are you sure you want to cancel this booking?',
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Yes, Cancel',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await updateBookingStatus(booking.id, 'cancelled');
-              Alert.alert('Success', 'Booking cancelled successfully');
-            } catch (error) {
-              Alert.alert('Error', 'Failed to cancel booking');
-            }
-          },
-        },
-      ]
-    );
-  };
+  const handleCancelBooking = withErrorHandling(
+    async (booking: Booking) => {
+      try {
+        await updateBookingStatus(booking.id, 'cancelled');
+        showUserFeedback('Booking cancelled successfully', 'success');
+      } catch (error) {
+        showUserFeedback('Failed to cancel booking', 'error');
+        throw error;
+      }
+    },
+    {
+      errorMessage: 'Failed to cancel booking. Please try again.',
+      successMessage: 'Booking cancelled successfully',
+      showSuccessToast: false,
+      showErrorToast: false
+    }
+  );
 
   const getStatusColor = (status: Booking['status']) => {
     switch (status) {
@@ -115,6 +121,8 @@ const BookingsScreen: React.FC = () => {
     const canCancel = booking.status === 'pending' || (booking.status === 'confirmed' && isUpcoming);
     const canPay = booking.paymentStatus === 'pending';
     const isPendingBooking = booking.status === 'pending' && booking.paymentStatus === 'pending';
+    // Check if this is a local booking (offline created)
+    const isLocalBooking = booking.id.startsWith('local_');
 
     return (
       <Card style={styles.bookingCard}>
@@ -128,6 +136,9 @@ const BookingsScreen: React.FC = () => {
             />
             <Text style={[styles.statusText, { color: getStatusColor(booking.status) }]}>
               {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+              {isLocalBooking && (
+                <Text style={styles.localIndicator}> (Offline)</Text>
+              )}
             </Text>
           </View>
         </View>
@@ -183,6 +194,7 @@ const BookingsScreen: React.FC = () => {
                 });
               }}
               style={styles.primaryPayButton}
+              disabled={!isOnline && !isLocalBooking}
             />
             <Button
               title="Remove"
@@ -218,7 +230,16 @@ const BookingsScreen: React.FC = () => {
                 });
               }}
               style={styles.payButton}
+              disabled={!isOnline && !isLocalBooking}
             />
+          </View>
+        )}
+
+        {/* Offline indicator */}
+        {!isOnline && isLocalBooking && (
+          <View style={styles.offlineIndicator}>
+            <Ionicons name="cloud-offline" size={16} color={theme.colors.warning[500]} />
+            <Text style={styles.offlineText}>This booking will be synced when you're online</Text>
           </View>
         )}
       </Card>
@@ -232,11 +253,23 @@ const BookingsScreen: React.FC = () => {
       <Text style={styles.emptySubtitle}>
         When you book a hotel, your reservations will appear here.
       </Text>
+      {!isOnline && (
+        <Text style={styles.offlineMessage}>
+          You're currently offline. Bookings made offline will be synced when you're back online.
+        </Text>
+      )}
     </View>
   );
 
   return (
     <SafeAreaView style={styles.container}>
+      {error && (
+        <ErrorFeedback
+          message={error.message}
+          type={error.type}
+          onDismiss={clearError}
+        />
+      )}
       <FlatList
         data={[]}
         renderItem={() => null}
@@ -246,7 +279,7 @@ const BookingsScreen: React.FC = () => {
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={handleRefresh}
+            onRefresh={() => handleRefresh()}
             tintColor={theme.colors.primary[500]}
           />
         }
@@ -327,6 +360,10 @@ const styles = StyleSheet.create({
     marginLeft: theme.spacing.xs,
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.medium as '500',
+  },
+  localIndicator: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.warning[500],
   },
   roomName: {
     fontSize: theme.typography.fontSize.md,
@@ -427,6 +464,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text.secondary,
     textAlign: 'center',
     paddingHorizontal: theme.spacing.xl,
+    marginBottom: theme.spacing.md,
   },
   payButton: {
     borderColor: theme.colors.success[500],
@@ -466,6 +504,26 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.lg,
     marginHorizontal: theme.spacing.sm,
     marginVertical: theme.spacing.sm,
+  },
+  offlineIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: theme.spacing.sm,
+    padding: theme.spacing.sm,
+    backgroundColor: theme.colors.warning[50] + '80',
+    borderRadius: theme.borderRadius.md,
+  },
+  offlineText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.warning[700],
+    marginLeft: theme.spacing.xs,
+  },
+  offlineMessage: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.secondary,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    marginTop: theme.spacing.md,
   },
 });
 

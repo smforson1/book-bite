@@ -9,11 +9,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Card } from '../../components';
+import { Card, ErrorFeedback } from '../../components';
 import { theme } from '../../styles/theme';
 import { useRestaurant } from '../../contexts/RestaurantContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Order, MenuItem } from '../../types';
+import { useErrorHandling } from '../../hooks/useErrorHandling';
 
 const OrderHistoryScreen: React.FC = () => {
   const { user } = useAuth();
@@ -22,6 +23,7 @@ const OrderHistoryScreen: React.FC = () => {
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<'all' | 'active' | 'delivered' | 'cancelled'>('all');
+  const { error, clearError, withErrorHandling, showUserFeedback } = useErrorHandling();
 
   useEffect(() => {
     if (user) {
@@ -49,11 +51,20 @@ const OrderHistoryScreen: React.FC = () => {
     }
   }, [userOrders, filter]);
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    // In a real app, this would refetch from server
-    setTimeout(() => setRefreshing(false), 1000);
-  };
+  const handleRefresh = withErrorHandling(
+    async () => {
+      setRefreshing(true);
+      // In a real app, this would refetch from server
+      setTimeout(() => setRefreshing(false), 1000);
+      showUserFeedback('Orders refreshed successfully', 'success');
+    },
+    {
+      errorMessage: 'Failed to refresh orders. Please try again.',
+      successMessage: 'Orders refreshed successfully',
+      showSuccessToast: true,
+      showErrorToast: true
+    }
+  );
 
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
@@ -192,6 +203,15 @@ const OrderHistoryScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Error Feedback */}
+      {error && (
+        <ErrorFeedback
+          message={error.message}
+          type={error.type}
+          onDismiss={clearError}
+        />
+      )}
+      
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Order History</Text>
       </View>

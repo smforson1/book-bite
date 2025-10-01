@@ -5,10 +5,9 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  RefreshControl,
-  Alert,
   Linking,
   Animated,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +19,8 @@ import { googleMapsService } from '../../services/googleMapsService';
 import GhanaMapComponent, { MapMarker } from '../../components/GhanaMapComponent';
 import { LocationCoordinates } from '../../services/locationService';
 import { Order } from '../../types/index';
+import { ErrorFeedback } from '../../components';
+import { useErrorHandling } from '../../hooks/useErrorHandling';
 
 interface OrderTrackingScreenProps {
   navigation: any;
@@ -54,6 +55,7 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
   const [deliveryRoute, setDeliveryRoute] = useState<LocationCoordinates[]>([]);
 
   const progressAnimation = useRef(new Animated.Value(0)).current;
+  const { error, clearError, withErrorHandling, showUserFeedback } = useErrorHandling();
 
   useEffect(() => {
     loadOrderData();
@@ -72,28 +74,37 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
     }
   }, [order, driverLocation]);
 
-  const loadOrderData = async () => {
-    try {
-      const foundOrder = orders.find(o => o.id === orderId);
-      if (foundOrder) {
-        setOrder(foundOrder);
+  const loadOrderData = withErrorHandling(
+    async () => {
+      try {
+        const foundOrder = orders.find(o => o.id === orderId);
+        if (foundOrder) {
+          setOrder(foundOrder);
 
-        // Load tracking history
-        const history = await realTimeService.getOrderTrackingHistory(orderId);
-        setTrackingUpdates(history);
+          // Load tracking history
+          const history = await realTimeService.getOrderTrackingHistory(orderId);
+          setTrackingUpdates(history);
 
-        // Get estimated delivery time from Ghana maps service
-        if (foundOrder.deliveryAddress) {
-          const restaurant = getRestaurantById(foundOrder.restaurantId);
-          if (restaurant) {
-            await updateDeliveryEstimate(restaurant.address, foundOrder.deliveryAddress);
+          // Get estimated delivery time from Ghana maps service
+          if (foundOrder.deliveryAddress) {
+            const restaurant = getRestaurantById(foundOrder.restaurantId);
+            if (restaurant) {
+              await updateDeliveryEstimate(restaurant.address, foundOrder.deliveryAddress);
+            }
           }
         }
+      } catch (error) {
+        console.error('Error loading order data:', error);
+        throw error;
       }
-    } catch (error) {
-      console.error('Error loading order data:', error);
+    },
+    {
+      errorMessage: 'Failed to load order data. Please try again.',
+      successMessage: 'Order data loaded successfully',
+      showSuccessToast: false,
+      showErrorToast: true
     }
-  };
+  );
 
   const setupRealTimeTracking = () => {
     // Subscribe to order updates
@@ -235,30 +246,39 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
     setMapMarkers(markers);
   };
 
-  const updateDeliveryEstimate = async (restaurantAddress: string, deliveryAddress: string) => {
-    try {
-      const restaurantLocation = await googleMapsService.geocodeAddress(restaurantAddress);
-      const deliveryLocation = await googleMapsService.geocodeAddress(deliveryAddress);
+  const updateDeliveryEstimate = withErrorHandling(
+    async (restaurantAddress: string, deliveryAddress: string) => {
+      try {
+        const restaurantLocation = await googleMapsService.geocodeAddress(restaurantAddress);
+        const deliveryLocation = await googleMapsService.geocodeAddress(deliveryAddress);
 
-      if (restaurantLocation && deliveryLocation) {
-        const estimate = await googleMapsService.calculateDeliveryEstimate(
-          restaurantLocation,
-          deliveryLocation
-        );
+        if (restaurantLocation && deliveryLocation) {
+          const estimate = await googleMapsService.calculateDeliveryEstimate(
+            restaurantLocation,
+            deliveryLocation
+          );
 
-        setEstimatedArrival(estimate.estimatedTime);
+          setEstimatedArrival(estimate.estimatedTime);
 
-        // Update delivery route
-        if (estimate.route) {
-          // Decode polyline to coordinates (simplified)
-          const routeCoords = [restaurantLocation, deliveryLocation]; // Placeholder
-          setDeliveryRoute(routeCoords);
+          // Update delivery route
+          if (estimate.route) {
+            // Decode polyline to coordinates (simplified)
+            const routeCoords = [restaurantLocation, deliveryLocation]; // Placeholder
+            setDeliveryRoute(routeCoords);
+          }
         }
+      } catch (error) {
+        console.error('Error updating delivery estimate:', error);
+        throw error;
       }
-    } catch (error) {
-      console.error('Error updating delivery estimate:', error);
+    },
+    {
+      errorMessage: 'Failed to update delivery estimate. Please try again.',
+      successMessage: 'Delivery estimate updated successfully',
+      showSuccessToast: false,
+      showErrorToast: true
     }
-  };
+  );
 
   const updateDeliveryRoute = (currentDriverLocation: LocationCoordinates) => {
     if (!order) return;
@@ -272,27 +292,31 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
     }
   };
 
-  const showPreciseDeliveryLocation = () => {
-    if (!order) return;
-    
-    const deliveryCoords = (order as any)?.deliveryCoordinates || order?.deliveryCoordinates;
-    if (!deliveryCoords) return;
+  const showPreciseDeliveryLocation = withErrorHandling(
+    async () => {
+      if (!order) return;
+      
+      const deliveryCoords = (order as any)?.deliveryCoordinates || order?.deliveryCoordinates;
+      if (!deliveryCoords) return;
 
-    Alert.alert(
-      'Precise Delivery Location',
-      `Your order will be delivered to:\n\n${order.deliveryAddress}\n\nGPS Coordinates:\n${deliveryCoords.latitude.toFixed(6)}, ${deliveryCoords.longitude.toFixed(6)}`,
-      [
-        { text: 'OK' },
-        {
-          text: 'Open in Maps',
-          onPress: () => {
-            const url = `https://maps.google.com/?q=${deliveryCoords.latitude},${deliveryCoords.longitude}`;
-            Linking.openURL(url);
-          }
-        }
-      ]
-    );
-  };
+      showUserFeedback(
+        `Your order will be delivered to:
+
+${order.deliveryAddress}
+
+GPS Coordinates:
+${deliveryCoords.latitude.toFixed(6)}, ${deliveryCoords.longitude.toFixed(6)}`,
+        'info',
+        5000
+      );
+    },
+    {
+      errorMessage: 'Failed to show delivery location. Please try again.',
+      successMessage: 'Delivery location shown successfully',
+      showSuccessToast: false,
+      showErrorToast: true
+    }
+  );
 
   const updateDeliveryRouteOld = (currentDriverLocation: LocationCoordinates) => {
     if (!order) return;
@@ -322,70 +346,101 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
     }).start();
   };
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await loadOrderData();
-    setRefreshing(false);
-  };
-
-  const handleCallRestaurant = () => {
-    const restaurant = getRestaurantById(order?.restaurantId || '');
-    if (restaurant?.phone) {
-      Alert.alert(
-        'Call Restaurant',
-        `Do you want to call ${restaurant.name}?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Call',
-            onPress: () => Linking.openURL(`tel:${restaurant.phone}`)
-          }
-        ]
-      );
+  const handleRefresh = withErrorHandling(
+    async () => {
+      setRefreshing(true);
+      await loadOrderData();
+      setRefreshing(false);
+      showUserFeedback('Order tracking refreshed successfully', 'success');
+    },
+    {
+      errorMessage: 'Failed to refresh order tracking. Please try again.',
+      successMessage: 'Order tracking refreshed successfully',
+      showSuccessToast: true,
+      showErrorToast: true
     }
-  };
+  );
 
-  const handleShareLocation = async () => {
-    try {
-      // This would send user's current location to the delivery person via SMS
-      await ghanaSMSService.sendTemplatedSMS(
-        'delivery_location_update',
-        '+233123456789', // Driver's phone
-        {
-          orderId: order?.id || '',
-          location: 'Current location coordinates'
+  const handleCallRestaurant = withErrorHandling(
+    async () => {
+      const restaurant = getRestaurantById(order?.restaurantId || '');
+      if (restaurant?.phone) {
+        try {
+          await Linking.openURL(`tel:${restaurant.phone}`);
+          showUserFeedback('Calling restaurant...', 'info');
+        } catch (error) {
+          showUserFeedback('Failed to make call. Please try again.', 'error');
+          throw error;
         }
-      );
-
-      Alert.alert('Success', 'Your location has been shared with the delivery person.');
-    } catch (error) {
-      Alert.alert('Error', 'Failed to share location. Please try again.');
+      } else {
+        showUserFeedback('Restaurant phone number not available', 'warning');
+      }
+    },
+    {
+      errorMessage: 'Failed to call restaurant. Please try again.',
+      successMessage: 'Calling restaurant...',
+      showSuccessToast: false,
+      showErrorToast: true
     }
-  };
+  );
+
+  const handleShareLocation = withErrorHandling(
+    async () => {
+      try {
+        // This would send user's current location to the delivery person via SMS
+        await ghanaSMSService.sendTemplatedSMS(
+          'delivery_location_update',
+          '+233123456789', // Driver's phone
+          {
+            orderId: order?.id || '',
+            location: 'Current location coordinates'
+          }
+        );
+
+        showUserFeedback('Your location has been shared with the delivery person.', 'success');
+      } catch (error) {
+        showUserFeedback('Failed to share location. Please try again.', 'error');
+        throw error;
+      }
+    },
+    {
+      errorMessage: 'Failed to share location. Please try again.',
+      successMessage: 'Location shared successfully',
+      showSuccessToast: true,
+      showErrorToast: true
+    }
+  );
 
   const handleReportIssue = () => {
-    Alert.alert(
-      'Report Issue',
-      'What issue are you experiencing?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Order Taking Too Long', onPress: () => reportIssue('delayed') },
-        { text: 'Wrong Items', onPress: () => reportIssue('wrong_items') },
-        { text: 'Delivery Issue', onPress: () => reportIssue('delivery') },
-        { text: 'Other', onPress: () => reportIssue('other') }
-      ]
+    showUserFeedback(
+      'What issue are you experiencing?\n\n' +
+      '• Order Taking Too Long\n' +
+      '• Wrong Items\n' +
+      '• Delivery Issue\n' +
+      '• Other',
+      'info',
+      5000
     );
   };
 
-  const reportIssue = async (issueType: string) => {
-    try {
-      // Log the issue and notify support
-      console.log('Issue reported:', issueType, 'for order:', orderId);
-      Alert.alert('Issue Reported', 'Thank you for reporting the issue. Our support team will contact you shortly.');
-    } catch (error) {
-      Alert.alert('Error', 'Failed to report issue. Please try again.');
+  const reportIssue = withErrorHandling(
+    async (issueType: string) => {
+      try {
+        // Log the issue and notify support
+        console.log('Issue reported:', issueType, 'for order:', orderId);
+        showUserFeedback('Thank you for reporting the issue. Our support team will contact you shortly.', 'success');
+      } catch (error) {
+        showUserFeedback('Failed to report issue. Please try again.', 'error');
+        throw error;
+      }
+    },
+    {
+      errorMessage: 'Failed to report issue. Please try again.',
+      successMessage: 'Issue reported successfully',
+      showSuccessToast: true,
+      showErrorToast: true
     }
-  };
+  );
 
   const renderTrackingStep = (step: TrackingStep, index: number) => (
     <View key={step.id} style={styles.trackingStep}>
@@ -449,6 +504,15 @@ const OrderTrackingScreen: React.FC<OrderTrackingScreenProps> = ({ navigation, r
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Error Feedback */}
+      {error && (
+        <ErrorFeedback
+          message={error.message}
+          type={error.type}
+          onDismiss={clearError}
+        />
+      )}
+      
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity

@@ -7,9 +7,9 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   Linking,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
@@ -18,14 +18,16 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 
 // Components
-import { Button, Input, Card } from '../../components';
+import { Button, Input, Card, ErrorFeedback } from '../../components';
 
 // Services
 import { apiService } from '../../services/apiService';
+import { paymentService } from '../../services/paymentService';
 
 // Hooks
 import { usePayment } from '../../hooks';
 import { useAuth } from '../../contexts/AuthContext';
+import { useErrorHandling } from '../../hooks/useErrorHandling';
 
 // Navigation types
 import { RestaurantsStackParamList } from '../../navigation/RestaurantsStackNavigator';
@@ -45,6 +47,7 @@ interface Props {
 const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
   const { amount, currency, paymentFor, referenceId } = route.params;
   const { user } = useAuth();
+  const { error, clearError, withErrorHandling, showUserFeedback } = useErrorHandling();
   const {
     isProcessing,
     promoCode,
@@ -76,12 +79,15 @@ const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
   const [cvv, setCvv] = useState('');
   const [cardholderName, setCardholderName] = useState('');
 
+  // Ghana-specific mobile money instructions
+  const [showInstructions, setShowInstructions] = useState(false);
+
   useEffect(() => {
     loadPaymentMethods();
   }, []);
 
-  const loadPaymentMethods = async () => {
-    try {
+  const loadPaymentMethods = withErrorHandling(
+    async () => {
       setLoadingMethods(true);
       const response = await apiService.getPaymentMethods();
 
@@ -99,47 +105,71 @@ const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
             setPaymentType('mobile_money');
           }
         }
+      } else {
+        showUserFeedback('Failed to load payment methods', 'error');
       }
-    } catch (error) {
-      console.error('Error loading payment methods:', error);
-      Alert.alert('Error', 'Failed to load payment methods');
-    } finally {
-      setLoadingMethods(false);
+    },
+    {
+      errorMessage: 'Failed to load payment methods. Please try again.',
+      showErrorToast: false
     }
-  };
+  );
 
-  const handlePromoApplication = async () => {
-    const validationData = {
-      userId: user?.id || 'current-user',
-      paymentMethod: selectedMethod || (paymentType === 'mobile_money' ? 'mtn_momo' : 'paystack'),
-      city: 'Accra', // You can get this from location service
-      region: 'Greater Accra',
-      userOrderCount: 0, // Replace with actual count
-    };
+  const handlePromoApplication = withErrorHandling(
+    async () => {
+      const validationData = {
+        userId: user?.id || 'current-user',
+        paymentMethod: selectedMethod || (paymentType === 'mobile_money' ? 'mtn_momo' : 'paystack'),
+        city: 'Accra', // You can get this from location service
+        region: 'Greater Accra',
+        userOrderCount: 0, // Replace with actual count
+      };
 
-    await handleApplyPromo(validationData);
-  };
-
-  const processPayment = async () => {
-    if (isProcessing || processingPayment) return;
-
-    if (!selectedMethod) {
-      Alert.alert('Error', 'Please select a payment method');
-      return;
+      await handleApplyPromo(validationData);
+    },
+    {
+      errorMessage: 'Failed to apply promo code. Please try again.',
+      showErrorToast: false
     }
+  );
 
-    if (!user) {
-      Alert.alert('Error', 'Please log in to continue');
-      return;
-    }
+  const processPayment = withErrorHandling(
+    async () => {
+      if (isProcessing || processingPayment) return;
 
-    // Validation for additional fields if needed
-    if (paymentType === 'mobile_money' && phoneNumber && !phoneNumber.trim()) {
-      Alert.alert('Error', 'Please enter a valid Ghana mobile number');
-      return;
-    }
+      if (!selectedMethod) {
+        showUserFeedback('Please select a payment method', 'warning');
+        return;
+      }
 
-    try {
+      if (!user) {
+        showUserFeedback('Please log in to continue', 'warning');
+        return;
+      }
+
+      // Validation for mobile money
+      if (paymentType === 'mobile_money') {
+        if (!phoneNumber.trim()) {
+          showUserFeedback('Please enter your phone number', 'warning');
+          return;
+        }
+
+        // Use the static method to validate phone number (since isValidGhanaianPhoneNumber is private)
+        const phoneRegex = /^(\+233|0)(20|21|23|24|25|26|27|28|29|50|53|54|55|56|57|59)\d{7}$/;
+        if (!phoneRegex.test(phoneNumber.replace(/\s/g, ''))) {
+          showUserFeedback('Please enter a valid Ghanaian phone number', 'warning');
+          return;
+        }
+      }
+
+      // Validation for card payments
+      if (paymentType === 'card') {
+        if (!cardNumber.trim() || !expiryMonth.trim() || !expiryYear.trim() || !cvv.trim() || !cardholderName.trim()) {
+          showUserFeedback('Please fill in all card details', 'warning');
+          return;
+        }
+      }
+
       setProcessingPayment(true);
 
       const paymentData = {
@@ -170,34 +200,31 @@ const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
               referenceId
             });
           } else {
-            Alert.alert('Error', 'Cannot open payment URL');
+            showUserFeedback('Cannot open payment URL', 'error');
           }
         } else {
           // For mobile money payments, show success and verify
-          Alert.alert(
-            'Payment Initiated',
-            'Please complete the payment on your mobile money account',
-            [
-              {
-                text: 'Verify Payment',
-                onPress: () => verifyPayment(payment.transactionId)
-              }
-            ]
-          );
+          showUserFeedback('Please complete the payment on your mobile money account', 'info');
+          // Navigate to payment verification screen
+          navigation.navigate('PaymentVerification', {
+            transactionId: payment.transactionId,
+            amount: finalAmount,
+            paymentFor,
+            referenceId
+          });
         }
       } else {
-        Alert.alert('Error', response.message || 'Payment initiation failed');
+        showUserFeedback(response.message || 'Payment initiation failed', 'error');
       }
-    } catch (error) {
-      console.error('Payment error:', error);
-      Alert.alert('Error', 'Payment failed. Please try again.');
-    } finally {
-      setProcessingPayment(false);
+    },
+    {
+      errorMessage: 'Payment failed. Please try again.',
+      showErrorToast: false
     }
-  };
+  );
 
-  const verifyPayment = async (transactionId: string) => {
-    try {
+  const verifyPayment = withErrorHandling(
+    async (transactionId: string) => {
       const response = await apiService.verifyPayment(transactionId);
 
       if (response.success) {
@@ -211,16 +238,95 @@ const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
           transactionId
         });
       } else {
-        Alert.alert('Payment Failed', 'Payment verification failed. Please contact support.');
+        showUserFeedback('Payment verification failed. Please contact support.', 'error');
       }
-    } catch (error) {
-      console.error('Payment verification error:', error);
-      Alert.alert('Error', 'Failed to verify payment');
+    },
+    {
+      errorMessage: 'Failed to verify payment. Please try again.',
+      showErrorToast: false
     }
+  );
+
+  // Render mobile money instructions
+  const renderMobileMoneyInstructions = () => {
+    if (!showInstructions) return null;
+
+    // Use helper functions to get instructions and tips since static methods aren't accessible
+    const getNetworkInstructions = (network: string): string => {
+      switch (network) {
+        case 'MTN':
+          return '1. You will receive a prompt on your MTN phone\n2. Enter your Mobile Money PIN to confirm\n3. Wait for confirmation SMS';
+        case 'Vodafone':
+          return '1. You will receive a prompt on your Vodafone phone\n2. Enter your Vodafone Cash PIN to confirm\n3. Wait for confirmation SMS';
+        case 'AirtelTigo':
+          return '1. You will receive a prompt on your AirtelTigo phone\n2. Enter your AirtelTigo Money PIN to confirm\n3. Wait for confirmation SMS';
+        default:
+          return '1. Follow the prompts on your device\n2. Enter your PIN to confirm payment\n3. Wait for confirmation';
+      }
+    };
+
+    const getNetworkTips = (network: string): string[] => {
+      switch (network) {
+        case 'MTN':
+          return [
+            'Ensure you have sufficient balance in your MTN Mobile Money account',
+            'Keep your PIN secure and never share it with anyone',
+            'MTN Mobile Money transactions are limited to GHS 5,000 per day'
+          ];
+        case 'Vodafone':
+          return [
+            'Ensure you have sufficient balance in your Vodafone Cash account',
+            'Keep your PIN secure and never share it with anyone',
+            'Vodafone Cash transactions may take up to 2 minutes to process'
+          ];
+        case 'AirtelTigo':
+          return [
+            'Ensure you have sufficient balance in your AirtelTigo Money account',
+            'Keep your PIN secure and never share it with anyone',
+            'AirtelTigo Money transactions are available 24/7'
+          ];
+        default:
+          return [
+            'Ensure you have sufficient funds in your account',
+            'Keep your PIN secure and never share it with anyone',
+            'Contact support if you do not receive a confirmation within 5 minutes'
+          ];
+      }
+    };
+
+    const instructions = getNetworkInstructions(selectedNetwork);
+    const tips = getNetworkTips(selectedNetwork);
+
+    return (
+      <Card style={styles.instructionsCard}>
+        <View style={styles.instructionsHeader}>
+          <Text style={styles.instructionsTitle}>Payment Instructions</Text>
+          <TouchableOpacity onPress={() => setShowInstructions(false)}>
+            <Ionicons name="close" size={24} color="#666" />
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.instructionsText}>{instructions}</Text>
+        
+        <Text style={styles.tipsTitle}>Tips:</Text>
+        {tips.map((tip: string, index: number) => (
+          <View key={index} style={styles.tipRow}>
+            <Ionicons name="information-circle" size={16} color="#007AFF" style={styles.tipIcon} />
+            <Text style={styles.tipText}>{tip}</Text>
+          </View>
+        ))}
+      </Card>
+    );
   };
 
   return (
     <SafeAreaView style={styles.container}>
+      {error && (
+        <ErrorFeedback
+          message={error.message}
+          type={error.type}
+          onDismiss={clearError}
+        />
+      )}
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>Complete Payment</Text>
 
@@ -321,6 +427,22 @@ const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
               placeholder="0XX XXX XXXX"
               maxLength={15}
             />
+
+            <TouchableOpacity 
+              style={styles.instructionsButton}
+              onPress={() => setShowInstructions(!showInstructions)}
+            >
+              <Text style={styles.instructionsButtonText}>
+                {showInstructions ? 'Hide Instructions' : 'Show Payment Instructions'}
+              </Text>
+              <Ionicons 
+                name={showInstructions ? 'chevron-up' : 'chevron-down'} 
+                size={20} 
+                color="#007AFF" 
+              />
+            </TouchableOpacity>
+
+            {renderMobileMoneyInstructions()}
           </Card>
         )}
 
@@ -398,7 +520,7 @@ const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
                 placeholder="Enter promo code"
                 style={styles.promoInput}
               />
-              <TouchableOpacity style={styles.applyPromoButton} onPress={handlePromoApplication}>
+              <TouchableOpacity style={styles.applyPromoButton} onPress={() => handlePromoApplication()}>
                 <Text style={styles.applyPromoText}>Apply</Text>
               </TouchableOpacity>
             </View>
@@ -442,7 +564,7 @@ const PaymentScreen: React.FC<Props> = ({ navigation, route }) => {
         {/* Pay Button */}
         <Button
           title={processingPayment ? 'Processing...' : `Pay ₵${finalAmount.toFixed(2)}`}
-          onPress={processPayment}
+          onPress={() => processPayment()}
           disabled={isProcessing || processingPayment || !selectedMethod}
           style={styles.payButton}
           loading={processingPayment}
@@ -728,6 +850,63 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
+  },
+  instructionsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    marginTop: 8,
+  },
+  instructionsButtonText: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: '500',
+    marginRight: 8,
+  },
+  instructionsCard: {
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: '#E3F2FD',
+    borderColor: '#007AFF',
+  },
+  instructionsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  instructionsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  instructionsText: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  tipsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#007AFF',
+    marginBottom: 8,
+  },
+  tipRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 6,
+  },
+  tipIcon: {
+    marginTop: 2,
+    marginRight: 8,
+  },
+  tipText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 18,
   },
 });
 

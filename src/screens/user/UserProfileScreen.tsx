@@ -5,19 +5,20 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Button, Card, Input } from '../../components';
+import { Button, Card, Input, ErrorFeedback } from '../../components';
 import { theme } from '../../styles/theme';
 import { globalStyles } from '../../styles/globalStyles';
 import { useAuth } from '../../contexts/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useErrorHandling } from '../../hooks/useErrorHandling';
 
 const UserProfileScreen: React.FC = () => {
   const { user, logout, updateUser } = useAuth();
+  const { error, clearError, withErrorHandling, showUserFeedback } = useErrorHandling();
   const [isEditing, setIsEditing] = useState(false);
   const [editedUser, setEditedUser] = useState({
     name: user?.name || '',
@@ -39,8 +40,8 @@ const UserProfileScreen: React.FC = () => {
     savePaymentMethods: true,
   });
 
-  const handleSaveProfile = async () => {
-    try {
+  const handleSaveProfile = withErrorHandling(
+    async () => {
       if (updateUser) {
         await updateUser({
           ...user!,
@@ -50,11 +51,15 @@ const UserProfileScreen: React.FC = () => {
         });
       }
       setIsEditing(false);
-      Alert.alert('Success', 'Profile updated successfully!');
-    } catch (error) {
-      Alert.alert('Error', 'Failed to update profile');
+      showUserFeedback('Profile updated successfully!', 'success');
+    },
+    {
+      errorMessage: 'Failed to update profile. Please try again.',
+      successMessage: 'Profile updated successfully!',
+      showSuccessToast: false,
+      showErrorToast: false
     }
-  };
+  );
 
   const handleCancelEdit = () => {
     setEditedUser({
@@ -66,41 +71,26 @@ const UserProfileScreen: React.FC = () => {
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: logout,
-        },
-      ]
-    );
+    logout();
   };
 
-  const handleClearData = () => {
-    Alert.alert(
-      'Clear App Data',
-      'This will clear all app data including bookings and orders. Are you sure?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Clear Data',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await AsyncStorage.clear();
-              Alert.alert('Success', 'App data cleared successfully!');
-            } catch (error) {
-              Alert.alert('Error', 'Failed to clear data');
-            }
-          },
-        },
-      ]
-    );
-  };
+  const handleClearData = withErrorHandling(
+    async () => {
+      try {
+        await AsyncStorage.clear();
+        showUserFeedback('App data cleared successfully!', 'success');
+      } catch (error) {
+        showUserFeedback('Failed to clear data', 'error');
+        throw error;
+      }
+    },
+    {
+      errorMessage: 'Failed to clear data. Please try again.',
+      successMessage: 'App data cleared successfully!',
+      showSuccessToast: false,
+      showErrorToast: false
+    }
+  );
 
   const renderProfileSection = () => (
     <Card style={styles.section}>
@@ -176,7 +166,7 @@ const UserProfileScreen: React.FC = () => {
           />
           <Button
             title="Save Changes"
-            onPress={handleSaveProfile}
+            onPress={() => handleSaveProfile()}
             style={styles.saveButton}
           />
         </View>
@@ -292,7 +282,7 @@ const UserProfileScreen: React.FC = () => {
     <Card style={styles.section}>
       <Text style={[globalStyles.h3, styles.sectionTitle]}>Account Actions</Text>
       
-      <TouchableOpacity style={styles.actionRow} onPress={() => Alert.alert('Coming Soon', 'Payment methods management will be available soon!')}>
+      <TouchableOpacity style={styles.actionRow} onPress={() => showUserFeedback('Payment methods management will be available soon!', 'info')}>
         <Ionicons name="card" size={24} color={theme.colors.text.secondary} />
         <View style={styles.actionInfo}>
           <Text style={styles.actionLabel}>Payment Methods</Text>
@@ -301,7 +291,7 @@ const UserProfileScreen: React.FC = () => {
         <Ionicons name="chevron-forward" size={20} color={theme.colors.text.tertiary} />
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.actionRow} onPress={() => Alert.alert('Coming Soon', 'Address book will be available soon!')}>
+      <TouchableOpacity style={styles.actionRow} onPress={() => showUserFeedback('Address book will be available soon!', 'info')}>
         <Ionicons name="location" size={24} color={theme.colors.text.secondary} />
         <View style={styles.actionInfo}>
           <Text style={styles.actionLabel}>Saved Addresses</Text>
@@ -310,7 +300,7 @@ const UserProfileScreen: React.FC = () => {
         <Ionicons name="chevron-forward" size={20} color={theme.colors.text.tertiary} />
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.actionRow} onPress={() => Alert.alert('Coming Soon', 'Help center will be available soon!')}>
+      <TouchableOpacity style={styles.actionRow} onPress={() => showUserFeedback('Help center will be available soon!', 'info')}>
         <Ionicons name="help-circle" size={24} color={theme.colors.text.secondary} />
         <View style={styles.actionInfo}>
           <Text style={styles.actionLabel}>Help & Support</Text>
@@ -319,7 +309,7 @@ const UserProfileScreen: React.FC = () => {
         <Ionicons name="chevron-forward" size={20} color={theme.colors.text.tertiary} />
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.actionRow} onPress={() => Alert.alert('Coming Soon', 'Privacy settings will be available soon!')}>
+      <TouchableOpacity style={styles.actionRow} onPress={() => showUserFeedback('Privacy settings will be available soon!', 'info')}>
         <Ionicons name="shield-checkmark" size={24} color={theme.colors.text.secondary} />
         <View style={styles.actionInfo}>
           <Text style={styles.actionLabel}>Privacy & Security</Text>
@@ -328,7 +318,7 @@ const UserProfileScreen: React.FC = () => {
         <Ionicons name="chevron-forward" size={20} color={theme.colors.text.tertiary} />
       </TouchableOpacity>
 
-      <TouchableOpacity style={[styles.actionRow, styles.dangerAction]} onPress={handleClearData}>
+      <TouchableOpacity style={[styles.actionRow, styles.dangerAction]} onPress={() => handleClearData()}>
         <Ionicons name="trash" size={24} color={theme.colors.danger[500]} />
         <View style={styles.actionInfo}>
           <Text style={[styles.actionLabel, { color: theme.colors.danger[500] }]}>Clear App Data</Text>
@@ -362,6 +352,13 @@ const UserProfileScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      {error && (
+        <ErrorFeedback
+          message={error.message}
+          type={error.type}
+          onDismiss={clearError}
+        />
+      )}
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {renderProfileSection()}
         {renderNotificationSettings()}

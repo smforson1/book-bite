@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Card, HotelFilterModal, Header, Skeleton, SkeletonList } from '../../components';
+import { Card, HotelFilterModal, Header, Skeleton, SkeletonList, ErrorFeedback } from '../../components';
 import { theme } from '../../styles/theme';
 import { globalStyles } from '../../styles/globalStyles';
 import { useHotel } from '../../contexts/HotelContext';
@@ -19,6 +19,7 @@ import { googleMapsService } from '../../services/googleMapsService';
 import ghanaPromotionService, { GhanaPromotion } from '../../services/ghanaPromotionService';
 import { locationService } from '../../services/locationService';
 import { useListing } from '../../hooks';
+import { useErrorHandling } from '../../hooks/useErrorHandling';
 
 interface HotelsScreenProps {
   navigation: any;
@@ -33,6 +34,8 @@ interface HotelFilters {
 }
 
 const HotelsScreen: React.FC<HotelsScreenProps> = ({ navigation }) => {
+  const { error, clearError, withErrorHandling, showUserFeedback } = useErrorHandling();
+  
   const applyFiltersToHotels = (hotelList: Hotel[], filters: HotelFilters) => {
     let filtered = [...hotelList];
 
@@ -117,32 +120,39 @@ const HotelsScreen: React.FC<HotelsScreenProps> = ({ navigation }) => {
     }
   }, [userLocation, filteredHotels]);
   
-  const updateHotelDistances = async () => {
-    if (!userLocation) return;
-    
-    const distances: { [hotelId: string]: string } = {};
-    
-    // Calculate distances for visible hotels
-    for (const hotel of filteredHotels.slice(0, 10)) {
-      try {
-        const hotelLocation = await googleMapsService.geocodeAddress(hotel.address);
-        const userLocationCoords = await googleMapsService.geocodeAddress(
-          `${userLocation.city}, ${userLocation.region}, Ghana`
-        );
-        
-        if (hotelLocation && userLocationCoords) {
-          const route = await googleMapsService.getRoute(userLocationCoords, hotelLocation);
-          if (route) {
-            distances[hotel.id] = route.distance;
+  const updateHotelDistances = withErrorHandling(
+    async () => {
+      if (!userLocation) return;
+      
+      const distances: { [hotelId: string]: string } = {};
+      
+      // Calculate distances for visible hotels
+      for (const hotel of filteredHotels.slice(0, 10)) {
+        try {
+          const hotelLocation = await googleMapsService.geocodeAddress(hotel.address);
+          const userLocationCoords = await googleMapsService.geocodeAddress(
+            `${userLocation.city}, ${userLocation.region}, Ghana`
+          );
+          
+          if (hotelLocation && userLocationCoords) {
+            const route = await googleMapsService.getRoute(userLocationCoords, hotelLocation);
+            if (route) {
+              distances[hotel.id] = route.distance;
+            }
           }
+        } catch (error) {
+          console.error(`Error calculating distance for ${hotel.name}:`, error);
+          showUserFeedback(`Error calculating distance for ${hotel.name}`, 'error');
         }
-      } catch (error) {
-        console.error(`Error calculating distance for ${hotel.name}:`, error);
       }
+      
+      setHotelDistances(distances);
+    },
+    {
+      errorMessage: 'Failed to update hotel distances. Please try again.',
+      showErrorToast: false
     }
-    
-    setHotelDistances(distances);
-  };
+  );
 
   const handleHotelPress = (hotel: Hotel) => {
     navigation.navigate('HotelDetail', { hotel });
@@ -223,6 +233,14 @@ const HotelsScreen: React.FC<HotelsScreenProps> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
+      {error && (
+        <ErrorFeedback
+          message={error.message}
+          type={error.type}
+          onDismiss={clearError}
+        />
+      )}
+      
       {/* Enhanced Header with Search */}
       <Header
         title="Hotels"
@@ -289,7 +307,7 @@ const HotelsScreen: React.FC<HotelsScreenProps> = ({ navigation }) => {
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={handleRefresh}
+              onRefresh={() => handleRefresh()}
               tintColor={theme.colors.primary[500]}
             />
           }

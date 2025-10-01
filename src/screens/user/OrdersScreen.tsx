@@ -6,11 +6,10 @@ import {
   FlatList,
   TouchableOpacity,
   RefreshControl,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Card, Button } from '../../components';
+import { Card, Button, ErrorFeedback } from '../../components';
 import { theme } from '../../styles/theme';
 import { globalStyles } from '../../styles/globalStyles';
 import { useRestaurant } from '../../contexts/RestaurantContext';
@@ -19,6 +18,8 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Order, MenuItem } from '../../types';
 import { UserTabParamList } from '../../types';
+import { useErrorHandling } from '../../hooks/useErrorHandling';
+import { useOfflineManager } from '../../hooks/useOfflineManager';
 
 export type OrdersStackParamList = {
   Orders: undefined;
@@ -44,6 +45,8 @@ const OrdersScreen: React.FC = () => {
   const [userOrders, setUserOrders] = useState<Order[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation<StackNavigationProp<UserTabParamList, 'Orders'>>();
+  const { error, clearError, withErrorHandling, showUserFeedback } = useErrorHandling();
+  const { isOnline } = useOfflineManager();
 
   useEffect(() => {
     if (user) {
@@ -52,33 +55,35 @@ const OrdersScreen: React.FC = () => {
     }
   }, [orders, user]);
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    // In a real app, this would refetch from server
-    setTimeout(() => setRefreshing(false), 1000);
-  };
+  const handleRefresh = withErrorHandling(
+    async () => {
+      setRefreshing(true);
+      // In a real app, this would refetch from server
+      setTimeout(() => setRefreshing(false), 1000);
+    },
+    {
+      errorMessage: 'Failed to refresh orders. Please try again.',
+      showErrorToast: false
+    }
+  );
 
-  const handleCancelOrder = (order: Order) => {
-    Alert.alert(
-      'Cancel Order',
-      'Are you sure you want to cancel this order?',
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Yes, Cancel',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await updateOrderStatus(order.id, 'cancelled');
-              Alert.alert('Success', 'Order cancelled successfully');
-            } catch (error) {
-              Alert.alert('Error', 'Failed to cancel order');
-            }
-          },
-        },
-      ]
-    );
-  };
+  const handleCancelOrder = withErrorHandling(
+    async (order: Order) => {
+      try {
+        await updateOrderStatus(order.id, 'cancelled');
+        showUserFeedback('Order cancelled successfully', 'success');
+      } catch (error) {
+        showUserFeedback('Failed to cancel order', 'error');
+        throw error;
+      }
+    },
+    {
+      errorMessage: 'Failed to cancel order. Please try again.',
+      successMessage: 'Order cancelled successfully',
+      showSuccessToast: false,
+      showErrorToast: false
+    }
+  );
 
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
@@ -124,17 +129,24 @@ const OrdersScreen: React.FC = () => {
 
     const canCancel = order.status === 'pending' || order.status === 'confirmed';
     const canPay = order.status === 'pending' || (order.status === 'confirmed' && !order.paymentStatus);
+    // Check if this is a local order (offline created)
+    const isLocalOrder = order.id.startsWith('local_');
 
     return (
       <Card style={styles.orderCard}>
         <View style={styles.orderHeader}>
           <Text style={styles.restaurantName}>{restaurant.name}</Text>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) + '20' }]}>n            <Ionicons 
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) + '20' }]}>
+            <Ionicons 
               name={getStatusIcon(order.status)} 
               size={14} 
               color={getStatusColor(order.status)} 
             />
-            <Text style={[styles.statusText, { color: getStatusColor(order.status) }]}>n              {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+            <Text style={[styles.statusText, { color: getStatusColor(order.status) }]}>
+              {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+              {isLocalOrder && (
+                <Text style={styles.localIndicator}> (Offline)</Text>
+              )}
             </Text>
           </View>
         </View>
@@ -217,8 +229,16 @@ const OrdersScreen: React.FC = () => {
                 });
               }}
               style={styles.payButton}
+              disabled={!isOnline && !isLocalOrder}
             />
+          </View>
+        )}
 
+        {/* Offline indicator */}
+        {!isOnline && isLocalOrder && (
+          <View style={styles.offlineIndicator}>
+            <Ionicons name="cloud-offline" size={16} color={theme.colors.warning[500]} />
+            <Text style={styles.offlineText}>This order will be synced when you're online</Text>
           </View>
         )}
       </Card>
@@ -232,11 +252,23 @@ const OrdersScreen: React.FC = () => {
       <Text style={styles.emptySubtitle}>
         When you order food, your orders will appear here.
       </Text>
+      {!isOnline && (
+        <Text style={styles.offlineMessage}>
+          You're currently offline. Orders made offline will be synced when you're back online.
+        </Text>
+      )}
     </View>
   );
 
   return (
     <SafeAreaView style={styles.container}>
+      {error && (
+        <ErrorFeedback
+          message={error.message}
+          type={error.type}
+          onDismiss={clearError}
+        />
+      )}
       <FlatList
         data={userOrders}
         renderItem={renderOrder}
@@ -246,7 +278,7 @@ const OrdersScreen: React.FC = () => {
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={handleRefresh}
+            onRefresh={() => handleRefresh()}
             tintColor={theme.colors.primary[500]}
           />
         }
@@ -291,6 +323,10 @@ const styles = StyleSheet.create({
     marginLeft: theme.spacing.xs,
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.medium as '500',
+  },
+  localIndicator: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.warning[500],
   },
   itemsSection: {
     marginTop: theme.spacing.md,
@@ -411,6 +447,27 @@ const styles = StyleSheet.create({
     color: theme.colors.text.secondary,
     textAlign: 'center',
     paddingHorizontal: theme.spacing.xl,
+    marginBottom: theme.spacing.md,
+  },
+  offlineIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: theme.spacing.sm,
+    padding: theme.spacing.sm,
+    backgroundColor: theme.colors.warning[50] + '80',
+    borderRadius: theme.borderRadius.md,
+  },
+  offlineText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.warning[700],
+    marginLeft: theme.spacing.xs,
+  },
+  offlineMessage: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.secondary,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    marginTop: theme.spacing.md,
   },
 });
 

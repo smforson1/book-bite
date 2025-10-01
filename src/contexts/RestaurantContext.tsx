@@ -3,6 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Restaurant, MenuItem, Order, Review } from '../types';
 import { apiService } from '../services/apiService';
 import { notificationService } from '../services/notificationService';
+import { offlineManager } from '../services/offlineManager';
+import { storageService } from '../services/storageService';
 
 interface RestaurantContextType {
   restaurants: Restaurant[];
@@ -242,19 +244,51 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
         
         console.log(`✅ Loaded ${backendResponse.data.length} restaurants from backend`);
       } else {
-        // If backend returns no data, show empty state instead of mock data
-        console.log('⚠️ Backend returned no data, showing empty state');
-        setRestaurants([]);
-        setMenuItems([]);
-        setOrders([]);
+        // If backend returns no data, try to load from offline storage
+        console.log('⚠️ Backend returned no data, checking offline storage...');
+        const offlineRestaurants = await storageService.getRestaurants();
+        const offlineMenuItems = await storageService.getMenuItems();
+        const offlineOrders = await storageService.getOrders();
+        
+        if (offlineRestaurants.length > 0) {
+          setRestaurants(offlineRestaurants);
+          setMenuItems(offlineMenuItems);
+          setOrders(offlineOrders);
+          console.log(`✅ Loaded ${offlineRestaurants.length} restaurants from offline storage`);
+        } else {
+          // Show empty state if no offline data
+          setRestaurants([]);
+          setMenuItems([]);
+          setOrders([]);
+          console.log('⚠️ No offline data found, showing empty state');
+        }
       }
     } catch (error) {
       console.error('Error loading restaurant data:', error);
       
-      // Show empty state on error instead of mock data
-      setRestaurants([]);
-      setMenuItems([]);
-      setOrders([]);
+      // Try to load from offline storage on error
+      try {
+        const offlineRestaurants = await storageService.getRestaurants();
+        const offlineMenuItems = await storageService.getMenuItems();
+        const offlineOrders = await storageService.getOrders();
+        
+        if (offlineRestaurants.length > 0) {
+          setRestaurants(offlineRestaurants);
+          setMenuItems(offlineMenuItems);
+          setOrders(offlineOrders);
+          console.log(`✅ Loaded ${offlineRestaurants.length} restaurants from offline storage after error`);
+        } else {
+          setRestaurants([]);
+          setMenuItems([]);
+          setOrders([]);
+          console.log('⚠️ No offline data found after error, showing empty state');
+        }
+      } catch (offlineError) {
+        console.error('Error loading offline restaurant data:', offlineError);
+        setRestaurants([]);
+        setMenuItems([]);
+        setOrders([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -291,12 +325,28 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
         return response.data;
       } else {
         console.error('Failed to fetch restaurants:', response.error);
-        // Return empty array if API fails
+        // Try to return offline data
+        const offlineRestaurants = await storageService.getRestaurants();
+        if (offlineRestaurants.length > 0) {
+          console.log('✅ Returning offline restaurants data');
+          return offlineRestaurants;
+        }
+        // Return empty array if no data available
         return [];
       }
     } catch (error) {
       console.error('Error fetching restaurants:', error);
-      // Return empty array if API fails
+      // Try to return offline data
+      try {
+        const offlineRestaurants = await storageService.getRestaurants();
+        if (offlineRestaurants.length > 0) {
+          console.log('✅ Returning offline restaurants data after error');
+          return offlineRestaurants;
+        }
+      } catch (offlineError) {
+        console.error('Error fetching offline restaurants:', offlineError);
+      }
+      // Return empty array if API fails and no offline data
       return [];
     } finally {
       setLoading(false);
@@ -315,12 +365,28 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
         return response.data;
       } else {
         console.error('Failed to fetch my restaurants:', response.error);
-        // Return empty array if API fails
+        // Try to return offline data
+        const offlineRestaurants = await storageService.getRestaurants();
+        if (offlineRestaurants.length > 0) {
+          console.log('✅ Returning offline restaurants data');
+          return offlineRestaurants;
+        }
+        // Return empty array if no data available
         return [];
       }
     } catch (error) {
       console.error('Error fetching my restaurants:', error);
-      // Return empty array if API fails
+      // Try to return offline data
+      try {
+        const offlineRestaurants = await storageService.getRestaurants();
+        if (offlineRestaurants.length > 0) {
+          console.log('✅ Returning offline restaurants data after error');
+          return offlineRestaurants;
+        }
+      } catch (offlineError) {
+        console.error('Error fetching offline restaurants:', offlineError);
+      }
+      // Return empty array if API fails and no offline data
       return [];
     } finally {
       setLoading(false);
@@ -414,12 +480,28 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
         return response.data;
       } else {
         console.error('Failed to fetch my menu items:', response.error);
-        // Return empty array if API fails
+        // Try to return offline data
+        const offlineMenuItems = await storageService.getMenuItems();
+        if (offlineMenuItems.length > 0) {
+          console.log('✅ Returning offline menu items data');
+          return offlineMenuItems;
+        }
+        // Return empty array if no data available
         return [];
       }
     } catch (error) {
       console.error('Error fetching my menu items:', error);
-      // Return empty array if API fails
+      // Try to return offline data
+      try {
+        const offlineMenuItems = await storageService.getMenuItems();
+        if (offlineMenuItems.length > 0) {
+          console.log('✅ Returning offline menu items data after error');
+          return offlineMenuItems;
+        }
+      } catch (offlineError) {
+        console.error('Error fetching offline menu items:', offlineError);
+      }
+      // Return empty array if API fails and no offline data
       return [];
     } finally {
       setLoading(false);
@@ -446,7 +528,7 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
       // Fallback to local creation
       const newMenuItem: MenuItem = {
         ...item,
-        id: `local_${Date.now()}`,
+        id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       };
       setMenuItems(prev => [...prev, newMenuItem]);
       return newMenuItem;
@@ -596,19 +678,57 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
       }
     } catch (error) {
       console.error('Error creating order:', error);
-      // Fallback to local order creation
-      const newOrder: Order = {
-        ...orderData,
-        id: `local_${Date.now()}`,
-        createdAt: new Date(),
-        status: 'pending'
-      };
-      setOrders(prev => [...prev, newOrder]);
       
-      // Queue for retry when connection is restored
-      await AsyncStorage.setItem(`pending_order_${newOrder.id}`, JSON.stringify(newOrder));
-      
-      return newOrder;
+      // Check if we're offline
+      const isOnline = offlineManager.getNetworkStatus();
+      if (!isOnline) {
+        // Create local order for offline mode
+        const newOrder: Order = {
+          ...orderData,
+          id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          createdAt: new Date(),
+          status: 'pending',
+          paymentStatus: 'pending',
+          estimatedDeliveryTime: orderData.estimatedDeliveryTime || new Date(Date.now() + 45 * 60 * 1000)
+        };
+        setOrders(prev => [...prev, newOrder]);
+        
+        // Save pending order for sync when online
+        await storageService.savePendingOrder({
+          ...newOrder,
+          synced: false,
+          localId: newOrder.id
+        });
+        
+        // Clear cart after successful local order creation
+        clearCart();
+        
+        console.log('💾 Order saved locally for offline mode');
+        return newOrder;
+      } else {
+        // Fallback to local order creation even when online (shouldn't happen)
+        const newOrder: Order = {
+          ...orderData,
+          id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          createdAt: new Date(),
+          status: 'pending',
+          paymentStatus: 'pending',
+          estimatedDeliveryTime: orderData.estimatedDeliveryTime || new Date(Date.now() + 45 * 60 * 1000)
+        };
+        setOrders(prev => [...prev, newOrder]);
+        
+        // Queue for retry when connection is restored
+        await storageService.savePendingOrder({
+          ...newOrder,
+          synced: false,
+          localId: newOrder.id
+        });
+        
+        // Clear cart after successful local order creation
+        clearCart();
+        
+        return newOrder;
+      }
     } finally {
       setLoading(false);
     }
@@ -630,12 +750,28 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
         return response.data;
       } else {
         console.error('Failed to fetch my orders:', response.error);
-        // Return empty array if API fails
+        // Try to return offline data
+        const offlineOrders = await storageService.getOrders();
+        if (offlineOrders.length > 0) {
+          console.log('✅ Returning offline orders data');
+          return offlineOrders;
+        }
+        // Return empty array if no data available
         return [];
       }
     } catch (error) {
       console.error('Error fetching my orders:', error);
-      // Return empty array if API fails
+      // Try to return offline data
+      try {
+        const offlineOrders = await storageService.getOrders();
+        if (offlineOrders.length > 0) {
+          console.log('✅ Returning offline orders data after error');
+          return offlineOrders;
+        }
+      } catch (offlineError) {
+        console.error('Error fetching offline orders:', offlineError);
+      }
+      // Return empty array if API fails and no offline data
       return [];
     } finally {
       setLoading(false);
@@ -681,13 +817,38 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
       }
     } catch (error) {
       console.error('Error updating order status:', error);
-      // Update locally even if API fails
-      setOrders(prev =>
-        prev.map(order =>
-          order.id === orderId ? { ...order, status } : order
-        )
-      );
-      return false;
+      
+      // Check if we're offline
+      const isOnline = offlineManager.getNetworkStatus();
+      if (!isOnline) {
+        // Update locally even if offline
+        setOrders(prev =>
+          prev.map(order =>
+            order.id === orderId ? { ...order, status } : order
+          )
+        );
+        
+        // Save pending status update for sync when online
+        const order = orders.find(o => o.id === orderId);
+        if (order) {
+          await storageService.savePendingOrder({
+            ...order,
+            status,
+            synced: false
+          });
+        }
+        
+        console.log('💾 Order status update saved locally for offline mode');
+        return true;
+      } else {
+        // Update locally even if API fails
+        setOrders(prev =>
+          prev.map(order =>
+            order.id === orderId ? { ...order, status } : order
+          )
+        );
+        return false;
+      }
     }
   };
 
@@ -711,7 +872,7 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
       // Fallback to local creation
       const newRestaurant: Restaurant = {
         ...restaurantData,
-        id: `local_${Date.now()}`,
+        id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         createdAt: new Date(),
       };
       setRestaurants(prev => [...prev, newRestaurant]);
@@ -758,12 +919,30 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
         return response.data.reviews;
       } else {
         console.error('Failed to fetch reviews:', response.error);
-        // Return empty array if API fails
+        // Try to return offline data
+        const offlineReviews = await storageService.getReviews();
+        const restaurantReviews = offlineReviews.filter(review => review.targetId === restaurantId);
+        if (restaurantReviews.length > 0) {
+          console.log('✅ Returning offline reviews data');
+          return restaurantReviews;
+        }
+        // Return empty array if no data available
         return [];
       }
     } catch (error) {
       console.error('Error fetching reviews:', error);
-      // Return empty array if API fails
+      // Try to return offline data
+      try {
+        const offlineReviews = await storageService.getReviews();
+        const restaurantReviews = offlineReviews.filter(review => review.targetId === restaurantId);
+        if (restaurantReviews.length > 0) {
+          console.log('✅ Returning offline reviews data after error');
+          return restaurantReviews;
+        }
+      } catch (offlineError) {
+        console.error('Error fetching offline reviews:', offlineError);
+      }
+      // Return empty array if API fails and no offline data
       return [];
     } finally {
       setLoading(false);
@@ -783,14 +962,45 @@ export const RestaurantProvider: React.FC<RestaurantProviderProps> = ({ children
       }
     } catch (error) {
       console.error('Error creating review:', error);
-      // Fallback to local creation
-      const newReview: Review = {
-        ...reviewData,
-        id: `local_${Date.now()}`,
-        createdAt: new Date(),
-      };
-      setReviews(prev => [...prev, newReview]);
-      return newReview;
+      
+      // Check if we're offline
+      const isOnline = offlineManager.getNetworkStatus();
+      if (!isOnline) {
+        // Create local review for offline mode
+        const newReview: Review = {
+          ...reviewData,
+          id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          createdAt: new Date(),
+        };
+        setReviews(prev => [...prev, newReview]);
+        
+        // Save pending review for sync when online
+        await storageService.savePendingReview({
+          ...newReview,
+          synced: false,
+          localId: newReview.id
+        });
+        
+        console.log('💾 Review saved locally for offline mode');
+        return newReview;
+      } else {
+        // Fallback to local creation even when online (shouldn't happen)
+        const newReview: Review = {
+          ...reviewData,
+          id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          createdAt: new Date(),
+        };
+        setReviews(prev => [...prev, newReview]);
+        
+        // Queue for retry when connection is restored
+        await storageService.savePendingReview({
+          ...newReview,
+          synced: false,
+          localId: newReview.id
+        });
+        
+        return newReview;
+      }
     }
   };
 

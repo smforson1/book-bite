@@ -14,6 +14,11 @@ interface StorageKeys {
   REVIEWS: 'reviews';
   APP_SETTINGS: 'app_settings';
   LAST_SYNC: 'last_sync';
+  // Offline specific keys
+  PENDING_BOOKINGS: 'pending_bookings';
+  PENDING_ORDERS: 'pending_orders';
+  PENDING_REVIEWS: 'pending_reviews';
+  OFFLINE_SNAPSHOT: 'offline_snapshot';
 }
 
 const STORAGE_KEYS: StorageKeys = {
@@ -29,6 +34,10 @@ const STORAGE_KEYS: StorageKeys = {
   REVIEWS: 'reviews',
   APP_SETTINGS: 'app_settings',
   LAST_SYNC: 'last_sync',
+  PENDING_BOOKINGS: 'pending_bookings',
+  PENDING_ORDERS: 'pending_orders',
+  PENDING_REVIEWS: 'pending_reviews',
+  OFFLINE_SNAPSHOT: 'offline_snapshot',
 };
 
 interface AppSettings {
@@ -56,6 +65,22 @@ interface StorageItem<T> {
   timestamp: number;
   version: string;
   checksum?: string;
+}
+
+// Extended types for offline handling
+interface ExtendedBooking extends Booking {
+  synced?: boolean;
+  localId?: string;
+}
+
+interface ExtendedOrder extends Order {
+  synced?: boolean;
+  localId?: string;
+}
+
+interface ExtendedReview extends Review {
+  synced?: boolean;
+  localId?: string;
 }
 
 class StorageService {
@@ -279,6 +304,76 @@ class StorageService {
         offlineMode: false,
       },
     };
+  }
+
+  // Offline specific methods
+  async savePendingBooking(booking: ExtendedBooking): Promise<boolean> {
+    const pendingBookings = await this.getPendingBookings();
+    pendingBookings.push(booking);
+    return this.setItem('PENDING_BOOKINGS', pendingBookings);
+  }
+
+  async getPendingBookings(): Promise<ExtendedBooking[]> {
+    const bookings = (await this.getItem<ExtendedBooking[]>('PENDING_BOOKINGS', [])) || [];
+    // Convert date strings back to Date objects
+    return bookings.map(booking => ({
+      ...booking,
+      checkIn: new Date(booking.checkIn),
+      checkOut: new Date(booking.checkOut),
+      createdAt: new Date(booking.createdAt),
+      paymentDate: booking.paymentDate ? new Date(booking.paymentDate) : undefined,
+    }));
+  }
+
+  async removePendingBooking(bookingId: string): Promise<boolean> {
+    const pendingBookings = await this.getPendingBookings();
+    const filteredBookings = pendingBookings.filter(booking => booking.id !== bookingId);
+    return this.setItem('PENDING_BOOKINGS', filteredBookings);
+  }
+
+  async savePendingOrder(order: ExtendedOrder): Promise<boolean> {
+    const pendingOrders = await this.getPendingOrders();
+    pendingOrders.push(order);
+    return this.setItem('PENDING_ORDERS', pendingOrders);
+  }
+
+  async getPendingOrders(): Promise<ExtendedOrder[]> {
+    const orders = (await this.getItem<ExtendedOrder[]>('PENDING_ORDERS', [])) || [];
+    // Convert date strings back to Date objects
+    return orders.map(order => ({
+      ...order,
+      estimatedDeliveryTime: new Date(order.estimatedDeliveryTime),
+      createdAt: new Date(order.createdAt),
+      paymentDate: order.paymentDate ? new Date(order.paymentDate) : undefined,
+    }));
+  }
+
+  async removePendingOrder(orderId: string): Promise<boolean> {
+    const pendingOrders = await this.getPendingOrders();
+    const filteredOrders = pendingOrders.filter(order => order.id !== orderId);
+    return this.setItem('PENDING_ORDERS', filteredOrders);
+  }
+
+  async savePendingReview(review: ExtendedReview): Promise<boolean> {
+    const pendingReviews = await this.getPendingReviews();
+    pendingReviews.push(review);
+    return this.setItem('PENDING_REVIEWS', pendingReviews);
+  }
+
+  async getPendingReviews(): Promise<ExtendedReview[]> {
+    const reviews = (await this.getItem<ExtendedReview[]>('PENDING_REVIEWS', [])) || [];
+    // Convert date strings back to Date objects
+    return reviews.map(review => ({
+      ...review,
+      createdAt: new Date(review.createdAt),
+      updatedAt: review.updatedAt ? new Date(review.updatedAt) : undefined,
+    }));
+  }
+
+  async removePendingReview(reviewId: string): Promise<boolean> {
+    const pendingReviews = await this.getPendingReviews();
+    const filteredReviews = pendingReviews.filter(review => review.id !== reviewId);
+    return this.setItem('PENDING_REVIEWS', filteredReviews);
   }
 
   // Utility methods
