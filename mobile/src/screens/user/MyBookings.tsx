@@ -1,0 +1,125 @@
+import { useEffect, useState } from 'react';
+import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import { Text, Card, SegmentedButtons } from 'react-native-paper';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuthStore } from '../../store/useAuthStore';
+import axios from 'axios';
+
+const API_URL = 'http://10.0.2.2:5000/api';
+
+export default function MyBookings() {
+    const [activeTab, setActiveTab] = useState('bookings');
+    const [items, setItems] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const token = useAuthStore((state) => state.token);
+
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            const endpoint = activeTab === 'bookings' ? '/bookings/user' : '/orders/user';
+            const response = await axios.get(`${API_URL}${endpoint}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            setItems(response.data);
+        } catch (error) {
+            console.error('Failed to fetch data', error);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, [activeTab]);
+
+    const onRefresh = () => {
+        setRefreshing(true);
+        fetchData();
+    };
+
+    return (
+        <SafeAreaView style={styles.container}>
+            <View style={styles.header}>
+                <Text variant="headlineMedium" style={styles.title}>
+                    My Activity
+                </Text>
+                <SegmentedButtons
+                    value={activeTab}
+                    onValueChange={setActiveTab}
+                    buttons={[
+                        { value: 'bookings', label: 'Bookings' },
+                        { value: 'orders', label: 'Orders' },
+                    ]}
+                />
+            </View>
+
+            <ScrollView
+                contentContainerStyle={styles.content}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            >
+                {items.length === 0 ? (
+                    <View style={styles.emptyState}>
+                        <Text>No {activeTab} found.</Text>
+                    </View>
+                ) : (
+                    items.map((item) => (
+                        <Card key={item.id} style={styles.card}>
+                            <Card.Content>
+                                <View style={styles.row}>
+                                    <Text variant="titleMedium">{item.business?.name || 'Unknown Business'}</Text>
+                                    <Text
+                                        style={{
+                                            color:
+                                                item.status === 'PENDING'
+                                                    ? '#f57c00'
+                                                    : item.status === 'CONFIRMED'
+                                                        ? '#2e7d32'
+                                                        : '#d32f2f',
+                                            fontWeight: 'bold',
+                                        }}
+                                    >
+                                        {item.status}
+                                    </Text>
+                                </View>
+
+                                {activeTab === 'bookings' ? (
+                                    <>
+                                        <Text variant="bodyMedium">
+                                            {new Date(item.checkIn).toLocaleDateString()} -{' '}
+                                            {new Date(item.checkOut).toLocaleDateString()}
+                                        </Text>
+                                        <Text variant="bodyMedium">Room: {item.room?.name}</Text>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Text variant="bodyMedium">Items: {item.items?.length || 0}</Text>
+                                        <Text variant="bodyMedium" numberOfLines={1}>
+                                            {item.items?.map((i: any) => i.name).join(', ')}
+                                        </Text>
+                                    </>
+                                )}
+
+                                <Text variant="titleMedium" style={styles.price}>
+                                    Total: ${item.totalPrice}
+                                </Text>
+                            </Card.Content>
+                        </Card>
+                    ))
+                )}
+            </ScrollView>
+        </SafeAreaView>
+    );
+}
+
+const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#f5f5f5' },
+    header: { padding: 20, backgroundColor: '#fff' },
+    title: { marginBottom: 15, fontWeight: 'bold' },
+    content: { padding: 20 },
+    card: { marginBottom: 15 },
+    emptyState: { alignItems: 'center', marginTop: 50 },
+    row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
+    price: { marginTop: 10, alignSelf: 'flex-end', fontWeight: 'bold' },
+});
