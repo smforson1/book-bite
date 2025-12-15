@@ -3,8 +3,7 @@ import Sidebar from '../components/Sidebar';
 import api from '../api/axios';
 import {
     PlusIcon,
-    ClipboardDocumentCheckIcon,
-    CurrencyDollarIcon
+    ClipboardDocumentCheckIcon
 } from '@heroicons/react/24/outline';
 
 export default function ActivationCodes() {

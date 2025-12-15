@@ -8,7 +8,6 @@ import {
     YAxis,
     CartesianGrid,
     Tooltip,
-    Legend,
     ResponsiveContainer,
     AreaChart,
     Area
@@ -75,97 +74,112 @@ export default function RevenueReports() {
                         <p className="text-gray-500 mt-2">Financial performance analysis.</p>
                     </header>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-500 font-medium">Total Revenue</p>
-                                <h2 className="text-3xl font-bold text-gray-900 mt-1">${totalRevenue.toLocaleString()}</h2>
+                    {loading ? (
+                        <div className="animate-pulse space-y-8">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="h-32 bg-gray-200 rounded-2xl"></div>
+                                <div className="h-32 bg-gray-200 rounded-2xl"></div>
                             </div>
-                            <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
-                                <CurrencyDollarIcon className="w-8 h-8" />
-                            </div>
-                        </div>
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-500 font-medium">Growth (MoM)</p>
-                                <h2 className="text-3xl font-bold text-gray-900 mt-1 flex items-center gap-2">
-                                    +24.5% <ArrowTrendingUpIcon className="w-5 h-5 text-green-500" />
-                                </h2>
-                            </div>
-                            <div className="p-3 bg-green-50 text-green-600 rounded-xl">
-                                <ArrowTrendingUpIcon className="w-8 h-8" />
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                <div className="h-96 bg-gray-200 rounded-2xl"></div>
+                                <div className="h-96 bg-gray-200 rounded-2xl"></div>
                             </div>
                         </div>
-                    </div>
+                    ) : (
+                        <>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-gray-500 font-medium">Total Revenue</p>
+                                        <h2 className="text-3xl font-bold text-gray-900 mt-1">${totalRevenue.toLocaleString()}</h2>
+                                    </div>
+                                    <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
+                                        <CurrencyDollarIcon className="w-8 h-8" />
+                                    </div>
+                                </div>
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-gray-500 font-medium">Growth (MoM)</p>
+                                        <h2 className="text-3xl font-bold text-gray-900 mt-1 flex items-center gap-2">
+                                            +24.5% <ArrowTrendingUpIcon className="w-5 h-5 text-green-500" />
+                                        </h2>
+                                    </div>
+                                    <div className="p-3 bg-green-50 text-green-600 rounded-xl">
+                                        <ArrowTrendingUpIcon className="w-8 h-8" />
+                                    </div>
+                                </div>
+                            </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        {/* Daily Revenue Bar Chart */}
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                            <h3 className="text-lg font-bold text-gray-900 mb-6">Daily Revenue</h3>
-                            <div className="h-80 w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={data}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                                        <XAxis
-                                            dataKey="date"
-                                            axisLine={false}
-                                            tickLine={false}
-                                            tick={{ fill: '#6B7280', fontSize: 12 }}
-                                            tickFormatter={(value) => new Date(value).toLocaleDateString(undefined, { weekday: 'short' })}
-                                        />
-                                        <YAxis
-                                            axisLine={false}
-                                            tickLine={false}
-                                            tick={{ fill: '#6B7280', fontSize: 12 }}
-                                            tickFormatter={(value) => `$${value / 1000}k`}
-                                        />
-                                        <Tooltip content={<CustomTooltip />} cursor={{ fill: '#F3F4F6' }} />
-                                        <Bar
-                                            dataKey="amount"
-                                            fill="#6366F1"
-                                            radius={[6, 6, 0, 0]}
-                                            barSize={40}
-                                        />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </div>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                {/* Daily Revenue Bar Chart */}
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                                    <h3 className="text-lg font-bold text-gray-900 mb-6">Daily Revenue</h3>
+                                    <div className="h-80 w-full">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={data}>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                                                <XAxis
+                                                    dataKey="date"
+                                                    axisLine={false}
+                                                    tickLine={false}
+                                                    tick={{ fill: '#6B7280', fontSize: 12 }}
+                                                    tickFormatter={(value) => new Date(value).toLocaleDateString(undefined, { weekday: 'short' })}
+                                                />
+                                                <YAxis
+                                                    axisLine={false}
+                                                    tickLine={false}
+                                                    tick={{ fill: '#6B7280', fontSize: 12 }}
+                                                    tickFormatter={(value) => `$${value / 1000}k`}
+                                                />
+                                                <Tooltip content={<CustomTooltip />} cursor={{ fill: '#F3F4F6' }} />
+                                                <Bar
+                                                    dataKey="amount"
+                                                    fill="#6366F1"
+                                                    radius={[6, 6, 0, 0]}
+                                                    barSize={40}
+                                                />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
 
-                        {/* Trend Area Chart */}
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                            <h3 className="text-lg font-bold text-gray-900 mb-6">Revenue Trend</h3>
-                            <div className="h-80 w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={data}>
-                                        <defs>
-                                            <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.3} />
-                                                <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0} />
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                                        <XAxis
-                                            dataKey="date"
-                                            axisLine={false}
-                                            tickLine={false}
-                                            tick={{ fill: '#6B7280', fontSize: 12 }}
-                                            tickFormatter={(value) => new Date(value).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
-                                        />
-                                        <YAxis hide />
-                                        <Tooltip content={<CustomTooltip />} />
-                                        <Area
-                                            type="monotone"
-                                            dataKey="amount"
-                                            stroke="#8B5CF6"
-                                            strokeWidth={3}
-                                            fillOpacity={1}
-                                            fill="url(#colorRevenue)"
-                                        />
-                                    </AreaChart>
-                                </ResponsiveContainer>
+                                {/* Trend Area Chart */}
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                                    <h3 className="text-lg font-bold text-gray-900 mb-6">Revenue Trend</h3>
+                                    <div className="h-80 w-full">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart data={data}>
+                                                <defs>
+                                                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.3} />
+                                                        <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                                                <XAxis
+                                                    dataKey="date"
+                                                    axisLine={false}
+                                                    tickLine={false}
+                                                    tick={{ fill: '#6B7280', fontSize: 12 }}
+                                                    tickFormatter={(value) => new Date(value).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                                                />
+                                                <YAxis hide />
+                                                <Tooltip content={<CustomTooltip />} />
+                                                <Area
+                                                    type="monotone"
+                                                    dataKey="amount"
+                                                    stroke="#8B5CF6"
+                                                    strokeWidth={3}
+                                                    fillOpacity={1}
+                                                    fill="url(#colorRevenue)"
+                                                />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
+                        </>
+                    )}
                 </div>
             </main>
         </div>
