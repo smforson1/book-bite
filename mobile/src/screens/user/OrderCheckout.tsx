@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Text, TextInput, Button, Card, Divider } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/useAuthStore';
 import axios from 'axios';
+// @ts-ignore
+import * as PaystackLib from 'react-native-paystack-webview';
+const Paystack = (PaystackLib as any).Paystack || (PaystackLib as any).default;
 
 const API_URL = 'http://10.0.2.2:5000/api';
 
@@ -13,7 +16,11 @@ export default function OrderCheckout({ route, navigation }: any) {
     const [notes, setNotes] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const token = useAuthStore((state) => state.token);
+    // Payment State
+    const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
+    const paystackWebViewRef = useRef<any>(null);
+
+    const { token, user } = useAuthStore((state) => state);
 
     const total = cart.reduce((sum: number, item: any) => sum + Number(item.price), 0);
 
@@ -37,22 +44,55 @@ export default function OrderCheckout({ route, navigation }: any) {
 
             const items = Array.from(itemsMap.values());
 
-            await axios.post(
+            // 1. Create Pending Order
+            const response = await axios.post(
                 `${API_URL}/orders`,
                 {
                     businessId: business.id,
                     items,
                     deliveryAddress: address,
                     notes,
+                    // status is PENDING by default
                 },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
 
-            Alert.alert('Success', 'Order placed successfully!', [
-                { text: 'OK', onPress: () => navigation.navigate('MainTabs', { screen: 'Bookings' }) }, // Bookings tab shows orders too
-            ]);
+            setCurrentOrderId(response.data.id);
+
+            // 2. Trigger Payment
+            // Note: In real app, we might want to ensure order creation succeeded before showing paystack, 
+            // and maybe handle duplicate clicks.
+            paystackWebViewRef.current?.startTransaction();
+
         } catch (error: any) {
-            Alert.alert('Error', error.response?.data?.message || 'Order failed');
+            console.error(error);
+            Alert.alert('Error', error.response?.data?.message || 'Order initiation failed');
+            setLoading(false);
+        }
+    };
+
+    const handlePaymentSuccess = async (res: any) => {
+        const reference = res.transactionRef?.reference || res.reference;
+
+        try {
+            // 3. Verify Payment & Confirm Order
+            await axios.post(`${API_URL}/payment/verify`, {
+                reference,
+                email: user?.email,
+                amount: total,
+                metadata: {
+                    purpose: 'ORDER',
+                    orderId: currentOrderId,
+                    userId: user?.id
+                }
+            });
+
+            Alert.alert('Success', 'Order placed and paid successfully!', [
+                { text: 'OK', onPress: () => navigation.navigate('MainTabs', { screen: 'Bookings' }) },
+            ]);
+        } catch (error) {
+            console.error('Payment verification failed', error);
+            Alert.alert('Payment Error', 'Payment was successful but verification failed. Please contact support.');
         } finally {
             setLoading(false);
         }
@@ -107,8 +147,23 @@ export default function OrderCheckout({ route, navigation }: any) {
                     loading={loading}
                     disabled={loading}
                 >
-                    Place Order
+                    Pay & Place Order
                 </Button>
+
+                <Paystack
+                    paystackKey="pk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" // TODO: Use real env var
+                    amount={`${total}.00`}
+                    billingEmail={user?.email || 'guest@example.com'}
+                    currency="NGN"
+                    activityIndicatorColor="green"
+                    onCancel={(e: any) => {
+                        console.log(e);
+                        setLoading(false);
+                        Alert.alert('Cancelled', 'Payment process cancelled');
+                    }}
+                    onSuccess={handlePaymentSuccess}
+                    ref={paystackWebViewRef}
+                />
             </ScrollView>
         </SafeAreaView>
     );

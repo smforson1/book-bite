@@ -82,6 +82,17 @@ export default function Sidebar() {
                     <CurrencyDollarIcon className="w-5 h-5" />
                     <span className="font-medium">Revenue</span>
                 </Link>
+
+                <Link
+                    to="/payouts"
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${isActive('/payouts')
+                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/50'
+                        : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                        }`}
+                >
+                    <CurrencyDollarIcon className="w-5 h-5" /> {/* Reusing icon or pick another */}
+                    <span className="font-medium">Payouts</span>
+                </Link>
             </nav>
 
             <div className="p-4 border-t border-gray-800">

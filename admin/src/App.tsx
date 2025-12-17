@@ -5,6 +5,7 @@ import ActivationCodes from './pages/ActivationCodes';
 import UserManagement from './pages/UserManagement';
 import BusinessManagement from './pages/BusinessManagement';
 import RevenueReports from './pages/RevenueReports';
+import Payouts from './pages/Payouts';
 
 function App() {
   const isAuthenticated = !!localStorage.getItem('adminToken');
@@ -32,6 +33,10 @@ function App() {
         <Route
           path="/revenue"
           element={isAuthenticated ? <RevenueReports /> : <Navigate to="/" />}
+        />
+        <Route
+          path="/payouts"
+          element={isAuthenticated ? <Payouts /> : <Navigate to="/" />}
         />
       </Routes>
     </BrowserRouter>

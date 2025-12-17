@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { View, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import { Text, TextInput, Button, ActivityIndicator, useTheme } from 'react-native-paper';
 // @ts-ignore
-import { Paystack } from 'react-native-paystack-webview';
+import * as PaystackLib from 'react-native-paystack-webview';
+const Paystack = (PaystackLib as any).Paystack || (PaystackLib as any).default;
+
 import * as Clipboard from 'expo-clipboard';
 import axios from 'axios';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,7 +19,6 @@ export default function PurchaseCodeScreen({ navigation }: any) {
 
     const handleSuccess = async (res: any) => {
         // Paystack returns reference in res.transactionRef.reference or res.reference
-        // The library structure usually is res.transactionRef.reference
         const reference = res.transactionRef?.reference || res.reference;
 
         setLoading(true);
@@ -26,13 +27,18 @@ export default function PurchaseCodeScreen({ navigation }: any) {
             const response = await axios.post(`http://10.0.2.2:5000/api/payment/verify`, {
                 reference,
                 email,
-                amount: PRICE
+                amount: PRICE,
+                metadata: {
+                    purpose: 'ACCESS_KEY',
+                    // userId: user.id // Ideally we pass userId if authenticated, but for pure code purchase might be guest or current user logic.
+                    // For now, assuming email is sufficient context or userId will be added later when integrated with AuthContext.
+                }
             });
 
             setPurchasedCode(response.data.code);
             Alert.alert('Success!', 'Your activation code has been generated. Copy it below to register.');
         } catch (error) {
-            console.error(error);
+            console.error('Verify error:', error);
             Alert.alert('Error', 'Failed to verify payment. Please contact support.');
         } finally {
             setLoading(false);

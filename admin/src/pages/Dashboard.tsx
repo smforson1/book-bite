@@ -189,6 +189,16 @@ export default function Dashboard() {
                                     </div>
                                     <span className="text-gray-400 text-sm">→</span>
                                 </Link>
+
+                                <Link to="/payouts" className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors group">
+                                    <div className="flex items-center gap-3">
+                                        <div className="bg-amber-100 p-2 rounded-lg text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                                            <BanknotesIcon className="w-5 h-5" />
+                                        </div>
+                                        <span className="font-medium text-gray-700">Manage Payouts</span>
+                                    </div>
+                                    <span className="text-gray-400 text-sm">→</span>
+                                </Link>
                             </div>
                         </div>
                     </motion.div>

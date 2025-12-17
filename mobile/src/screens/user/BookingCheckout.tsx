@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Text, TextInput, Button, Card } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuthStore } from '../../store/useAuthStore';
+// @ts-ignore
+import Paystack from 'react-native-paystack-webview';
 import axios from 'axios';
 
 const API_URL = 'http://10.0.2.2:5000/api';
@@ -17,7 +19,11 @@ export default function BookingCheckout({ route, navigation }: any) {
     const [showCheckIn, setShowCheckIn] = useState(false);
     const [showCheckOut, setShowCheckOut] = useState(false);
 
-    const token = useAuthStore((state) => state.token);
+    // Payment State
+    const [currentBookingId, setCurrentBookingId] = useState<string | null>(null);
+    const paystackWebViewRef = useRef<any>(null);
+
+    const { token, user } = useAuthStore((state) => state);
 
     const handleBooking = async () => {
         if (!checkIn || !checkOut || !guests) {
@@ -27,22 +33,54 @@ export default function BookingCheckout({ route, navigation }: any) {
 
         setLoading(true);
         try {
-            await axios.post(
+            // 1. Create Pending Booking
+            const response = await axios.post(
                 `${API_URL}/bookings`,
                 {
                     roomId: room.id,
                     checkIn: checkIn.toISOString(),
                     checkOut: checkOut.toISOString(),
                     guests: parseInt(guests),
+                    status: 'PENDING' // Explicitly pending
                 },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
 
-            Alert.alert('Success', 'Booking confirmed!', [
+            const booking = response.data;
+            setCurrentBookingId(booking.id);
+
+            // 2. Trigger Payment
+            paystackWebViewRef.current?.startTransaction();
+
+        } catch (error: any) {
+            console.error(error);
+            Alert.alert('Error', error.response?.data?.message || 'Booking initiation failed');
+            setLoading(false); // Only stop loading if failed, otherwise wait for payment flow
+        }
+    };
+
+    const handlePaymentSuccess = async (res: any) => {
+        const reference = res.transactionRef?.reference || res.reference;
+
+        try {
+            // 3. Verify Payment & Confirm Booking
+            await axios.post(`${API_URL}/payment/verify`, {
+                reference,
+                email: user?.email,
+                amount: total, // Logic check: ensuring strictly matches what prompted
+                metadata: {
+                    purpose: 'BOOKING',
+                    bookingId: currentBookingId,
+                    userId: user?.id
+                }
+            });
+
+            Alert.alert('Success', 'Booking confirmed via Payment!', [
                 { text: 'OK', onPress: () => navigation.navigate('MainTabs', { screen: 'Bookings' }) },
             ]);
-        } catch (error: any) {
-            Alert.alert('Error', error.response?.data?.message || 'Booking failed');
+        } catch (error) {
+            console.error('Payment verification failed', error);
+            Alert.alert('Payment Error', 'Payment was successful but verification failed. Please contact support.');
         } finally {
             setLoading(false);
         }
@@ -134,6 +172,21 @@ export default function BookingCheckout({ route, navigation }: any) {
                         Confirm & Pay
                     </Button>
                 </View>
+
+                <Paystack
+                    paystackKey="pk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" // TODO: Env var
+                    amount={`${total}.00`}
+                    billingEmail={user?.email || 'guest@example.com'}
+                    currency="NGN"
+                    activityIndicatorColor="green"
+                    onCancel={(e: any) => {
+                        console.log(e);
+                        setLoading(false);
+                        Alert.alert('Cancelled', 'Payment process cancelled');
+                    }}
+                    onSuccess={handlePaymentSuccess}
+                    ref={paystackWebViewRef}
+                />
             </ScrollView>
         </SafeAreaView>
     );

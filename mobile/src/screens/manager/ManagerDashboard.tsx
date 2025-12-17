@@ -134,6 +134,14 @@ export default function ManagerDashboard({ navigation }: any) {
                         </Button>
                         <Button
                             mode="outlined"
+                            onPress={() => navigation.navigate('ManagerWallet')}
+                            style={styles.actionButton}
+                            icon="wallet"
+                        >
+                            Wallet & Earnings
+                        </Button>
+                        <Button
+                            mode="outlined"
                             onPress={handleLogout}
                             style={styles.actionButton}
                             icon="logout"

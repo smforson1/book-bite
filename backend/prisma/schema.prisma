@@ -35,76 +35,78 @@ model User {
   bookings       Booking[]
   orders         Order[]
   reviews        Review[]
+  payments       Payment[]
 }
 
 model ActivationCode {
-  id        String   @id @default(uuid())
-  code      String   @unique
-  price     Decimal
-  isUsed    Boolean  @default(false)
+  id          String   @id @default(uuid())
+  code        String   @unique
+  price       Decimal
+  isUsed      Boolean  @default(false)
   generatedBy String // Admin ID
-  usedBy    String? // Manager ID
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  usedBy      String? // Manager ID
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model ManagerProfile {
-  id        String   @id @default(uuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id])
-  business  Business?
+  id       String    @id @default(uuid())
+  userId   String    @unique
+  user     User      @relation(fields: [userId], references: [id])
+  business Business?
+  Wallet   Wallet?
 }
 
 model Business {
-  id          String       @id @default(uuid())
-  managerId   String       @unique
+  id          String         @id @default(uuid())
+  managerId   String         @unique
   manager     ManagerProfile @relation(fields: [managerId], references: [id])
   name        String
   type        BusinessType
   description String?
   address     String
   images      String[]
-  isFlagged   Boolean      @default(false)
-  
+  isFlagged   Boolean        @default(false)
+
   // Relations
-  rooms       Room[]
+  rooms          Room[]
   menuCategories MenuCategory[]
-  orders      Order[]
-  bookings    Booking[]
-  reviews     Review[]
+  orders         Order[]
+  bookings       Booking[]
+  reviews        Review[]
 }
 
 model Room {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   businessId  String
-  business    Business @relation(fields: [businessId], references: [id])
+  business    Business  @relation(fields: [businessId], references: [id])
   name        String
   description String?
   price       Decimal
   capacity    Int
   amenities   String[]
   images      String[]
-  isAvailable Boolean @default(true)
+  isAvailable Boolean   @default(true)
   bookings    Booking[]
 }
 
 model MenuCategory {
-  id          String   @id @default(uuid())
-  businessId  String
-  business    Business @relation(fields: [businessId], references: [id])
-  name        String
-  items       MenuItem[]
+  id         String     @id @default(uuid())
+  businessId String
+  business   Business   @relation(fields: [businessId], references: [id])
+  name       String
+  items      MenuItem[]
 }
 
 model MenuItem {
-  id          String   @id @default(uuid())
+  id          String       @id @default(uuid())
   categoryId  String
   category    MenuCategory @relation(fields: [categoryId], references: [id])
   name        String
   description String?
   price       Decimal
   images      String[]
-  isAvailable Boolean @default(true)
+  isAvailable Boolean      @default(true)
   dietaryTags String[]
 }
 
@@ -122,6 +124,8 @@ model Booking {
   status     String   @default("PENDING") // PENDING, CONFIRMED, CANCELLED
   totalPrice Decimal
   createdAt  DateTime @default(now())
+  paymentId  String?  @unique
+  payment    Payment? @relation(fields: [paymentId], references: [id])
 }
 
 model Order {
@@ -132,10 +136,12 @@ model Order {
   business        Business @relation(fields: [businessId], references: [id])
   status          String   @default("PENDING")
   totalPrice      Decimal
-  items           Json     // Snapshot of items ordered 
+  items           Json // Snapshot of items ordered 
   deliveryAddress String?
   notes           String?
   createdAt       DateTime @default(now())
+  paymentId       String?  @unique
+  payment         Payment? @relation(fields: [paymentId], references: [id])
 }
 
 model Review {
@@ -146,4 +152,49 @@ model Review {
   business   Business @relation(fields: [businessId], references: [id])
   rating     Int
   comment    String?
+}
+
+model Payment {
+  id        String  @id @default(uuid())
+  reference String  @unique
+  amount    Decimal
+  currency  String  @default("NGN")
+  status    String // success, failed, pending
+  purpose   String // ACCESS_KEY, BOOKING, ORDER
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  booking Booking?
+  order   Order?
+
+  metadata Json?
+
+  createdAt DateTime @default(now())
+}
+
+model Wallet {
+  id        String         @id @default(uuid())
+  managerId String         @unique
+  manager   ManagerProfile @relation(fields: [managerId], references: [id])
+  balance   Decimal        @default(0.00)
+  currency  String         @default("NGN")
+
+  transactions WalletTransaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model WalletTransaction {
+  id          String  @id @default(uuid())
+  walletId    String
+  wallet      Wallet  @relation(fields: [walletId], references: [id])
+  amount      Decimal
+  type        String // CREDIT, DEBIT
+  status      String // PENDING, SUCCESS, FAILED
+  reference   String? // Payment reference or Payout ID
+  description String?
+
+  createdAt DateTime @default(now())
 }

@@ -23,15 +23,20 @@ export const createBooking = async (req: AuthRequest, res: Response): Promise<vo
             return;
         }
 
+        const checkInDate = new Date(checkIn);
+        const checkOutDate = new Date(checkOut);
+        const diffTime = Math.abs(checkOutDate.getTime() - checkInDate.getTime());
+        const nights = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
+
         const booking = await prisma.booking.create({
             data: {
                 userId,
                 businessId: room.businessId,
                 roomId,
-                checkIn: new Date(checkIn),
-                checkOut: new Date(checkOut),
+                checkIn: checkInDate,
+                checkOut: checkOutDate,
                 guests,
-                totalPrice: room.price,
+                totalPrice: Number(room.price) * nights, // Correct calculation
                 status: 'PENDING',
             },
             include: {
