@@ -1,28 +1,24 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { IconButton } from 'react-native-paper';
 import HomeScreen from '../screens/user/HomeScreen';
-import MyBookings from '../screens/user/MyBookings';
-import ProfileScreen from '../screens/user/ProfileScreen'; // Needs creation or placeholder
+import PlacesScreen from '../screens/user/PlacesScreen';
+import ActivityScreen from '../screens/user/ActivityScreen';
+import CartScreen from '../screens/user/CartScreen';
+import CustomTabBar from '../components/navigation/CustomTabBar';
 
 const Tab = createBottomTabNavigator();
 
 export default function MainTabs() {
     return (
         <Tab.Navigator
-            screenOptions={({ route }) => ({
+            tabBar={(props) => <CustomTabBar {...props} />}
+            screenOptions={{
                 headerShown: false,
-                tabBarIcon: ({ focused, color, size }) => {
-                    let iconName = 'home';
-                    if (route.name === 'Bookings') iconName = 'calendar';
-                    if (route.name === 'Profile') iconName = 'account';
-
-                    return <IconButton icon={iconName} iconColor={color} size={size} />;
-                },
-            })}
+            }}
         >
             <Tab.Screen name="Home" component={HomeScreen} />
-            <Tab.Screen name="Bookings" component={MyBookings} />
-            <Tab.Screen name="Profile" component={ProfileScreen} />
+            <Tab.Screen name="Places" component={PlacesScreen} />
+            <Tab.Screen name="Activity" component={ActivityScreen} />
+            <Tab.Screen name="Cart" component={CartScreen} />
         </Tab.Navigator>
     );
 }

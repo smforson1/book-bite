@@ -6,6 +6,8 @@ import AddRoom from '../screens/manager/AddRoom';
 import MenuList from '../screens/manager/MenuList';
 import AddMenuItem from '../screens/manager/AddMenuItem';
 import ManagerWallet from '../screens/manager/ManagerWallet';
+import OrderList from '../screens/manager/OrderList';
+import OrderDetail from '../screens/manager/OrderDetail';
 
 
 const Stack = createNativeStackNavigator();
@@ -36,6 +38,8 @@ export default function ManagerStack() {
                 component={ManagerWallet}
                 options={{ title: 'Wallet & Payouts' }}
             />
+            <Stack.Screen name="OrderList" component={OrderList} options={{ title: 'Orders' }} />
+            <Stack.Screen name="OrderDetail" component={OrderDetail} options={{ title: 'Order Details' }} />
         </Stack.Navigator>
     );
 }

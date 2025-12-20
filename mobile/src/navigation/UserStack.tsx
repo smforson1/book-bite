@@ -29,6 +29,11 @@ export default function UserStack() {
                 component={OrderCheckout}
                 options={{ title: 'Complete Order' }}
             />
+            <Stack.Screen
+                name="Profile"
+                component={require('../screens/user/ProfileScreen').default}
+                options={{ headerShown: false }}
+            />
         </Stack.Navigator>
     );
 }

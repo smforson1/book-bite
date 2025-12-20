@@ -13,6 +13,7 @@ export default function AddRoom({ navigation }: any) {
     const [description, setDescription] = useState('');
     const [price, setPrice] = useState('');
     const [capacity, setCapacity] = useState('');
+    const [imageUrl, setImageUrl] = useState('');
     const [loading, setLoading] = useState(false);
 
     const token = useAuthStore((state) => state.token);
@@ -35,7 +36,7 @@ export default function AddRoom({ navigation }: any) {
                     price: parseFloat(price),
                     capacity: parseInt(capacity),
                     amenities: [],
-                    images: [],
+                    images: [imageUrl || 'DEFAULT'],
                 },
                 {
                     headers: { Authorization: `Bearer ${token}` },
@@ -77,12 +78,22 @@ export default function AddRoom({ navigation }: any) {
                 />
 
                 <TextInput
+                    label="Image URL (Optional)"
+                    value={imageUrl}
+                    onChangeText={setImageUrl}
+                    style={styles.input}
+                    mode="outlined"
+                    placeholder="Leave empty for default image"
+                />
+
+                <TextInput
                     label="Price per Night *"
                     value={price}
                     onChangeText={setPrice}
                     style={styles.input}
                     mode="outlined"
                     keyboardType="numeric"
+                    left={<TextInput.Affix text="$" />}
                 />
 
                 <TextInput

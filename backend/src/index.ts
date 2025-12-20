@@ -19,6 +19,7 @@ app.use(express.json());
 
 import paymentRoutes from './routes/paymentRoutes';
 import walletRoutes from './routes/walletRoutes';
+import userRoutes from './routes/userRoutes';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
@@ -29,6 +30,7 @@ app.use('/api/menu-items', menuRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/wallet', walletRoutes);
+app.use('/api/user', userRoutes);
 
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });

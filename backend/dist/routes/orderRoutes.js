@@ -11,5 +11,6 @@ const router = express_1.default.Router();
 router.use(auth_1.verifyToken);
 router.post('/', orderController_1.createOrder);
 router.get('/user', orderController_1.getUserOrders);
+router.get('/manager', (0, auth_1.requireRole)(['MANAGER']), orderController_1.getManagerOrders);
 router.put('/:id', orderController_1.updateOrderStatus);
 exports.default = router;

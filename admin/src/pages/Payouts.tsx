@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Card, Button, Modal, Badge } from 'flowbite-react';
-import { HiCheck, HiX, HiCurrencyDollar } from 'react-icons/hi';
-import Navbar from '../components/Navbar';
+import { Button, Modal } from 'flowbite-react';
+import AdminNavbar from '../components/AdminNavbar';
 import Sidebar from '../components/Sidebar';
 
 const API_URL = 'http://localhost:5000/api';
@@ -45,7 +44,7 @@ export default function Payouts() {
             setSelectedPayout(null);
             setRejectionReason('');
             fetchPayouts();
-        } catch (error) {
+        } catch {
             alert('Failed to process payout');
         }
     };
@@ -71,16 +70,18 @@ export default function Payouts() {
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             fetchPayouts();
-        } catch (error) {
+        } catch {
             alert('Failed to approve');
         }
     }
+
+    const AnyModal = Modal as any;
 
     return (
         <div className="flex h-screen bg-gray-50">
             <Sidebar />
             <div className="flex-1 flex flex-col overflow-hidden">
-                <Navbar />
+                <AdminNavbar />
                 <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6">
                     <h1 className="text-2xl font-semibold text-gray-800 mb-6">Payout Requests</h1>
 
@@ -140,9 +141,9 @@ export default function Payouts() {
                     </div>
                 </main>
 
-                <Modal show={modalOpen} onClose={() => setModalOpen(false)}>
-                    <Modal.Header>Reject Payout</Modal.Header>
-                    <Modal.Body>
+                <AnyModal show={modalOpen} onClose={() => setModalOpen(false)}>
+                    <AnyModal.Header>Reject Payout</AnyModal.Header>
+                    <AnyModal.Body>
                         <div className="space-y-6">
                             <p className="text-base leading-relaxed text-gray-500">
                                 Please provide a reason for rejecting this payout request. The funds will be returned to the manager's wallet.
@@ -154,17 +155,17 @@ export default function Payouts() {
                                 onChange={e => setRejectionReason(e.target.value)}
                             />
                         </div>
-                    </Modal.Body>
-                    <Modal.Footer>
+                    </AnyModal.Body>
+                    <AnyModal.Footer>
                         <Button color="failure" onClick={() => handleProcess('FAILED')}>
                             Confirm Rejection
                         </Button>
                         <Button color="gray" onClick={() => setModalOpen(false)}>
                             Cancel
                         </Button>
-                    </Modal.Footer>
-                </Modal>
+                    </AnyModal.Footer>
+                </AnyModal>
             </div>
-        </div>
+        </div >
     );
 }

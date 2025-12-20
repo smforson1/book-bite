@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import axios from 'axios';
 import crypto from 'crypto';
+import { sendPushNotification } from '../services/notificationService';
 
 const prisma = new PrismaClient();
 
@@ -106,7 +107,7 @@ export const verifyPayment = async (req: Request, res: Response): Promise<void> 
                     status: 'CONFIRMED', // Or whatever initial paid status is
                     paymentId: payment.id
                 },
-                include: { business: { include: { manager: true } } }
+                include: { business: { include: { manager: { include: { user: true } } } } }
             });
 
             // Credit Wallet
@@ -134,6 +135,15 @@ export const verifyPayment = async (req: Request, res: Response): Promise<void> 
                         }
                     })
                 ]);
+
+                // Send Notification to Manager
+                if (order.business?.manager?.user?.pushToken) {
+                    await sendPushNotification(
+                        order.business.manager.user.pushToken,
+                        'New Order Received! 🍔',
+                        `Order #${order.id.slice(0, 5)} has been paid and confirmed.`
+                    );
+                }
             }
         }
 

@@ -5,7 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuthStore } from '../../store/useAuthStore';
 // @ts-ignore
-import Paystack from 'react-native-paystack-webview';
+import * as PaystackLib from 'react-native-paystack-webview';
+const Paystack = (PaystackLib as any).Paystack || (PaystackLib as any).default;
 import axios from 'axios';
 
 const API_URL = 'http://10.0.2.2:5000/api';

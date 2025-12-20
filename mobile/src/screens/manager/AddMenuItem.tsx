@@ -14,6 +14,7 @@ export default function AddMenuItem({ navigation }: any) {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [price, setPrice] = useState('');
+    const [imageUrl, setImageUrl] = useState('');
     const [loading, setLoading] = useState(false);
 
     const token = useAuthStore((state) => state.token);
@@ -66,7 +67,7 @@ export default function AddMenuItem({ navigation }: any) {
                     name,
                     description,
                     price: parseFloat(price),
-                    images: [],
+                    images: [imageUrl || 'DEFAULT'],
                     dietaryTags: [],
                 },
                 { headers: { Authorization: `Bearer ${token}` } }
@@ -132,12 +133,22 @@ export default function AddMenuItem({ navigation }: any) {
                         />
 
                         <TextInput
+                            label="Image URL (Optional)"
+                            value={imageUrl}
+                            onChangeText={setImageUrl}
+                            style={styles.input}
+                            mode="outlined"
+                            placeholder="Leave empty for default image"
+                        />
+
+                        <TextInput
                             label="Price *"
                             value={price}
                             onChangeText={setPrice}
                             style={styles.input}
                             mode="outlined"
                             keyboardType="numeric"
+                            left={<TextInput.Affix text="$" />}
                         />
 
                         <Button

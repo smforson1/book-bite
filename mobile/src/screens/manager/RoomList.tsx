@@ -4,6 +4,7 @@ import { Text, TextInput, Button, Card, FAB, List, IconButton } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useBusinessStore } from '../../store/useBusinessStore';
+import { useTheme } from '../../context/ThemeContext';
 import axios from 'axios';
 
 const API_URL = 'http://10.0.2.2:5000/api';
@@ -13,6 +14,7 @@ export default function RoomList({ navigation }: any) {
     const [loading, setLoading] = useState(true);
     const token = useAuthStore((state) => state.token);
     const business = useBusinessStore((state) => state.business);
+    const { colors, spacing } = useTheme();
 
     useEffect(() => {
         if (business) {
@@ -52,57 +54,69 @@ export default function RoomList({ navigation }: any) {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <ScrollView contentContainerStyle={styles.content}>
-                <Text variant="headlineMedium" style={styles.title}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+            <ScrollView contentContainerStyle={[styles.content, { padding: spacing.m }]}>
+                <Text variant="headlineMedium" style={[styles.title, { color: colors.text }]}>
                     Rooms
                 </Text>
 
                 {loading ? (
                     <Text>Loading...</Text>
                 ) : rooms.length === 0 ? (
-                    <Card style={styles.emptyCard}>
+                    <Card style={[styles.emptyCard, { backgroundColor: colors.surface }]}>
                         <Card.Content>
-                            <Text style={styles.emptyText}>No rooms yet. Add your first room!</Text>
+                            <Text style={[styles.emptyText, { color: colors.textLight }]}>No rooms yet. Add your first room!</Text>
                         </Card.Content>
                     </Card>
                 ) : (
-                    rooms.map((room) => (
-                        <Card key={room.id} style={styles.card}>
-                            <Card.Content>
-                                <View style={styles.cardHeader}>
-                                    <View style={styles.cardInfo}>
-                                        <Text variant="titleMedium">{room.name}</Text>
-                                        <Text variant="bodyMedium" style={styles.price}>
-                                            ${room.price}/night
-                                        </Text>
-                                        <Text variant="bodySmall" style={styles.capacity}>
-                                            Capacity: {room.capacity} guests
-                                        </Text>
+                    rooms.map((room) => {
+                        const imageSource =
+                            room.images && room.images.length > 0 && room.images[0] !== 'DEFAULT'
+                                ? { uri: room.images[0] }
+                                : require('../../../assets/hotel_placeholder.png');
+
+                        return (
+                            <Card key={room.id} style={[styles.card, { backgroundColor: colors.surface }]}>
+                                <Card.Cover source={imageSource} style={{ height: 150 }} />
+                                <Card.Content>
+                                    <View style={styles.cardHeader}>
+                                        <View style={styles.cardInfo}>
+                                            <Text variant="titleMedium" style={{ color: colors.text, marginTop: 10 }}>
+                                                {room.name}
+                                            </Text>
+                                            <Text variant="bodyMedium" style={[styles.price, { color: colors.success }]}>
+                                                ${room.price}/night
+                                            </Text>
+                                            <Text variant="bodySmall" style={[styles.capacity, { color: colors.textLight }]}>
+                                                Capacity: {room.capacity} guests
+                                            </Text>
+                                        </View>
+                                        <View style={styles.actions}>
+                                            <IconButton
+                                                icon="pencil"
+                                                size={20}
+                                                iconColor={colors.primary}
+                                                onPress={() => navigation.navigate('EditRoom', { room })}
+                                            />
+                                            <IconButton
+                                                icon="delete"
+                                                size={20}
+                                                iconColor={colors.error}
+                                                onPress={() => handleDelete(room.id)}
+                                            />
+                                        </View>
                                     </View>
-                                    <View style={styles.actions}>
-                                        <IconButton
-                                            icon="pencil"
-                                            size={20}
-                                            onPress={() => navigation.navigate('EditRoom', { room })}
-                                        />
-                                        <IconButton
-                                            icon="delete"
-                                            size={20}
-                                            iconColor="#d32f2f"
-                                            onPress={() => handleDelete(room.id)}
-                                        />
-                                    </View>
-                                </View>
-                            </Card.Content>
-                        </Card>
-                    ))
+                                </Card.Content>
+                            </Card>
+                        );
+                    })
                 )}
             </ScrollView>
 
             <FAB
                 icon="plus"
-                style={styles.fab}
+                style={[styles.fab, { backgroundColor: colors.primary }]}
+                color={colors.white}
                 onPress={() => navigation.navigate('AddRoom')}
             />
         </SafeAreaView>

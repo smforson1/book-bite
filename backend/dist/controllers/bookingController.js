@@ -25,15 +25,19 @@ const createBooking = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             res.status(400).json({ message: 'Room not available' });
             return;
         }
+        const checkInDate = new Date(checkIn);
+        const checkOutDate = new Date(checkOut);
+        const diffTime = Math.abs(checkOutDate.getTime() - checkInDate.getTime());
+        const nights = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
         const booking = yield prisma.booking.create({
             data: {
                 userId,
                 businessId: room.businessId,
                 roomId,
-                checkIn: new Date(checkIn),
-                checkOut: new Date(checkOut),
+                checkIn: checkInDate,
+                checkOut: checkOutDate,
                 guests,
-                totalPrice: room.price,
+                totalPrice: Number(room.price) * nights, // Correct calculation
                 status: 'PENDING',
             },
             include: {

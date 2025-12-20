@@ -4,6 +4,7 @@ import { Text, Card, FAB, List, IconButton, Chip } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useBusinessStore } from '../../store/useBusinessStore';
+import { useTheme } from '../../context/ThemeContext';
 import axios from 'axios';
 
 const API_URL = 'http://10.0.2.2:5000/api';
@@ -13,6 +14,7 @@ export default function MenuList({ navigation }: any) {
     const [loading, setLoading] = useState(true);
     const token = useAuthStore((state) => state.token);
     const business = useBusinessStore((state) => state.business);
+    const { colors, spacing } = useTheme();
 
     useEffect(() => {
         if (business) {
@@ -52,63 +54,73 @@ export default function MenuList({ navigation }: any) {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <ScrollView contentContainerStyle={styles.content}>
-                <Text variant="headlineMedium" style={styles.title}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+            <ScrollView contentContainerStyle={[styles.content, { padding: spacing.m }]}>
+                <Text variant="headlineMedium" style={[styles.title, { color: colors.text }]}>
                     Menu
                 </Text>
 
                 {loading ? (
                     <Text>Loading...</Text>
                 ) : categories.length === 0 ? (
-                    <Card style={styles.emptyCard}>
+                    <Card style={[styles.emptyCard, { backgroundColor: colors.surface }]}>
                         <Card.Content>
-                            <Text style={styles.emptyText}>No menu items yet. Add your first item!</Text>
+                            <Text style={[styles.emptyText, { color: colors.textLight }]}>No menu items yet. Add your first item!</Text>
                         </Card.Content>
                     </Card>
                 ) : (
                     categories.map((category) => (
                         <View key={category.id} style={styles.categorySection}>
-                            <Text variant="titleLarge" style={styles.categoryTitle}>
+                            <Text variant="titleLarge" style={[styles.categoryTitle, { color: colors.secondary }]}>
                                 {category.name}
                             </Text>
-                            {category.items.map((item: any) => (
-                                <Card key={item.id} style={styles.card}>
-                                    <Card.Content>
-                                        <View style={styles.cardHeader}>
-                                            <View style={styles.cardInfo}>
-                                                <Text variant="titleMedium">{item.name}</Text>
-                                                <Text variant="bodyMedium" style={styles.price}>
-                                                    ${item.price}
-                                                </Text>
-                                                {item.description && (
-                                                    <Text variant="bodySmall" style={styles.description}>
-                                                        {item.description}
+                            {category.items.map((item: any) => {
+                                const imageSource =
+                                    item.images && item.images.length > 0 && item.images[0] !== 'DEFAULT'
+                                        ? { uri: item.images[0] }
+                                        : require('../../../assets/food_placeholder.png');
+
+                                return (
+                                    <Card key={item.id} style={[styles.card, { backgroundColor: colors.surface }]}>
+                                        <Card.Cover source={imageSource} style={{ height: 120 }} />
+                                        <Card.Content>
+                                            <View style={styles.cardHeader}>
+                                                <View style={styles.cardInfo}>
+                                                    <Text variant="titleMedium" style={{ color: colors.text, marginTop: 10 }}>
+                                                        {item.name}
                                                     </Text>
-                                                )}
-                                                {item.dietaryTags && item.dietaryTags.length > 0 && (
-                                                    <View style={styles.tags}>
-                                                        {item.dietaryTags.map((tag: string, idx: number) => (
-                                                            <Chip key={idx} style={styles.tag} compact>
-                                                                {tag}
-                                                            </Chip>
-                                                        ))}
-                                                    </View>
-                                                )}
+                                                    <Text variant="bodyMedium" style={[styles.price, { color: colors.success }]}>
+                                                        ${item.price}
+                                                    </Text>
+                                                    {item.description && (
+                                                        <Text variant="bodySmall" style={[styles.description, { color: colors.textLight }]}>
+                                                            {item.description}
+                                                        </Text>
+                                                    )}
+                                                    {item.dietaryTags && item.dietaryTags.length > 0 && (
+                                                        <View style={styles.tags}>
+                                                            {item.dietaryTags.map((tag: string, idx: number) => (
+                                                                <Chip key={idx} style={styles.tag} compact>
+                                                                    {tag}
+                                                                </Chip>
+                                                            ))}
+                                                        </View>
+                                                    )}
+                                                </View>
+                                                <View style={styles.actions}>
+                                                    <IconButton icon="delete" size={20} iconColor={colors.error} onPress={() => handleDelete(item.id)} />
+                                                </View>
                                             </View>
-                                            <View style={styles.actions}>
-                                                <IconButton icon="delete" size={20} iconColor="#d32f2f" onPress={() => handleDelete(item.id)} />
-                                            </View>
-                                        </View>
-                                    </Card.Content>
-                                </Card>
-                            ))}
+                                        </Card.Content>
+                                    </Card>
+                                );
+                            })}
                         </View>
                     ))
                 )}
             </ScrollView>
 
-            <FAB icon="plus" style={styles.fab} onPress={() => navigation.navigate('AddMenuItem')} />
+            <FAB icon="plus" style={[styles.fab, { backgroundColor: colors.primary }]} color={colors.white} onPress={() => navigation.navigate('AddMenuItem')} />
         </SafeAreaView>
     );
 }

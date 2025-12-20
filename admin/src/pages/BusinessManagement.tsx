@@ -4,8 +4,7 @@ import api from '../api/axios';
 import {
     BuildingStorefrontIcon,
     FlagIcon,
-    MapPinIcon,
-    ShoppingBagIcon
+    MapPinIcon
 } from '@heroicons/react/24/outline';
 
 export default function BusinessManagement() {
@@ -33,7 +32,7 @@ export default function BusinessManagement() {
             setBusinesses(businesses.map(b =>
                 b.id === businessId ? { ...b, isFlagged: !b.isFlagged } : b
             ));
-        } catch (error) {
+        } catch {
             alert('Failed to update status');
         }
     };
@@ -89,8 +88,8 @@ export default function BusinessManagement() {
                                     <button
                                         onClick={() => toggleFlag(biz.id)}
                                         className={`w-full flex items-center justify-center gap-2 py-2 rounded-lg font-medium transition-colors ${biz.isFlagged
-                                                ? 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                                                : 'bg-red-50 text-red-600 hover:bg-red-100'
+                                            ? 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                                            : 'bg-red-50 text-red-600 hover:bg-red-100'
                                             }`}
                                     >
                                         <FlagIcon className="w-4 h-4" />
