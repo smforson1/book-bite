@@ -95,7 +95,7 @@ export default function ActivityScreen({ navigation, route }: any) {
 
             <View style={styles.cardFooter}>
                 <AppText variant="h3" color={COLORS.primary}>
-                    ₦{item.totalPrice}
+                    GH₵{item.totalPrice}
                 </AppText>
                 {/* <AppButton title="View" variant="ghost" onPress={() => {}} style={{ height: 32 }} /> */}
             </View>

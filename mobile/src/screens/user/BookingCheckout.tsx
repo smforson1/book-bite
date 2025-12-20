@@ -1,12 +1,11 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Text, TextInput, Button, Card } from 'react-native-paper';
+import { Text, TextInput, Button, Card, Divider } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuthStore } from '../../store/useAuthStore';
 // @ts-ignore
-import * as PaystackLib from 'react-native-paystack-webview';
-const Paystack = (PaystackLib as any).Paystack || (PaystackLib as any).default;
+import { usePaystack } from 'react-native-paystack-webview';
 import axios from 'axios';
 
 const API_URL = 'http://10.0.2.2:5000/api';
@@ -22,43 +21,12 @@ export default function BookingCheckout({ route, navigation }: any) {
 
     // Payment State
     const [currentBookingId, setCurrentBookingId] = useState<string | null>(null);
-    const paystackWebViewRef = useRef<any>(null);
+    const paystack = usePaystack();
 
     const { token, user } = useAuthStore((state) => state);
 
-    const handleBooking = async () => {
-        if (!checkIn || !checkOut || !guests) {
-            Alert.alert('Error', 'Please fill in all fields');
-            return;
-        }
-
-        setLoading(true);
-        try {
-            // 1. Create Pending Booking
-            const response = await axios.post(
-                `${API_URL}/bookings`,
-                {
-                    roomId: room.id,
-                    checkIn: checkIn.toISOString(),
-                    checkOut: checkOut.toISOString(),
-                    guests: parseInt(guests),
-                    status: 'PENDING' // Explicitly pending
-                },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-
-            const booking = response.data;
-            setCurrentBookingId(booking.id);
-
-            // 2. Trigger Payment
-            paystackWebViewRef.current?.startTransaction();
-
-        } catch (error: any) {
-            console.error(error);
-            Alert.alert('Error', error.response?.data?.message || 'Booking initiation failed');
-            setLoading(false); // Only stop loading if failed, otherwise wait for payment flow
-        }
-    };
+    const nights = Math.max(1, Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 3600 * 24)));
+    const total = nights * room.price;
 
     const handlePaymentSuccess = async (res: any) => {
         const reference = res.transactionRef?.reference || res.reference;
@@ -68,7 +36,7 @@ export default function BookingCheckout({ route, navigation }: any) {
             await axios.post(`${API_URL}/payment/verify`, {
                 reference,
                 email: user?.email,
-                amount: total, // Logic check: ensuring strictly matches what prompted
+                amount: total,
                 metadata: {
                     purpose: 'BOOKING',
                     bookingId: currentBookingId,
@@ -87,8 +55,48 @@ export default function BookingCheckout({ route, navigation }: any) {
         }
     };
 
-    const nights = Math.max(1, Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 3600 * 24)));
-    const total = nights * room.price;
+    const handleBooking = async () => {
+        if (!checkIn || !checkOut || !guests) {
+            Alert.alert('Error', 'Please fill in all fields');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            // 1. Create Pending Booking
+            const response = await axios.post(
+                `${API_URL}/bookings`,
+                {
+                    roomId: room.id,
+                    checkIn: checkIn.toISOString(),
+                    checkOut: checkOut.toISOString(),
+                    guests: parseInt(guests),
+                    status: 'PENDING'
+                },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            const booking = response.data;
+            setCurrentBookingId(booking.id);
+
+            // 2. Trigger Payment
+            paystack.popup.checkout({
+                email: user?.email || 'guest@example.com',
+                amount: total * 100,
+                // @ts-ignore
+                currency: 'GHS',
+                onCancel: () => {
+                    setLoading(false);
+                },
+                onSuccess: (res) => handlePaymentSuccess(res)
+            });
+
+        } catch (error: any) {
+            console.error(error);
+            Alert.alert('Error', error.response?.data?.message || 'Booking initiation failed');
+            setLoading(false);
+        }
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -152,7 +160,7 @@ export default function BookingCheckout({ route, navigation }: any) {
 
                     <View style={styles.summaryRow}>
                         <Text>Price per night</Text>
-                        <Text>${room.price}</Text>
+                        <Text>GH₵{room.price}</Text>
                     </View>
                     <View style={styles.summaryRow}>
                         <Text>Nights</Text>
@@ -160,7 +168,7 @@ export default function BookingCheckout({ route, navigation }: any) {
                     </View>
                     <View style={[styles.summaryRow, styles.totalRow]}>
                         <Text variant="titleMedium">Total</Text>
-                        <Text variant="titleMedium">${total}</Text>
+                        <Text variant="titleMedium">GH₵{total}</Text>
                     </View>
 
                     <Button
@@ -173,27 +181,10 @@ export default function BookingCheckout({ route, navigation }: any) {
                         Confirm & Pay
                     </Button>
                 </View>
-
-                <Paystack
-                    paystackKey="pk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" // TODO: Env var
-                    amount={`${total}.00`}
-                    billingEmail={user?.email || 'guest@example.com'}
-                    currency="NGN"
-                    activityIndicatorColor="green"
-                    onCancel={(e: any) => {
-                        console.log(e);
-                        setLoading(false);
-                        Alert.alert('Cancelled', 'Payment process cancelled');
-                    }}
-                    onSuccess={handlePaymentSuccess}
-                    ref={paystackWebViewRef}
-                />
             </ScrollView>
         </SafeAreaView>
     );
 }
-
-import { Divider } from 'react-native-paper';
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#fff' },

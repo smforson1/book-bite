@@ -85,7 +85,7 @@ export default function MyOrders({ navigation }: any) {
 
                 <View style={styles.footer}>
                     <AppText variant="h3" style={styles.total}>
-                        Total: ₦{item.totalPrice}
+                        Total: GH₵{item.totalPrice}
                     </AppText>
                     {/* Placeholder for reorder or track button */}
                 </View>

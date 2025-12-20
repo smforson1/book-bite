@@ -102,7 +102,7 @@ export default function MyBookings() {
                                 )}
 
                                 <Text variant="titleMedium" style={styles.price}>
-                                    Total: ${item.totalPrice}
+                                    Total: GH₵{item.totalPrice}
                                 </Text>
                             </Card.Content>
                         </Card>

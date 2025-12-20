@@ -1,11 +1,11 @@
 import React from 'react';
-import { View, StyleSheet, ViewStyle, Pressable } from 'react-native';
+import { View, StyleSheet, ViewStyle, Pressable, StyleProp } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import { COLORS, SIZES, SHADOWS, SPACING } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 interface AppCardProps {
     children: React.ReactNode;
-    style?: ViewStyle;
+    style?: StyleProp<ViewStyle>;
     onPress?: () => void;
     noPadding?: boolean;
 }
@@ -13,11 +13,23 @@ interface AppCardProps {
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function AppCard({ children, style, onPress, noPadding = false }: AppCardProps) {
+    const { colors, sizes, shadows, spacing } = useTheme();
     const scale = useSharedValue(1);
 
     const animatedStyle = useAnimatedStyle(() => ({
         transform: [{ scale: scale.value }],
     }));
+
+    const containerStyle = [
+        styles.container,
+        {
+            backgroundColor: colors.surface,
+            borderRadius: sizes.radius.l,
+            padding: noPadding ? 0 : spacing.m,
+            ...shadows.light,
+        },
+        style
+    ];
 
     if (onPress) {
         return (
@@ -25,7 +37,7 @@ export default function AppCard({ children, style, onPress, noPadding = false }:
                 onPress={onPress}
                 onPressIn={() => (scale.value = withSpring(0.98))}
                 onPressOut={() => (scale.value = withSpring(1))}
-                style={[styles.container, noPadding && { padding: 0 }, style, animatedStyle]}
+                style={[containerStyle, animatedStyle]}
             >
                 {children}
             </AnimatedPressable>
@@ -33,7 +45,7 @@ export default function AppCard({ children, style, onPress, noPadding = false }:
     }
 
     return (
-        <View style={[styles.container, noPadding && { padding: 0 }, style]}>
+        <View style={containerStyle}>
             {children}
         </View>
     );
@@ -41,9 +53,6 @@ export default function AppCard({ children, style, onPress, noPadding = false }:
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: COLORS.surface,
-        borderRadius: SIZES.radius.l,
-        padding: SPACING.m,
-        ...SHADOWS.light,
+        // Shared fallback removed, using theme values
     },
 });

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Text, Card, Button, Divider, List, useTheme, ActivityIndicator } from 'react-native-paper';
+import { Text, Card, Button, Divider, List, ActivityIndicator } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useTheme } from '../../context/ThemeContext';
 import axios from 'axios';
 
 const API_URL = 'http://10.0.2.2:5000/api';
@@ -12,7 +13,7 @@ export default function OrderDetail({ route, navigation }: any) {
     const [status, setStatus] = useState(order.status);
     const [loading, setLoading] = useState(false);
     const token = useAuthStore((state) => state.token);
-    const theme = useTheme();
+    const { colors } = useTheme();
 
     const updateStatus = async (newStatus: string) => {
         setLoading(true);
@@ -33,24 +34,24 @@ export default function OrderDetail({ route, navigation }: any) {
 
     const getStatusColor = (s: string) => {
         switch (s) {
-            case 'PENDING': return theme.colors.primary;
+            case 'PENDING': return colors.primary;
             case 'KITCHEN': return '#f57c00';
             case 'DELIVERY': return '#1976d2';
             case 'COMPLETED': return '#388e3c';
             case 'CANCELLED': return '#d32f2f';
-            default: return theme.colors.onSurface;
+            default: return colors.text;
         }
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <ScrollView contentContainerStyle={styles.content}>
                 <View style={styles.header}>
-                    <Text variant="headlineSmall" style={styles.title}>Order #{order.id.slice(0, 5)}</Text>
+                    <Text variant="headlineSmall" style={[styles.title, { color: colors.primary }]}>Order #{order.id.slice(0, 5)}</Text>
                     <Text style={{ color: getStatusColor(status), fontWeight: 'bold' }}>{status}</Text>
                 </View>
 
-                <Card style={styles.card}>
+                <Card style={[styles.card, { backgroundColor: colors.surface }]}>
                     <Card.Content>
                         <Text variant="titleMedium" style={styles.sectionTitle}>Customer Details</Text>
                         <Text>Name: {order.user?.name || 'Guest'}</Text>
@@ -62,7 +63,7 @@ export default function OrderDetail({ route, navigation }: any) {
                     </Card.Content>
                 </Card>
 
-                <Card style={styles.card}>
+                <Card style={[styles.card, { backgroundColor: colors.surface }]}>
                     <Card.Content>
                         <Text variant="titleMedium" style={styles.sectionTitle}>Order Items</Text>
                         {order.items.map((item: any, index: number) => (
@@ -72,7 +73,7 @@ export default function OrderDetail({ route, navigation }: any) {
                                         <Text style={styles.itemName}>{item.name}</Text>
                                         <Text style={styles.itemQty}>x{item.quantity}</Text>
                                     </View>
-                                    <Text style={styles.itemPrice}>₦{item.price * item.quantity}</Text>
+                                    <Text style={styles.itemPrice}>GH₵{item.price * item.quantity}</Text>
                                 </View>
                                 {index < order.items.length - 1 && <Divider style={styles.divider} />}
                             </View>
@@ -80,13 +81,13 @@ export default function OrderDetail({ route, navigation }: any) {
                         <Divider style={[styles.divider, { backgroundColor: '#000' }]} />
                         <View style={styles.totalRow}>
                             <Text variant="titleMedium">Total</Text>
-                            <Text variant="titleMedium">₦{order.totalPrice}</Text>
+                            <Text variant="titleMedium">GH₵{order.totalPrice}</Text>
                         </View>
                     </Card.Content>
                 </Card>
 
                 {/* Status Actions */}
-                <Card style={styles.card}>
+                <Card style={[styles.card, { backgroundColor: colors.surface }]}>
                     <Card.Content>
                         <Text variant="titleMedium" style={styles.sectionTitle}>Update Status</Text>
                         <View style={styles.actionGrid}>
@@ -147,7 +148,7 @@ export default function OrderDetail({ route, navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f5f5' },
+    container: { flex: 1 },
     content: { padding: 20 },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
     title: { fontWeight: 'bold' },

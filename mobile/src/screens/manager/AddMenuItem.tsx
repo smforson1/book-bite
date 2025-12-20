@@ -4,7 +4,9 @@ import { Text, TextInput, Button, SegmentedButtons } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useBusinessStore } from '../../store/useBusinessStore';
+import { useTheme } from '../../context/ThemeContext';
 import axios from 'axios';
+import ImageUpload from '../../components/ui/ImageUpload';
 
 const API_URL = 'http://10.0.2.2:5000/api';
 
@@ -19,6 +21,7 @@ export default function AddMenuItem({ navigation }: any) {
 
     const token = useAuthStore((state) => state.token);
     const business = useBusinessStore((state) => state.business);
+    const { colors } = useTheme();
 
     useEffect(() => {
         fetchCategories();
@@ -83,22 +86,28 @@ export default function AddMenuItem({ navigation }: any) {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <ScrollView contentContainerStyle={styles.content}>
-                <Text variant="headlineMedium" style={styles.title}>
+                <Text variant="headlineMedium" style={[styles.title, { color: colors.primary }]}>
                     Add Menu Item
                 </Text>
 
                 {categories.length === 0 ? (
                     <View style={styles.emptyState}>
-                        <Text style={styles.emptyText}>No categories yet. Create one first!</Text>
-                        <Button mode="contained" onPress={createCategory} style={styles.button}>
+                        <Text style={[styles.emptyText, { color: colors.textLight }]}>No categories yet. Create one first!</Text>
+                        <Button
+                            mode="contained"
+                            onPress={createCategory}
+                            style={styles.button}
+                            buttonColor={colors.primary}
+                            textColor={colors.white}
+                        >
                             Create Category
                         </Button>
                     </View>
                 ) : (
                     <>
-                        <Text variant="titleMedium" style={styles.label}>
+                        <Text variant="titleMedium" style={[styles.label, { color: colors.text }]}>
                             Category
                         </Text>
                         <SegmentedButtons
@@ -109,8 +118,14 @@ export default function AddMenuItem({ navigation }: any) {
                                 label: cat.name,
                             }))}
                             style={styles.segment}
+                            theme={{ colors: { secondaryContainer: colors.primaryLight, onSecondaryContainer: colors.text, outline: colors.primary } }}
                         />
-                        <Button mode="text" onPress={createCategory} style={styles.addCategoryBtn}>
+                        <Button
+                            mode="text"
+                            onPress={createCategory}
+                            style={styles.addCategoryBtn}
+                            textColor={colors.primary}
+                        >
                             + Add New Category
                         </Button>
 
@@ -120,6 +135,8 @@ export default function AddMenuItem({ navigation }: any) {
                             onChangeText={setName}
                             style={styles.input}
                             mode="outlined"
+                            outlineColor={colors.primary}
+                            activeOutlineColor={colors.primary}
                         />
 
                         <TextInput
@@ -130,15 +147,14 @@ export default function AddMenuItem({ navigation }: any) {
                             mode="outlined"
                             multiline
                             numberOfLines={3}
+                            outlineColor={colors.primary}
+                            activeOutlineColor={colors.primary}
                         />
 
-                        <TextInput
-                            label="Image URL (Optional)"
-                            value={imageUrl}
-                            onChangeText={setImageUrl}
-                            style={styles.input}
-                            mode="outlined"
-                            placeholder="Leave empty for default image"
+                        <ImageUpload
+                            label="Menu Item Photo"
+                            onImageUploaded={(url: string) => setImageUrl(url)}
+                            initialImage={imageUrl}
                         />
 
                         <TextInput
@@ -148,7 +164,10 @@ export default function AddMenuItem({ navigation }: any) {
                             style={styles.input}
                             mode="outlined"
                             keyboardType="numeric"
-                            left={<TextInput.Affix text="$" />}
+                            left={<TextInput.Affix text="GH₵" />}
+                            activeOutlineColor={colors.primary}
+                            outlineStyle={{ borderRadius: 10 }}
+                            contentStyle={{ backgroundColor: colors.surface }}
                         />
 
                         <Button
@@ -157,6 +176,8 @@ export default function AddMenuItem({ navigation }: any) {
                             loading={loading}
                             disabled={loading}
                             style={styles.button}
+                            buttonColor={colors.primary}
+                            textColor={colors.white}
                         >
                             Add Menu Item
                         </Button>
@@ -168,14 +189,14 @@ export default function AddMenuItem({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff' },
+    container: { flex: 1 },
     content: { padding: 20 },
-    title: { marginBottom: 20, textAlign: 'center' },
+    title: { marginBottom: 20, textAlign: 'center', fontWeight: 'bold' },
     label: { marginBottom: 10, marginTop: 10 },
     segment: { marginBottom: 10 },
     addCategoryBtn: { marginBottom: 15 },
     input: { marginBottom: 15 },
     button: { marginTop: 20, paddingVertical: 5 },
     emptyState: { marginTop: 50, alignItems: 'center' },
-    emptyText: { marginBottom: 20, textAlign: 'center', color: '#666' },
+    emptyText: { marginBottom: 20, textAlign: 'center' },
 });

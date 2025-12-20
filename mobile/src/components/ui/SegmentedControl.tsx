@@ -21,8 +21,9 @@ export default function SegmentedControl({ options, selectedOption, onOptionPres
     useEffect(() => {
         const index = options.indexOf(selectedOption);
         sliderPosition.value = withSpring(index * segmentWidth, {
-            damping: 15,
-            stiffness: 150,
+            damping: 30, // Reduced bounce
+            stiffness: 250, // Tighter response
+            mass: 0.8,
         });
     }, [selectedOption, segmentWidth, options]);
 

@@ -1,8 +1,8 @@
 import React from 'react';
-import { View, StyleSheet, Pressable } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { IconButton } from 'react-native-paper';
-import { COLORS, SIZES, SPACING } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 import AppText from '../ui/AppText';
 
 interface CustomHeaderProps {
@@ -13,9 +13,10 @@ interface CustomHeaderProps {
 
 export default function CustomHeader({ title, showBack = false, rightAction }: CustomHeaderProps) {
     const navigation = useNavigation();
+    const { colors, spacing } = useTheme();
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: colors.background, paddingHorizontal: spacing.l, paddingTop: spacing.xl * 1.5, paddingBottom: spacing.m }]}>
             <View style={styles.leftContainer}>
                 {showBack && (
                     <IconButton
@@ -23,9 +24,10 @@ export default function CustomHeader({ title, showBack = false, rightAction }: C
                         size={24}
                         onPress={() => navigation.goBack()}
                         style={styles.backButton}
+                        iconColor={colors.text}
                     />
                 )}
-                <AppText variant="h2" style={styles.title}>{title}</AppText>
+                <AppText variant="h2" style={[styles.title, { color: colors.text }]}>{title}</AppText>
             </View>
             {rightAction && <View style={styles.rightContainer}>{rightAction}</View>}
         </View>
@@ -37,10 +39,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: SPACING.l,
-        paddingTop: SPACING.xl * 1.5, // Status bar padding approx
-        paddingBottom: SPACING.m,
-        backgroundColor: COLORS.background,
     },
     leftContainer: {
         flexDirection: 'row',
@@ -48,10 +46,9 @@ const styles = StyleSheet.create({
     },
     backButton: {
         marginLeft: -10,
-        marginRight: SPACING.s,
+        marginRight: 8, // Using hardcoded small spacing as fallback or use spacing.s
     },
     title: {
-        color: COLORS.text,
         marginBottom: 0,
     },
     rightContainer: {

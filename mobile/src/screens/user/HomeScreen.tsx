@@ -121,7 +121,7 @@ export default function HomeScreen({ navigation }: any) {
                         noPadding
                     >
                         <ImageBackground
-                            source={{ uri: 'https://picsum.photos/700' }}
+                            source={{ uri: business.images?.[0] || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1000&auto=format&fit=crop' }}
                             style={styles.cardImage}
                             imageStyle={{ borderTopLeftRadius: SIZES.radius.l, borderTopRightRadius: SIZES.radius.l }}
                         >

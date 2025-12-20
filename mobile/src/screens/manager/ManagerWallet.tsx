@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView, Alert, RefreshControl } from 'react-native';
-import { Text, Card, Button, Divider, List, useTheme } from 'react-native-paper';
+import { Text, Card, Button, Divider, List } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useTheme } from '../../context/ThemeContext';
 import axios from 'axios';
 
 const API_URL = 'http://10.0.2.2:5000/api';
@@ -13,7 +14,7 @@ export default function ManagerWallet({ navigation }: any) {
     const [refreshing, setRefreshing] = useState(false);
     const [withdrawing, setWithdrawing] = useState(false);
 
-    const theme = useTheme();
+    const { colors } = useTheme();
     const token = useAuthStore((state) => state.token);
 
     const fetchWallet = async () => {
@@ -48,7 +49,7 @@ export default function ManagerWallet({ navigation }: any) {
 
         Alert.alert(
             'Request Payout',
-            `Are you sure you want to request a payout of ${wallet.currency} ${wallet.balance}?`,
+            `Are you sure you want to request a payout of GH₵ ${wallet.balance}?`,
             [
                 { text: 'Cancel', style: 'cancel' },
                 {
@@ -83,18 +84,18 @@ export default function ManagerWallet({ navigation }: any) {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <ScrollView
                 contentContainerStyle={styles.content}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
             >
-                <Text variant="headlineMedium" style={styles.title}>My Wallet</Text>
+                <Text variant="headlineMedium" style={[styles.title, { color: colors.primary }]}>My Wallet</Text>
 
-                <Card style={styles.balanceCard}>
+                <Card style={[styles.balanceCard, { backgroundColor: colors.primary }]}>
                     <Card.Content style={{ alignItems: 'center' }}>
-                        <Text variant="titleMedium" style={{ color: '#fff', opacity: 0.8 }}>Current Balance</Text>
-                        <Text variant="displayMedium" style={{ color: '#fff', fontWeight: 'bold', marginVertical: 10 }}>
-                            {wallet?.currency} {Number(wallet?.balance || 0).toLocaleString()}
+                        <Text variant="titleMedium" style={{ color: colors.white, opacity: 0.8 }}>Current Balance</Text>
+                        <Text variant="displayMedium" style={{ color: colors.white, fontWeight: 'bold', marginVertical: 10 }}>
+                            GH₵ {Number(wallet?.balance || 0).toLocaleString()}
                         </Text>
                         <Button
                             mode="contained"
@@ -102,8 +103,8 @@ export default function ManagerWallet({ navigation }: any) {
                             loading={withdrawing}
                             disabled={!wallet || Number(wallet.balance) <= 0 || withdrawing}
                             style={styles.withdrawButton}
-                            textColor={theme.colors.primary}
-                            buttonColor="#fff"
+                            textColor={colors.primary}
+                            buttonColor={colors.white}
                         >
                             Request Payout
                         </Button>
@@ -112,7 +113,7 @@ export default function ManagerWallet({ navigation }: any) {
 
                 <Text variant="titleLarge" style={styles.sectionTitle}>Recent Transactions</Text>
 
-                <Card>
+                <Card style={{ backgroundColor: colors.surface }}>
                     <Card.Content style={{ padding: 0 }}>
                         {wallet?.transactions?.length === 0 ? (
                             <View style={{ padding: 20, alignItems: 'center' }}>
@@ -131,7 +132,7 @@ export default function ManagerWallet({ navigation }: any) {
                                                     color: tx.type === 'CREDIT' ? 'green' : 'red',
                                                     fontWeight: 'bold'
                                                 }}>
-                                                    {tx.type === 'CREDIT' ? '+' : '-'}{wallet.currency} {Number(tx.amount).toLocaleString()}
+                                                    {tx.type === 'CREDIT' ? '+' : '-'}GH₵ {Number(tx.amount).toLocaleString()}
                                                 </Text>
                                                 <Text variant="labelSmall" style={{ textAlign: 'right', color: '#666' }}>
                                                     {tx.status}
@@ -152,11 +153,11 @@ export default function ManagerWallet({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f5f5' },
+    container: { flex: 1 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     content: { padding: 20 },
     title: { marginBottom: 20, fontWeight: 'bold' },
-    balanceCard: { backgroundColor: '#6200ee', marginBottom: 24, paddingVertical: 10 },
+    balanceCard: { marginBottom: 24, paddingVertical: 10 },
     withdrawButton: { marginTop: 10, width: '100%' },
     sectionTitle: { marginBottom: 10 },
 });

@@ -35,7 +35,7 @@ export default function ActivationCodes() {
 
         setGenerating(true);
         try {
-            await api.post('/admin/generate-code', { price: Number(price) });
+            await api.post('/admin/activation-codes', { price: Number(price) });
             fetchCodes();
             alert('Code generated successfully!');
         } catch (error) {
@@ -61,7 +61,7 @@ export default function ActivationCodes() {
                         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
                             <div className="relative rounded-md shadow-sm">
                                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                    <span className="text-gray-500 sm:text-sm">$</span>
+                                    <span className="text-gray-500 sm:text-sm">GH₵</span>
                                 </div>
                                 <input
                                     type="number"
@@ -123,7 +123,7 @@ export default function ActivationCodes() {
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    ${code.price}
+                                                    GH₵{code.price}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${code.isUsed ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>

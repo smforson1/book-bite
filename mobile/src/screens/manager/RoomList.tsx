@@ -56,7 +56,7 @@ export default function RoomList({ navigation }: any) {
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <ScrollView contentContainerStyle={[styles.content, { padding: spacing.m }]}>
-                <Text variant="headlineMedium" style={[styles.title, { color: colors.text }]}>
+                <Text variant="headlineMedium" style={[styles.title, { color: colors.primary }]}>
                     Rooms
                 </Text>
 
@@ -73,7 +73,7 @@ export default function RoomList({ navigation }: any) {
                         const imageSource =
                             room.images && room.images.length > 0 && room.images[0] !== 'DEFAULT'
                                 ? { uri: room.images[0] }
-                                : require('../../../assets/hotel_placeholder.png');
+                                : { uri: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?q=80&w=1000' };
 
                         return (
                             <Card key={room.id} style={[styles.card, { backgroundColor: colors.surface }]}>
@@ -85,7 +85,7 @@ export default function RoomList({ navigation }: any) {
                                                 {room.name}
                                             </Text>
                                             <Text variant="bodyMedium" style={[styles.price, { color: colors.success }]}>
-                                                ${room.price}/night
+                                                GH₵{room.price}/night
                                             </Text>
                                             <Text variant="bodySmall" style={[styles.capacity, { color: colors.textLight }]}>
                                                 Capacity: {room.capacity} guests
@@ -124,16 +124,16 @@ export default function RoomList({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f5f5' },
-    content: { padding: 20, paddingBottom: 80 },
+    container: { flex: 1 },
+    content: { padding: 20, paddingBottom: 120 },
     title: { marginBottom: 20, fontWeight: 'bold' },
     card: { marginBottom: 15 },
     emptyCard: { marginTop: 50 },
-    emptyText: { textAlign: 'center', color: '#666' },
+    emptyText: { textAlign: 'center' },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between' },
     cardInfo: { flex: 1 },
-    price: { color: '#2e7d32', fontWeight: 'bold', marginTop: 5 },
-    capacity: { color: '#666', marginTop: 3 },
+    price: { fontWeight: 'bold', marginTop: 5 },
+    capacity: { marginTop: 3 },
     actions: { flexDirection: 'row' },
-    fab: { position: 'absolute', right: 16, bottom: 16 },
+    fab: { position: 'absolute', right: 16, bottom: 100 },
 });

@@ -53,6 +53,7 @@ export default function OnboardingScreen({ navigation }: any) {
             slidesRef.current?.scrollToIndex({ index: currentIndex + 1 });
         } else {
             completeOnboarding();
+            navigation.replace('Login');
         }
     };
 

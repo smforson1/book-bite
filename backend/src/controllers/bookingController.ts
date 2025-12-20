@@ -97,3 +97,34 @@ export const updateBookingStatus = async (req: AuthRequest, res: Response): Prom
         res.status(500).json({ message: 'Error updating booking', error });
     }
 };
+
+// Get Manager Bookings
+export const getManagerBookings = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const userId = req.user.userId;
+
+        const manager = await prisma.managerProfile.findUnique({
+            where: { userId },
+            include: { business: true }
+        });
+
+        if (!manager?.business) {
+            res.status(404).json({ message: 'Business not found' });
+            return;
+        }
+
+        const bookings = await prisma.booking.findMany({
+            where: { businessId: manager.business.id },
+            include: {
+                user: { select: { name: true, email: true, phone: true } },
+                room: true,
+                payment: true
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        res.status(200).json(bookings);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching manager bookings', error });
+    }
+};

@@ -4,7 +4,9 @@ import { Text, TextInput, Button } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useBusinessStore } from '../../store/useBusinessStore';
+import { useTheme } from '../../context/ThemeContext';
 import axios from 'axios';
+import ImageUpload from '../../components/ui/ImageUpload';
 
 const API_URL = 'http://10.0.2.2:5000/api';
 
@@ -18,6 +20,7 @@ export default function AddRoom({ navigation }: any) {
 
     const token = useAuthStore((state) => state.token);
     const business = useBusinessStore((state) => state.business);
+    const { colors } = useTheme();
 
     const handleSubmit = async () => {
         if (!name || !price || !capacity) {
@@ -53,9 +56,9 @@ export default function AddRoom({ navigation }: any) {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <ScrollView contentContainerStyle={styles.content}>
-                <Text variant="headlineMedium" style={styles.title}>
+                <Text variant="headlineMedium" style={[styles.title, { color: colors.primary }]}>
                     Add New Room
                 </Text>
 
@@ -65,6 +68,8 @@ export default function AddRoom({ navigation }: any) {
                     onChangeText={setName}
                     style={styles.input}
                     mode="outlined"
+                    outlineColor={colors.primary}
+                    activeOutlineColor={colors.primary}
                 />
 
                 <TextInput
@@ -75,15 +80,14 @@ export default function AddRoom({ navigation }: any) {
                     mode="outlined"
                     multiline
                     numberOfLines={4}
+                    outlineColor={colors.primary}
+                    activeOutlineColor={colors.primary}
                 />
 
-                <TextInput
-                    label="Image URL (Optional)"
-                    value={imageUrl}
-                    onChangeText={setImageUrl}
-                    style={styles.input}
-                    mode="outlined"
-                    placeholder="Leave empty for default image"
+                <ImageUpload
+                    label="Room Photo"
+                    onImageUploaded={(url: string) => setImageUrl(url)}
+                    initialImage={imageUrl}
                 />
 
                 <TextInput
@@ -93,7 +97,10 @@ export default function AddRoom({ navigation }: any) {
                     style={styles.input}
                     mode="outlined"
                     keyboardType="numeric"
-                    left={<TextInput.Affix text="$" />}
+                    left={<TextInput.Affix text="GH₵" />}
+                    activeOutlineColor={colors.primary}
+                    outlineStyle={{ borderRadius: 10 }}
+                    contentStyle={{ backgroundColor: colors.surface }}
                 />
 
                 <TextInput
@@ -103,6 +110,8 @@ export default function AddRoom({ navigation }: any) {
                     style={styles.input}
                     mode="outlined"
                     keyboardType="numeric"
+                    outlineColor={colors.primary}
+                    activeOutlineColor={colors.primary}
                 />
 
                 <Button
@@ -111,6 +120,8 @@ export default function AddRoom({ navigation }: any) {
                     loading={loading}
                     disabled={loading}
                     style={styles.button}
+                    buttonColor={colors.primary}
+                    textColor={colors.white}
                 >
                     Add Room
                 </Button>
@@ -120,9 +131,9 @@ export default function AddRoom({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff' },
+    container: { flex: 1 },
     content: { padding: 20 },
-    title: { marginBottom: 20, textAlign: 'center' },
+    title: { marginBottom: 20, textAlign: 'center', fontWeight: 'bold' },
     input: { marginBottom: 15 },
     button: { marginTop: 20, paddingVertical: 5 },
 });

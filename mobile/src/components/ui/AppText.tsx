@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text, TextProps, StyleSheet } from 'react-native';
-import { COLORS, FONTS } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 interface AppTextProps extends TextProps {
     variant?: 'h1' | 'h2' | 'h3' | 'body' | 'caption' | 'label';
@@ -13,18 +13,21 @@ export default function AppText({
     children,
     style,
     variant = 'body',
-    color = COLORS.text,
+    color,
     bold = false,
     center = false,
     ...props
 }: AppTextProps) {
+    const { colors, fonts } = useTheme();
+    const finalColor = color || (variant === 'caption' ? colors.textLight : colors.text);
+
     return (
         <Text
             style={[
-                styles.text,
-                styles[variant],
-                { color },
-                bold && styles.bold,
+                { fontFamily: fonts.regular },
+                variant !== 'body' && styles[variant],
+                { color: finalColor },
+                bold && { fontWeight: '700', fontFamily: fonts.bold },
                 center && styles.center,
                 style
             ]}
@@ -36,13 +39,6 @@ export default function AppText({
 }
 
 const styles = StyleSheet.create({
-    text: {
-        fontFamily: FONTS.regular,
-    },
-    bold: {
-        fontWeight: '700',
-        fontFamily: FONTS.bold,
-    },
     center: {
         textAlign: 'center',
     },
@@ -72,6 +68,5 @@ const styles = StyleSheet.create({
     caption: {
         fontSize: 12,
         lineHeight: 16,
-        color: COLORS.textLight,
     },
 });

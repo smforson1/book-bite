@@ -61,7 +61,10 @@ export default function BusinessDetails({ route, navigation }: any) {
     return (
         <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={styles.content}>
-                <Image source={{ uri: 'https://picsum.photos/700' }} style={styles.image} />
+                <Image
+                    source={{ uri: business.images?.[0] || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1000&auto=format&fit=crop' }}
+                    style={styles.image}
+                />
                 <Text variant="headlineMedium" style={styles.title}>
                     {business.name}
                 </Text>
@@ -81,11 +84,14 @@ export default function BusinessDetails({ route, navigation }: any) {
                         </Text>
                         {rooms.map((room) => (
                             <Card key={room.id} style={styles.card}>
+                                {room.images?.[0] && (
+                                    <Card.Cover source={{ uri: room.images[0] }} style={styles.cardDetailImage} />
+                                )}
                                 <Card.Content>
                                     <Text variant="titleMedium">{room.name}</Text>
                                     <Text variant="bodyMedium">Capacity: {room.capacity} guests</Text>
                                     <Text variant="titleMedium" style={styles.price}>
-                                        ${room.price} / night
+                                        GH₵{room.price} / night
                                     </Text>
                                     <Button
                                         mode="contained"
@@ -112,15 +118,18 @@ export default function BusinessDetails({ route, navigation }: any) {
                                     <Card key={item.id} style={styles.card}>
                                         <Card.Content>
                                             <View style={styles.menuItemRow}>
+                                                {item.images?.[0] && (
+                                                    <Image source={{ uri: item.images[0] }} style={styles.menuThumb} />
+                                                )}
                                                 <View style={{ flex: 1 }}>
                                                     <Text variant="titleMedium">{item.name}</Text>
-                                                    <Text variant="bodyMedium">{item.description}</Text>
+                                                    <Text variant="bodyMedium" numberOfLines={2}>{item.description}</Text>
                                                     <Text variant="titleSmall" style={styles.price}>
-                                                        ${item.price}
+                                                        GH₵{item.price}
                                                     </Text>
                                                 </View>
                                                 {cart.find((c) => c.id === item.id) ? (
-                                                    <Button mode="outlined" onPress={() => removeFromCart(item.id)}>
+                                                    <Button mode="outlined" onPress={() => removeFromCart(item.id)} compact>
                                                         Remove
                                                     </Button>
                                                 ) : (
@@ -141,7 +150,7 @@ export default function BusinessDetails({ route, navigation }: any) {
             {!isHotel && cart.length > 0 && (
                 <View style={styles.footer}>
                     <Text variant="titleMedium" style={{ color: '#fff' }}>
-                        {cart.length} items • ${cart.reduce((sum, i) => sum + Number(i.price), 0)}
+                        {cart.length} items • GH₵{cart.reduce((sum, i) => sum + Number(i.price), 0)}
                     </Text>
                     <Button
                         mode="contained"
@@ -182,4 +191,6 @@ const styles = StyleSheet.create({
         bottom: 0,
         width: '100%',
     },
+    cardDetailImage: { height: 150 },
+    menuThumb: { width: 70, height: 70, borderRadius: 8, marginRight: 15 },
 });

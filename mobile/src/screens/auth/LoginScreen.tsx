@@ -3,6 +3,7 @@ import { View, StyleSheet, Alert } from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useTheme } from '../../context/ThemeContext';
 import axios from 'axios';
 
 const API_URL = 'http://10.0.2.2:5000/api';
@@ -12,6 +13,7 @@ export default function LoginScreen({ navigation }: any) {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const login = useAuthStore((state) => state.login);
+    const { colors } = useTheme();
 
     const handleLogin = async () => {
         if (!email || !password) {
@@ -34,9 +36,9 @@ export default function LoginScreen({ navigation }: any) {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <View style={styles.content}>
-                <Text variant="headlineMedium" style={styles.title}>Welcome Back</Text>
+                <Text variant="headlineMedium" style={[styles.title, { color: colors.primary }]}>Welcome Back</Text>
 
                 <TextInput
                     label="Email"
@@ -46,6 +48,9 @@ export default function LoginScreen({ navigation }: any) {
                     mode="outlined"
                     autoCapitalize="none"
                     keyboardType="email-address"
+                    activeOutlineColor={colors.primary}
+                    outlineStyle={{ borderRadius: 10 }}
+                    contentStyle={{ backgroundColor: colors.surface }}
                 />
 
                 <TextInput
@@ -55,6 +60,9 @@ export default function LoginScreen({ navigation }: any) {
                     style={styles.input}
                     mode="outlined"
                     secureTextEntry
+                    activeOutlineColor={colors.primary}
+                    outlineStyle={{ borderRadius: 10 }}
+                    contentStyle={{ backgroundColor: colors.surface }}
                 />
 
                 <Button
@@ -63,6 +71,8 @@ export default function LoginScreen({ navigation }: any) {
                     style={styles.button}
                     loading={loading}
                     disabled={loading}
+                    buttonColor={colors.primary}
+                    textColor={colors.white}
                 >
                     Login
                 </Button>
@@ -70,17 +80,9 @@ export default function LoginScreen({ navigation }: any) {
                     mode="text"
                     onPress={() => navigation.navigate('Register')}
                     style={styles.linkButton}
+                    textColor={colors.secondary}
                 >
                     Don't have an account? Sign Up
-                </Button>
-
-                <Button
-                    mode="text"
-                    onPress={() => navigation.navigate('PurchaseCode')}
-                    textColor="#4F46E5"
-                    style={{ marginTop: -10 }}
-                >
-                    Need a Manager Key? Buy Here
                 </Button>
             </View>
         </SafeAreaView>
@@ -88,15 +90,12 @@ export default function LoginScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff' },
+    container: { flex: 1 },
     content: { padding: 20, justifyContent: 'center', flex: 1 },
-    title: { marginBottom: 30, textAlign: 'center' },
+    title: { marginBottom: 30, textAlign: 'center', fontWeight: 'bold' },
     input: { marginBottom: 15 },
-    button: { marginTop: 10, paddingVertical: 5 },
-    textButton: {
-        marginTop: 10,
-    },
+    button: { marginTop: 10, paddingVertical: 5, borderRadius: 8 },
     linkButton: {
-        marginTop: 10,
+        marginTop: 15,
     }
 });

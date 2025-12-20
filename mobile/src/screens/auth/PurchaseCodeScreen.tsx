@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Alert, TouchableOpacity } from 'react-native';
-import { Text, TextInput, Button, ActivityIndicator, useTheme } from 'react-native-paper';
+import { Text, TextInput, Button, useTheme } from 'react-native-paper';
 // @ts-ignore
-import * as PaystackLib from 'react-native-paystack-webview';
-const Paystack = (PaystackLib as any).Paystack || (PaystackLib as any).default;
-
+import { usePaystack } from 'react-native-paystack-webview';
 import * as Clipboard from 'expo-clipboard';
 import axios from 'axios';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,24 +12,21 @@ export default function PurchaseCodeScreen({ navigation }: any) {
     const [loading, setLoading] = useState(false);
     const [purchasedCode, setPurchasedCode] = useState('');
     const theme = useTheme();
+    const paystack = usePaystack();
 
-    const PRICE = 5000; // 5000 Naira/Currency units (example)
+    const PRICE = 50.00; // 50 GHS
 
     const handleSuccess = async (res: any) => {
-        // Paystack returns reference in res.transactionRef.reference or res.reference
         const reference = res.transactionRef?.reference || res.reference;
 
         setLoading(true);
         try {
-            // Backend verification
             const response = await axios.post(`http://10.0.2.2:5000/api/payment/verify`, {
                 reference,
                 email,
                 amount: PRICE,
                 metadata: {
                     purpose: 'ACCESS_KEY',
-                    // userId: user.id // Ideally we pass userId if authenticated, but for pure code purchase might be guest or current user logic.
-                    // For now, assuming email is sufficient context or userId will be added later when integrated with AuthContext.
                 }
             });
 
@@ -43,6 +38,24 @@ export default function PurchaseCodeScreen({ navigation }: any) {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handlePay = () => {
+        if (!email) {
+            Alert.alert('Error', 'Please enter your email address');
+            return;
+        }
+
+        paystack.popup.checkout({
+            email: email,
+            amount: PRICE * 100,
+            // @ts-ignore
+            currency: 'GHS',
+            onCancel: () => {
+                Alert.alert('Cancelled', 'Payment process cancelled');
+            },
+            onSuccess: handleSuccess,
+        });
     };
 
     const copyToClipboard = async () => {
@@ -94,41 +107,19 @@ export default function PurchaseCodeScreen({ navigation }: any) {
                 <View style={styles.priceTag}>
                     <Text variant="titleMedium">Price:</Text>
                     <Text variant="headlineSmall" style={{ color: theme.colors.primary, fontWeight: 'bold' }}>
-                        ₦{PRICE.toLocaleString()}
+                        GH₵{PRICE.toLocaleString()}
                     </Text>
                 </View>
 
-                <Paystack
-                    paystackKey="pk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" // TODO: Ask user for key
-                    amount={`${PRICE}.00`}
-                    billingEmail={email}
-                    activityIndicatorColor={theme.colors.primary}
-                    onCancel={(e: any) => {
-                        console.log(e);
-                        Alert.alert('Cancelled', 'Payment process cancelled');
-                    }}
-                    onSuccess={handleSuccess}
-                    autoStart={false}
+                <Button
+                    mode="contained"
+                    style={styles.button}
+                    disabled={!email || loading}
+                    loading={loading}
+                    onPress={handlePay}
                 >
-                    {/* The child of Paystack is usually a button that triggers it, 
-               but newer versions hook into a ref. Or we can just wrap our button.
-               If using older version, wrapping works. If newer, ref is better.
-               Let's assume we render the button and the user clicks it, triggering the modal via prop logic or simple button. 
-               Wait, library usually requires a ref or `autoStart`. 
-               Let's wrap a Button component.
-           */}
-                    <Button
-                        mode="contained"
-                        style={styles.button}
-                        disabled={!email || loading}
-                        loading={loading}
-                        onPress={() => { }} // The library handles press if wrapping? 
-                    // Actually standard usage: 
-                    // <Paystack ...><View><Text>Pay</Text></View></Paystack> 
-                    >
-                        Pay With Paystack
-                    </Button>
-                </Paystack>
+                    Pay With Paystack
+                </Button>
 
                 <Button mode="text" onPress={() => navigation.goBack()} style={{ marginTop: 10 }}>
                     Back to Login

@@ -1,6 +1,6 @@
 import express from 'express';
-import { createBooking, getUserBookings, updateBookingStatus } from '../controllers/bookingController';
-import { verifyToken } from '../middleware/auth';
+import { createBooking, getUserBookings, updateBookingStatus, getManagerBookings } from '../controllers/bookingController';
+import { verifyToken, requireRole } from '../middleware/auth';
 
 const router = express.Router();
 
@@ -9,6 +9,7 @@ router.use(verifyToken);
 
 router.post('/', createBooking);
 router.get('/user', getUserBookings);
+router.get('/manager', requireRole(['MANAGER']), getManagerBookings);
 router.put('/:id', updateBookingStatus);
 
 export default router;

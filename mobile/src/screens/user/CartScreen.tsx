@@ -21,7 +21,7 @@ export default function CartScreen({ navigation }: any) {
                         {item.businessName}
                     </AppText>
                     <AppText variant="body" color={COLORS.primary} bold>
-                        ₦{item.price} x {item.quantity}
+                        GH₵{item.price} x {item.quantity}
                     </AppText>
                 </View>
                 <IconButton
@@ -70,7 +70,7 @@ export default function CartScreen({ navigation }: any) {
                     <View style={styles.footer}>
                         <View style={styles.totalRow}>
                             <AppText variant="h3">Total</AppText>
-                            <AppText variant="h2" color={COLORS.primary}>₦{total}</AppText>
+                            <AppText variant="h2" color={COLORS.primary}>GH₵{total}</AppText>
                         </View>
                         <AppButton
                             title="Checkout"

@@ -3,6 +3,7 @@ import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Text, TextInput, Button, SegmentedButtons } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useTheme } from '../../context/ThemeContext';
 import axios from 'axios';
 
 const API_URL = 'http://10.0.2.2:5000/api';
@@ -16,6 +17,7 @@ export default function RegisterScreen({ navigation }: any) {
     const [activationCode, setActivationCode] = useState('');
     const [loading, setLoading] = useState(false);
     const login = useAuthStore((state) => state.login);
+    const { colors } = useTheme();
 
     const handleRegister = async () => {
         if (!name || !email || !password) {
@@ -51,9 +53,9 @@ export default function RegisterScreen({ navigation }: any) {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <ScrollView contentContainerStyle={styles.content}>
-                <Text variant="headlineMedium" style={styles.title}>
+                <Text variant="headlineMedium" style={[styles.title, { color: colors.primary }]}>
                     Create Account
                 </Text>
 
@@ -65,6 +67,7 @@ export default function RegisterScreen({ navigation }: any) {
                         { value: 'manager', label: 'Manager' },
                     ]}
                     style={styles.segment}
+                    theme={{ colors: { secondaryContainer: colors.primaryLight, onSecondaryContainer: colors.text, outline: colors.primary } }}
                 />
 
                 <TextInput
@@ -73,6 +76,9 @@ export default function RegisterScreen({ navigation }: any) {
                     onChangeText={setName}
                     style={styles.input}
                     mode="outlined"
+                    activeOutlineColor={colors.primary}
+                    outlineStyle={{ borderRadius: 10 }}
+                    contentStyle={{ backgroundColor: colors.surface }}
                 />
                 <TextInput
                     label="Email *"
@@ -82,6 +88,9 @@ export default function RegisterScreen({ navigation }: any) {
                     mode="outlined"
                     autoCapitalize="none"
                     keyboardType="email-address"
+                    activeOutlineColor={colors.primary}
+                    outlineStyle={{ borderRadius: 10 }}
+                    contentStyle={{ backgroundColor: colors.surface }}
                 />
                 <TextInput
                     label="Password *"
@@ -90,6 +99,9 @@ export default function RegisterScreen({ navigation }: any) {
                     style={styles.input}
                     mode="outlined"
                     secureTextEntry
+                    activeOutlineColor={colors.primary}
+                    outlineStyle={{ borderRadius: 10 }}
+                    contentStyle={{ backgroundColor: colors.surface }}
                 />
                 <TextInput
                     label="Phone"
@@ -98,6 +110,9 @@ export default function RegisterScreen({ navigation }: any) {
                     style={styles.input}
                     mode="outlined"
                     keyboardType="phone-pad"
+                    activeOutlineColor={colors.primary}
+                    outlineStyle={{ borderRadius: 10 }}
+                    contentStyle={{ backgroundColor: colors.surface }}
                 />
 
                 {role === 'manager' && (
@@ -108,6 +123,9 @@ export default function RegisterScreen({ navigation }: any) {
                         style={styles.input}
                         mode="outlined"
                         placeholder="Enter code from Admin"
+                        activeOutlineColor={colors.primary}
+                        outlineStyle={{ borderRadius: 10 }}
+                        contentStyle={{ backgroundColor: colors.surface }}
                     />
                 )}
 
@@ -117,24 +135,40 @@ export default function RegisterScreen({ navigation }: any) {
                     style={styles.button}
                     loading={loading}
                     disabled={loading}
+                    buttonColor={colors.primary}
                 >
                     Sign Up
                 </Button>
 
-                <Button onPress={() => navigation.navigate('Login')} style={styles.textButton}>
+                <Button
+                    onPress={() => navigation.navigate('Login')}
+                    style={styles.textButton}
+                    textColor={colors.secondary}
+                >
                     Already have an account? Login
                 </Button>
+
+                {role === 'manager' && (
+                    <Button
+                        mode="text"
+                        onPress={() => navigation.navigate('PurchaseCode')}
+                        textColor={colors.primary}
+                        style={{ marginTop: 10 }}
+                    >
+                        Need a Manager Key? Buy Here
+                    </Button>
+                )}
             </ScrollView>
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff' },
+    container: { flex: 1 },
     content: { padding: 20 },
-    title: { marginBottom: 20, textAlign: 'center', marginTop: 20 },
+    title: { marginBottom: 20, textAlign: 'center', marginTop: 20, fontWeight: 'bold' },
     segment: { marginBottom: 20 },
     input: { marginBottom: 15 },
-    button: { marginTop: 10, paddingVertical: 5 },
+    button: { marginTop: 10, paddingVertical: 5, borderRadius: 8 },
     textButton: { marginTop: 15 },
 });

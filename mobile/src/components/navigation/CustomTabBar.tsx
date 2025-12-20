@@ -3,7 +3,7 @@ import { View, StyleSheet, Pressable, Dimensions } from 'react-native';
 import Animated, { useAnimatedStyle, withSpring, withTiming, FadeIn } from 'react-native-reanimated';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { IconButton } from 'react-native-paper';
-import { COLORS, SIZES, SHADOWS } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 import AppText from '../ui/AppText';
 
 import { useCartStore } from '../../store/useCartStore';
@@ -11,11 +11,12 @@ import { useCartStore } from '../../store/useCartStore';
 const { width } = Dimensions.get('window');
 
 export default function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+    const { colors, sizes, shadows, isManager } = useTheme();
     const tabWidth = (width - 40) / state.routes.length;
     const cartCount = useCartStore(state => state.getItemCount());
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: colors.surface, borderRadius: sizes.radius.xl, ...shadows.medium }]}>
             <View style={styles.content}>
                 {state.routes.map((route, index) => {
                     const { options } = descriptors[route.key];
@@ -40,9 +41,18 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
                     };
 
                     let iconName = 'home';
+                    // User Mapping
                     if (route.name === 'Places') iconName = 'map-search';
                     if (route.name === 'Activity') iconName = 'history';
                     if (route.name === 'Cart') iconName = 'cart';
+
+                    // Manager Mapping
+                    if (route.name === 'Dashboard') iconName = 'view-dashboard';
+                    if (route.name === 'Manage') {
+                        iconName = isManager ? 'storefront' : 'briefcase'; // Dynamic could be better but storefront is safe
+                    }
+                    if (route.name === 'Orders') iconName = 'clipboard-list';
+                    if (route.name === 'Wallet') iconName = 'wallet';
 
                     const animatedIconStyle = useAnimatedStyle(() => {
                         return {
@@ -65,21 +75,21 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
                                 <Animated.View style={[styles.iconContainer, animatedIconStyle]}>
                                     <IconButton
                                         icon={iconName}
-                                        iconColor={isFocused ? COLORS.primary : COLORS.textLight}
+                                        iconColor={isFocused ? colors.primary : colors.textLight}
                                         size={24}
                                         style={{ margin: 0 }}
                                     />
                                 </Animated.View>
                                 {route.name === 'Cart' && cartCount > 0 && (
-                                    <View style={styles.badge}>
-                                        <AppText variant="caption" style={{ fontSize: 10, color: COLORS.white, fontWeight: 'bold' }}>
+                                    <View style={[styles.badge, { backgroundColor: colors.primary, borderColor: colors.surface }]}>
+                                        <AppText variant="caption" style={{ fontSize: 10, color: colors.white, fontWeight: 'bold' }}>
                                             {cartCount}
                                         </AppText>
                                     </View>
                                 )}
                             </View>
                             {isFocused && (
-                                <Animated.View entering={FadeIn} style={styles.dot} />
+                                <Animated.View entering={FadeIn} style={[styles.dot, { backgroundColor: colors.primary }]} />
                             )}
                         </Pressable>
                     );
@@ -95,10 +105,7 @@ const styles = StyleSheet.create({
         bottom: 20,
         left: 20,
         right: 20,
-        backgroundColor: COLORS.surface,
-        borderRadius: SIZES.radius.xl,
         height: 65,
-        ...SHADOWS.medium,
         justifyContent: 'center',
     },
     content: {
@@ -119,20 +126,17 @@ const styles = StyleSheet.create({
         width: 4,
         height: 4,
         borderRadius: 2,
-        backgroundColor: COLORS.primary,
         marginTop: 2,
     },
     badge: {
         position: 'absolute',
         top: -5,
         right: -5,
-        backgroundColor: COLORS.primary,
         borderRadius: 10,
         width: 18,
         height: 18,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1.5,
-        borderColor: COLORS.surface,
     }
 });

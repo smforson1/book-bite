@@ -1,8 +1,9 @@
 import { useState, useCallback } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl } from 'react-native';
-import { Text, Card, SegmentedButtons, Chip, useTheme } from 'react-native-paper';
+import { Text, Card, SegmentedButtons, Chip } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useTheme } from '../../context/ThemeContext';
 import { useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
 
@@ -14,7 +15,7 @@ export default function OrderList({ navigation }: any) {
     const [refreshing, setRefreshing] = useState(false);
     const [filter, setFilter] = useState('active'); // active, completed, cancelled
     const token = useAuthStore((state) => state.token);
-    const theme = useTheme();
+    const { colors } = useTheme();
 
     const fetchOrders = async () => {
         try {
@@ -43,12 +44,12 @@ export default function OrderList({ navigation }: any) {
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'PENDING': return theme.colors.primary;
+            case 'PENDING': return colors.primary;
             case 'KITCHEN': return '#f57c00'; // Orange
             case 'DELIVERY': return '#1976d2'; // Blue
             case 'COMPLETED': return '#388e3c'; // Green
             case 'CANCELLED': return '#d32f2f'; // Red
-            default: return theme.colors.onSurface;
+            default: return colors.text;
         }
     };
 
@@ -62,7 +63,7 @@ export default function OrderList({ navigation }: any) {
     });
 
     const renderItem = ({ item }: { item: any }) => (
-        <Card style={styles.card} onPress={() => navigation.navigate('OrderDetail', { order: item })}>
+        <Card style={[styles.card, { backgroundColor: colors.surface }]} onPress={() => navigation.navigate('OrderDetail', { order: item })}>
             <Card.Content>
                 <View style={styles.header}>
                     <Text variant="titleMedium">Order #{item.id.slice(0, 5)}</Text>
@@ -74,7 +75,7 @@ export default function OrderList({ navigation }: any) {
                     Customer: {item.user?.name || 'Guest'}
                 </Text>
                 <Text variant="bodySmall" style={styles.price}>
-                    Total: ₦{item.totalPrice}
+                    Total: GH₵{item.totalPrice}
                 </Text>
                 <Text variant="bodySmall" style={styles.date}>
                     {new Date(item.createdAt).toLocaleString()}
@@ -84,9 +85,9 @@ export default function OrderList({ navigation }: any) {
     );
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <View style={styles.content}>
-                <Text variant="headlineMedium" style={styles.title}>Orders</Text>
+                <Text variant="headlineMedium" style={[styles.title, { color: colors.primary }]}>Orders</Text>
 
                 <SegmentedButtons
                     value={filter}
@@ -97,6 +98,7 @@ export default function OrderList({ navigation }: any) {
                         { value: 'cancelled', label: 'Cancelled' },
                     ]}
                     style={styles.filters}
+                    theme={{ colors: { secondaryContainer: colors.primaryLight, onSecondaryContainer: colors.text, outline: colors.primary } }}
                 />
 
                 <FlatList
@@ -116,7 +118,7 @@ export default function OrderList({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f5f5' },
+    container: { flex: 1 },
     content: { padding: 20, flex: 1 },
     title: { marginBottom: 20, fontWeight: 'bold' },
     filters: { marginBottom: 15 },

@@ -56,7 +56,7 @@ export default function MenuList({ navigation }: any) {
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <ScrollView contentContainerStyle={[styles.content, { padding: spacing.m }]}>
-                <Text variant="headlineMedium" style={[styles.title, { color: colors.text }]}>
+                <Text variant="headlineMedium" style={[styles.title, { color: colors.primary }]}>
                     Menu
                 </Text>
 
@@ -78,7 +78,7 @@ export default function MenuList({ navigation }: any) {
                                 const imageSource =
                                     item.images && item.images.length > 0 && item.images[0] !== 'DEFAULT'
                                         ? { uri: item.images[0] }
-                                        : require('../../../assets/food_placeholder.png');
+                                        : { uri: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=1000' };
 
                                 return (
                                     <Card key={item.id} style={[styles.card, { backgroundColor: colors.surface }]}>
@@ -90,7 +90,7 @@ export default function MenuList({ navigation }: any) {
                                                         {item.name}
                                                     </Text>
                                                     <Text variant="bodyMedium" style={[styles.price, { color: colors.success }]}>
-                                                        ${item.price}
+                                                        GH₵{item.price}
                                                     </Text>
                                                     {item.description && (
                                                         <Text variant="bodySmall" style={[styles.description, { color: colors.textLight }]}>
@@ -126,20 +126,20 @@ export default function MenuList({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f5f5' },
-    content: { padding: 20, paddingBottom: 80 },
+    container: { flex: 1 },
+    content: { padding: 20, paddingBottom: 120 },
     title: { marginBottom: 20, fontWeight: 'bold' },
     categorySection: { marginBottom: 25 },
-    categoryTitle: { marginBottom: 10, fontWeight: 'bold', color: '#333' },
+    categoryTitle: { marginBottom: 10, fontWeight: 'bold' },
     card: { marginBottom: 10 },
     emptyCard: { marginTop: 50 },
-    emptyText: { textAlign: 'center', color: '#666' },
+    emptyText: { textAlign: 'center' },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between' },
     cardInfo: { flex: 1 },
-    price: { color: '#2e7d32', fontWeight: 'bold', marginTop: 5 },
-    description: { color: '#666', marginTop: 3 },
+    price: { fontWeight: 'bold', marginTop: 5 },
+    description: { marginTop: 3 },
     tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: 8 },
     tag: { height: 24 },
     actions: { flexDirection: 'row' },
-    fab: { position: 'absolute', right: 16, bottom: 16 },
+    fab: { position: 'absolute', right: 16, bottom: 100 },
 });
