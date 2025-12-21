@@ -5,9 +5,9 @@ import { getManagerStats, getAdminStats } from '../controllers/analyticsControll
 const router = express.Router();
 
 // Manager routes
-router.get('/manager/stats', verifyToken, requireRole(['MANAGER']), getManagerStats as express.RequestHandler);
+router.get('/manager/stats', verifyToken, requireRole(['MANAGER']), getManagerStats as unknown as express.RequestHandler);
 
 // Admin routes
-router.get('/admin/stats', verifyToken, requireRole(['ADMIN']), getAdminStats as express.RequestHandler);
+router.get('/admin/stats', verifyToken, requireRole(['ADMIN']), getAdminStats as unknown as express.RequestHandler);
 
 export default router;

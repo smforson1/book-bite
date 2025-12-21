@@ -13,15 +13,15 @@ const router = express.Router();
 const managerAuth = [verifyToken, requireRole(['MANAGER'])];
 
 // Get business inventory (rooms + menu items)
-router.get('/business', ...managerAuth, getBusinessInventory as express.RequestHandler);
+router.get('/business', ...managerAuth, getBusinessInventory as unknown as express.RequestHandler);
 
 // Get low stock items
-router.get('/low-stock', ...managerAuth, getLowStockItems as express.RequestHandler);
+router.get('/low-stock', ...managerAuth, getLowStockItems as unknown as express.RequestHandler);
 
 // Update room availability
-router.put('/room/:roomId/availability', ...managerAuth, updateRoomAvailability as express.RequestHandler);
+router.put('/room/:roomId/availability', ...managerAuth, updateRoomAvailability as unknown as express.RequestHandler);
 
 // Update menu item stock
-router.put('/menu-item/:menuItemId/stock', ...managerAuth, updateMenuItemStock as express.RequestHandler);
+router.put('/menu-item/:menuItemId/stock', ...managerAuth, updateMenuItemStock as unknown as express.RequestHandler);
 
 export default router;
