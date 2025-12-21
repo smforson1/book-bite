@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Text, TextInput, Button, Card, FAB, List, IconButton } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,11 +17,13 @@ export default function RoomList({ navigation }: any) {
     const business = useBusinessStore((state) => state.business);
     const { colors, spacing } = useTheme();
 
-    useEffect(() => {
-        if (business) {
-            fetchRooms();
-        }
-    }, [business]);
+    useFocusEffect(
+        useCallback(() => {
+            if (business) {
+                fetchRooms();
+            }
+        }, [business])
+    );
 
     const fetchRooms = async () => {
         try {

@@ -6,9 +6,40 @@ import { sendPushNotification } from '../services/notificationService';
 
 const prisma = new PrismaClient();
 
-const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || 'sk_test_xxxxxx'; // Replace with env var
+export const initializePayment = async (req: Request, res: Response): Promise<void> => {
+    const key = (process.env.PAYSTACK_SECRET_KEY || '').trim();
+    try {
+        const { email, amount, metadata } = req.body;
+
+        const response = await axios.post(
+            'https://api.paystack.co/transaction/initialize',
+            {
+                email,
+                amount: Math.round(amount * 100), // Convert to pesewas/kobo
+                currency: 'GHS',
+                callback_url: 'https://standard.paystack.co/close',
+                metadata
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${key}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        res.status(200).json(response.data.data);
+    } catch (error: any) {
+        console.error('Payment initialization error:', error.response?.data || error.message);
+        res.status(500).json({
+            message: 'Failed to initialize payment',
+            error: error.response?.data?.message || error.message
+        });
+    }
+};
 
 export const verifyPayment = async (req: Request, res: Response): Promise<void> => {
+    const key = (process.env.PAYSTACK_SECRET_KEY || 'sk_test_xxxxxx').trim();
     try {
         const { reference, email, amount, metadata } = req.body;
         // metadata should contain: { purpose: 'ACCESS_KEY' | 'BOOKING' | 'ORDER', userId: string, bookingId?: string, orderId?: string }
@@ -16,7 +47,7 @@ export const verifyPayment = async (req: Request, res: Response): Promise<void> 
         // 1. Verify Payment with Paystack
         const verifyResponse = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
             headers: {
-                Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`
+                Authorization: `Bearer ${key}`
             }
         });
 
@@ -27,19 +58,24 @@ export const verifyPayment = async (req: Request, res: Response): Promise<void> 
             return;
         }
 
-        const purpose = metadata?.purpose || 'ACCESS_KEY'; // Default for backward compatibility if needed, though Access Key flow should send it.
-        const userId = metadata?.userId;
+        const purpose = metadata?.purpose || data.metadata?.purpose || 'ACCESS_KEY';
+        const userId = metadata?.userId || data.metadata?.userId;
 
-        // 2. Create Payment Record
-        const payment = await prisma.payment.create({
-            data: {
+        // 2. Create or Update Payment Record (Idempotent)
+        const payment = await prisma.payment.upsert({
+            where: { reference },
+            update: {
+                status: data.status,
+                metadata: data.metadata || metadata || {},
+            },
+            create: {
                 reference,
-                amount: data.amount / 100, // Paystack amount is in kobo/cents
+                amount: data.amount / 100,
                 currency: data.currency,
                 status: data.status,
                 purpose,
-                userId: userId, // Assuming userId is passed or we can find it via email if strictly needed, but ID is safer
-                metadata: data.metadata || {},
+                userId: userId,
+                metadata: data.metadata || metadata || {},
             }
         });
 
@@ -149,8 +185,11 @@ export const verifyPayment = async (req: Request, res: Response): Promise<void> 
 
         res.status(200).json(responseData);
 
-    } catch (error) {
-        console.error('Payment verification error', error);
-        res.status(500).json({ message: 'Internal server error processing payment' });
+    } catch (error: any) {
+        console.error('Payment verification error:', error.response?.data || error.message);
+        res.status(500).json({
+            message: 'Internal server error processing payment',
+            error: error.response?.data?.message || error.message
+        });
     }
 };

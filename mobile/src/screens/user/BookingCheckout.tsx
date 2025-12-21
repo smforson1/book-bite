@@ -5,7 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuthStore } from '../../store/useAuthStore';
 // @ts-ignore
-import { usePaystack } from 'react-native-paystack-webview';
+// import { usePaystack } from 'react-native-paystack-webview';
+import PaymentWebView from '../../components/ui/PaymentWebView';
 import axios from 'axios';
 
 const API_URL = 'http://10.0.2.2:5000/api';
@@ -21,7 +22,9 @@ export default function BookingCheckout({ route, navigation }: any) {
 
     // Payment State
     const [currentBookingId, setCurrentBookingId] = useState<string | null>(null);
-    const paystack = usePaystack();
+    const [paymentUrl, setPaymentUrl] = useState('');
+    const [showWebView, setShowWebView] = useState(false);
+    const [currentReference, setCurrentReference] = useState('');
 
     const { token, user } = useAuthStore((state) => state);
 
@@ -29,7 +32,12 @@ export default function BookingCheckout({ route, navigation }: any) {
     const total = nights * room.price;
 
     const handlePaymentSuccess = async (res: any) => {
-        const reference = res.transactionRef?.reference || res.reference;
+        const reference = res.reference || currentReference;
+
+        if (!reference) {
+            Alert.alert('Error', 'Payment reference missing.');
+            return;
+        }
 
         try {
             // 3. Verify Payment & Confirm Booking
@@ -80,20 +88,24 @@ export default function BookingCheckout({ route, navigation }: any) {
             setCurrentBookingId(booking.id);
 
             // 2. Trigger Payment
-            paystack.popup.checkout({
+            const payRes = await axios.post(`${API_URL}/payment/initialize`, {
                 email: user?.email || 'guest@example.com',
-                amount: total * 100,
-                // @ts-ignore
-                currency: 'GHS',
-                onCancel: () => {
-                    setLoading(false);
-                },
-                onSuccess: (res) => handlePaymentSuccess(res)
+                amount: total,
+                metadata: {
+                    purpose: 'BOOKING',
+                    bookingId: booking.id,
+                    userId: user?.id
+                }
             });
 
+            setPaymentUrl(payRes.data.authorization_url);
+            setCurrentReference(payRes.data.reference);
+            setShowWebView(true);
+
         } catch (error: any) {
-            console.error(error);
-            Alert.alert('Error', error.response?.data?.message || 'Booking initiation failed');
+            console.error('Initialize error:', error.response?.data || error.message);
+            const errorMsg = error.response?.data?.error || error.message;
+            Alert.alert('Error', `Payment initiation failed: ${errorMsg}`);
             setLoading(false);
         }
     };
@@ -180,6 +192,21 @@ export default function BookingCheckout({ route, navigation }: any) {
                     >
                         Confirm & Pay
                     </Button>
+
+                    <PaymentWebView
+                        visible={showWebView}
+                        url={paymentUrl}
+                        onClose={() => setShowWebView(false)}
+                        onSuccess={(ref) => {
+                            setShowWebView(false);
+                            handlePaymentSuccess({ reference: ref });
+                        }}
+                        onCancel={() => {
+                            setShowWebView(false);
+                            setLoading(false);
+                            Alert.alert('Cancelled', 'Payment was cancelled');
+                        }}
+                    />
                 </View>
             </ScrollView>
         </SafeAreaView>

@@ -1,6 +1,8 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes';
 import adminRoutes from './routes/adminRoutes';
 import businessRoutes from './routes/businessRoutes';
@@ -8,8 +10,6 @@ import roomRoutes from './routes/roomRoutes';
 import menuRoutes from './routes/menuRoutes';
 import bookingRoutes from './routes/bookingRoutes';
 import orderRoutes from './routes/orderRoutes';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;

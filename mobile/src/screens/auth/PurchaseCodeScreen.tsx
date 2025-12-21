@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { View, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import { Text, TextInput, Button, useTheme } from 'react-native-paper';
 // @ts-ignore
-import { usePaystack } from 'react-native-paystack-webview';
+// import { usePaystack } from 'react-native-paystack-webview';
+import PaymentWebView from '../../components/ui/PaymentWebView';
 import * as Clipboard from 'expo-clipboard';
 import axios from 'axios';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,13 +12,20 @@ export default function PurchaseCodeScreen({ navigation }: any) {
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
     const [purchasedCode, setPurchasedCode] = useState('');
+    const [paymentUrl, setPaymentUrl] = useState('');
+    const [showWebView, setShowWebView] = useState(false);
+    const [currentReference, setCurrentReference] = useState('');
     const theme = useTheme();
-    const paystack = usePaystack();
 
     const PRICE = 50.00; // 50 GHS
 
     const handleSuccess = async (res: any) => {
-        const reference = res.transactionRef?.reference || res.reference;
+        const reference = res.reference || currentReference;
+
+        if (!reference) {
+            Alert.alert('Error', 'Payment reference missing. Please contact support.');
+            return;
+        }
 
         setLoading(true);
         try {
@@ -40,22 +48,32 @@ export default function PurchaseCodeScreen({ navigation }: any) {
         }
     };
 
-    const handlePay = () => {
+    const handlePay = async () => {
         if (!email) {
             Alert.alert('Error', 'Please enter your email address');
             return;
         }
 
-        paystack.popup.checkout({
-            email: email,
-            amount: PRICE * 100,
-            // @ts-ignore
-            currency: 'GHS',
-            onCancel: () => {
-                Alert.alert('Cancelled', 'Payment process cancelled');
-            },
-            onSuccess: handleSuccess,
-        });
+        setLoading(true);
+        try {
+            const response = await axios.post(`http://10.0.2.2:5000/api/payment/initialize`, {
+                email,
+                amount: PRICE,
+                metadata: {
+                    purpose: 'ACCESS_KEY',
+                }
+            });
+
+            setPaymentUrl(response.data.authorization_url);
+            setCurrentReference(response.data.reference);
+            setShowWebView(true);
+        } catch (error: any) {
+            console.error('Initialize error:', error.response?.data || error.message);
+            const errorMsg = error.response?.data?.error || error.message;
+            Alert.alert('Error', `Failed to initialize payment: ${errorMsg}`);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const copyToClipboard = async () => {
@@ -124,6 +142,20 @@ export default function PurchaseCodeScreen({ navigation }: any) {
                 <Button mode="text" onPress={() => navigation.goBack()} style={{ marginTop: 10 }}>
                     Back to Login
                 </Button>
+
+                <PaymentWebView
+                    visible={showWebView}
+                    url={paymentUrl}
+                    onClose={() => setShowWebView(false)}
+                    onSuccess={(ref) => {
+                        setShowWebView(false);
+                        handleSuccess({ reference: ref });
+                    }}
+                    onCancel={() => {
+                        setShowWebView(false);
+                        Alert.alert('Cancelled', 'Payment was cancelled');
+                    }}
+                />
             </View>
         </SafeAreaView>
     );
