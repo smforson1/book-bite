@@ -7,6 +7,7 @@ export interface CartItem {
     quantity: number;
     businessId: string;
     businessName: string;
+    type?: 'ROOM' | 'MENU_ITEM';
 }
 
 interface CartState {

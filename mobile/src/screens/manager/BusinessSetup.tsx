@@ -43,7 +43,7 @@ export default function BusinessSetup({ navigation }: any) {
 
             setBusiness(response.data);
             Alert.alert('Success', 'Business details saved successfully!');
-            navigation.replace('ManagerDashboard');
+            navigation.replace('ManagerRoot');
         } catch (error: any) {
             console.error(error);
             Alert.alert('Error', error.response?.data?.message || 'Failed to save business');

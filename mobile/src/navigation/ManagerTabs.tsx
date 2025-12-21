@@ -5,9 +5,7 @@ import ManagerDashboard from '../screens/manager/ManagerDashboard';
 import RoomList from '../screens/manager/RoomList';
 import MenuList from '../screens/manager/MenuList';
 import OrderList from '../screens/manager/OrderList';
-import ManagerWallet from '../screens/manager/ManagerWallet';
-import InventoryScreen from '../screens/manager/InventoryScreen';
-import AnalyticsScreen from '../screens/manager/AnalyticsScreen';
+import ManagerMoreScreen from '../screens/manager/ManagerMoreScreen';
 import CustomTabBar from '../components/navigation/CustomTabBar';
 
 const Tab = createBottomTabNavigator();
@@ -37,9 +35,13 @@ export default function ManagerTabs() {
                 }}
             />
             <Tab.Screen name="Orders" component={OrderList} />
-            <Tab.Screen name="Inventory" component={InventoryScreen} />
-            <Tab.Screen name="Analytics" component={AnalyticsScreen} />
-            <Tab.Screen name="Wallet" component={ManagerWallet} />
+            <Tab.Screen
+                name="More"
+                component={ManagerMoreScreen}
+                options={{
+                    tabBarIcon: ({ color, size }) => null // Handled by CustomTabBar, but good for type safety 
+                }}
+            />
         </Tab.Navigator>
     );
 }

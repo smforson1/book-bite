@@ -1,5 +1,5 @@
 import { View, StyleSheet, Alert, ScrollView } from 'react-native';
-import { Avatar, IconButton } from 'react-native-paper';
+import { Avatar, IconButton, Switch } from 'react-native-paper';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useTheme } from '../../context/ThemeContext';
 import AppText from '../../components/ui/AppText';
@@ -9,7 +9,7 @@ import CustomHeader from '../../components/navigation/CustomHeader';
 export default function ProfileScreen({ navigation }: any) {
     const user = useAuthStore((state) => state.user);
     const logout = useAuthStore((state) => state.logout);
-    const { colors, spacing, sizes, shadows, isManager } = useTheme();
+    const { colors, spacing, sizes, shadows, isManager, isDark, toggleTheme } = useTheme();
 
     const handleLogout = () => {
         Alert.alert('Logout', 'Are you sure?', [
@@ -80,6 +80,26 @@ export default function ProfileScreen({ navigation }: any) {
                         />
                     </View>
                 )}
+
+                <View style={styles.section}>
+                    <AppText variant="h3" style={styles.sectionTitle}>Preferences</AppText>
+                    <AppCard style={styles.menuItem}>
+                        <View style={styles.menuRow}>
+                            <View style={[styles.iconBox, { backgroundColor: colors.primary + '10' }]}>
+                                <IconButton
+                                    icon={isDark ? 'weather-night' : 'weather-sunny'}
+                                    size={20}
+                                    iconColor={colors.primary}
+                                    style={{ margin: 0 }}
+                                />
+                            </View>
+                            <AppText variant="body" style={styles.menuText} color={colors.text}>
+                                Dark Mode
+                            </AppText>
+                            <Switch value={isDark} onValueChange={toggleTheme} color={colors.primary} />
+                        </View>
+                    </AppCard>
+                </View>
 
                 <View style={styles.section}>
                     <AppText variant="h3" style={styles.sectionTitle}>Account</AppText>

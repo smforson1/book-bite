@@ -71,6 +71,7 @@ export default function BusinessDetails({ route, navigation }: any) {
             price: Number(item.price),
             businessId: business.id,
             businessName: business.name,
+            type: isHotel ? 'ROOM' : 'MENU_ITEM',
         });
     };
 

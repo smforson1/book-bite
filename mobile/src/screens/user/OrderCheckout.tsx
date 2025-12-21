@@ -4,7 +4,7 @@ import { Text, TextInput, Button, Card, Divider } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useCartStore } from '../../store/useCartStore';
-import { COLORS } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 // @ts-ignore
 // import { usePaystack } from 'react-native-paystack-webview';
 import PaymentWebView from '../../components/ui/PaymentWebView';
@@ -26,6 +26,7 @@ export default function OrderCheckout({ route, navigation }: any) {
 
     const { token, user } = useAuthStore((state) => state);
     const { clearCart } = useCartStore();
+    const { colors } = useTheme();
 
     const total = cart.reduce((sum: number, item: any) => sum + Number(item.price), 0);
 
@@ -164,7 +165,7 @@ export default function OrderCheckout({ route, navigation }: any) {
                 <Button
                     mode="contained"
                     onPress={handleOrder}
-                    style={[styles.button, { backgroundColor: COLORS.primary }]}
+                    style={[styles.button, { backgroundColor: useTheme().colors.primary }]}
                     loading={loading}
                     disabled={loading}
                 >

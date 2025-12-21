@@ -75,6 +75,8 @@ export const verifyPayment = async (req: Request, res: Response): Promise<void> 
                 status: data.status,
                 purpose,
                 userId: userId,
+                // If it's a booking payment, link it
+                bookingId: purpose === 'BOOKING' && metadata.bookingId ? metadata.bookingId : undefined,
                 metadata: data.metadata || metadata || {},
             }
         });
@@ -102,8 +104,11 @@ export const verifyPayment = async (req: Request, res: Response): Promise<void> 
             const booking = await prisma.booking.update({
                 where: { id: metadata.bookingId },
                 data: {
+                    // Only confirm if full or meaningful partial payment (handled by business rules)
+                    // For now, any payment confirms it, or we check if paidAmount >= totalPrice
                     status: 'CONFIRMED',
-                    paymentId: payment.id
+                    // Increment paidAmount
+                    paidAmount: { increment: payment.amount }
                 },
                 include: { business: { include: { manager: true } } }
             });

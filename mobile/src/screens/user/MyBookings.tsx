@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { Text, Card, SegmentedButtons } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/useAuthStore';
-import { COLORS } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 import axios from 'axios';
 
 const API_URL = 'http://10.0.2.2:5000/api';
@@ -14,6 +14,7 @@ export default function MyBookings() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const token = useAuthStore((state) => state.token);
+    const { colors } = useTheme();
 
     const fetchData = async () => {
         try {
@@ -41,9 +42,9 @@ export default function MyBookings() {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <Text variant="headlineMedium" style={styles.title}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+            <View style={[styles.header, { backgroundColor: colors.surface }]}>
+                <Text variant="headlineMedium" style={[styles.title, { color: colors.primary }]}>
                     My Activity
                 </Text>
                 <SegmentedButtons
@@ -53,7 +54,7 @@ export default function MyBookings() {
                         { value: 'bookings', label: 'Bookings' },
                         { value: 'orders', label: 'Orders' },
                     ]}
-                    theme={{ colors: { secondaryContainer: COLORS.primaryLight, outline: COLORS.primary } }}
+                    theme={{ colors: { secondaryContainer: colors.primaryLight, outline: colors.primary } }}
                     style={styles.segmentedButtons}
                 />
             </View>
@@ -76,9 +77,9 @@ export default function MyBookings() {
                                         style={{
                                             color:
                                                 item.status === 'PENDING'
-                                                    ? COLORS.warning
+                                                    ? colors.warning
                                                     : item.status === 'CONFIRMED'
-                                                        ? COLORS.success
+                                                        ? colors.success
                                                         : '#d32f2f',
                                             fontWeight: 'bold',
                                         }}
@@ -104,7 +105,7 @@ export default function MyBookings() {
                                     </>
                                 )}
 
-                                <Text variant="titleMedium" style={[styles.price, { color: COLORS.primary }]}>
+                                <Text variant="titleMedium" style={[styles.price, { color: colors.primary }]}>
                                     Total: GH₵{item.totalPrice}
                                 </Text>
                             </Card.Content>
@@ -117,9 +118,9 @@ export default function MyBookings() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: COLORS.background },
-    header: { padding: 20, backgroundColor: COLORS.surface },
-    title: { marginBottom: 15, fontWeight: 'bold', color: COLORS.primary },
+    container: { flex: 1 },
+    header: { padding: 20 },
+    title: { marginBottom: 15, fontWeight: 'bold' },
     segmentedButtons: { marginTop: 5 },
     content: { padding: 20 },
     card: { marginBottom: 15 },

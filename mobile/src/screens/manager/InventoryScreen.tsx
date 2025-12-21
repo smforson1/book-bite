@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Switch, TextInput, TouchableOpacity, Alert } from 'react-native';
 import AppText from '../../components/ui/AppText';
-import { COLORS } from '../../theme';
-
-const SPACING = { xs: 4, s: 8, m: 12, l: 16, xl: 24 };
 import { useAuthStore } from '../../store/useAuthStore';
+import { useTheme } from '../../context/ThemeContext';
 import axios from 'axios';
 
 const API_URL = 'http://10.0.2.2:5000/api';
@@ -27,6 +25,8 @@ interface MenuItem {
 
 export default function InventoryScreen() {
     const { token } = useAuthStore();
+    const { colors, spacing, shadows } = useTheme();
+
     const [rooms, setRooms] = useState<Room[]>([]);
     const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
     const [loading, setLoading] = useState(true);
@@ -82,33 +82,39 @@ export default function InventoryScreen() {
 
     if (loading) {
         return (
-            <View style={styles.container}>
+            <View style={[styles.container, { backgroundColor: colors.background }]}>
                 <AppText>Loading inventory...</AppText>
             </View>
         );
     }
 
+    // Dynamic Styles
+    const cardStyle = {
+        backgroundColor: colors.surface,
+        shadowColor: shadows.medium.shadowColor,
+    };
+
     return (
-        <ScrollView style={styles.container}>
-            <View style={styles.section}>
-                <AppText variant="h2" style={styles.sectionTitle}>Rooms</AppText>
+        <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+            <View style={[styles.section, { padding: spacing.m }]}>
+                <AppText variant="h2" style={[styles.sectionTitle, { marginBottom: spacing.m }]}>Rooms</AppText>
                 {rooms.length === 0 ? (
-                    <AppText style={styles.emptyText}>No rooms found</AppText>
+                    <AppText style={{ textAlign: 'center', color: colors.textLight, marginTop: spacing.l }}>No rooms found</AppText>
                 ) : (
                     rooms.map(room => (
-                        <View key={room.id} style={styles.card}>
+                        <View key={room.id} style={[styles.card, cardStyle, { padding: spacing.m, marginBottom: spacing.s }]}>
                             <View style={styles.cardHeader}>
                                 <View>
                                     <AppText variant="h3">{room.name}</AppText>
-                                    <AppText style={styles.price}>GH₵{room.price.toString()}/night</AppText>
+                                    <AppText style={{ color: colors.primary, marginTop: spacing.xs }}>GH₵{room.price.toString()}/night</AppText>
                                 </View>
                                 <View style={styles.switchContainer}>
-                                    <AppText style={styles.label}>Available</AppText>
+                                    <AppText style={{ fontSize: 12, color: colors.textLight, marginBottom: spacing.xs }}>Available</AppText>
                                     <Switch
                                         value={room.isAvailable}
                                         onValueChange={() => toggleRoomAvailability(room.id, room.isAvailable)}
-                                        trackColor={{ false: '#ccc', true: COLORS.primary }}
-                                        thumbColor={COLORS.white}
+                                        trackColor={{ false: '#ccc', true: colors.primary }}
+                                        thumbColor={colors.white}
                                     />
                                 </View>
                             </View>
@@ -117,27 +123,27 @@ export default function InventoryScreen() {
                 )}
             </View>
 
-            <View style={styles.section}>
-                <AppText variant="h2" style={styles.sectionTitle}>Menu Items</AppText>
+            <View style={[styles.section, { padding: spacing.m }]}>
+                <AppText variant="h2" style={[styles.sectionTitle, { marginBottom: spacing.m }]}>Menu Items</AppText>
                 {menuItems.length === 0 ? (
-                    <AppText style={styles.emptyText}>No menu items found</AppText>
+                    <AppText style={{ textAlign: 'center', color: colors.textLight, marginTop: spacing.l }}>No menu items found</AppText>
                 ) : (
                     menuItems.map(item => (
-                        <View key={item.id} style={styles.card}>
+                        <View key={item.id} style={[styles.card, cardStyle, { padding: spacing.m, marginBottom: spacing.s }]}>
                             <View style={styles.cardHeader}>
                                 <View style={{ flex: 1 }}>
                                     <AppText variant="h3">{item.name}</AppText>
-                                    <AppText style={styles.category}>{item.category.name}</AppText>
-                                    <AppText style={styles.price}>GH₵{item.price.toString()}</AppText>
+                                    <AppText style={{ color: colors.textLight, fontSize: 12, marginTop: 2 }}>{item.category.name}</AppText>
+                                    <AppText style={{ color: colors.primary, marginTop: spacing.xs }}>GH₵{item.price.toString()}</AppText>
                                 </View>
                                 <View style={styles.stockContainer}>
-                                    <AppText style={styles.label}>Stock</AppText>
-                                    <View style={styles.stockControls}>
+                                    <AppText style={{ fontSize: 12, color: colors.textLight, marginBottom: spacing.xs }}>Stock</AppText>
+                                    <View style={[styles.stockControls, { gap: spacing.xs }]}>
                                         <TouchableOpacity
-                                            style={styles.stockButton}
+                                            style={[styles.stockButton, { backgroundColor: colors.primary }]}
                                             onPress={() => updateMenuItemStock(item.id, item.stock - 1)}
                                         >
-                                            <AppText style={styles.stockButtonText}>-</AppText>
+                                            <AppText style={[styles.stockButtonText, { color: colors.white }]}>-</AppText>
                                         </TouchableOpacity>
                                         <TextInput
                                             style={styles.stockInput}
@@ -149,14 +155,14 @@ export default function InventoryScreen() {
                                             }}
                                         />
                                         <TouchableOpacity
-                                            style={styles.stockButton}
+                                            style={[styles.stockButton, { backgroundColor: colors.primary }]}
                                             onPress={() => updateMenuItemStock(item.id, item.stock + 1)}
                                         >
-                                            <AppText style={styles.stockButtonText}>+</AppText>
+                                            <AppText style={[styles.stockButtonText, { color: colors.white }]}>+</AppText>
                                         </TouchableOpacity>
                                     </View>
                                     {item.stock === 0 && (
-                                        <AppText style={styles.unlimitedText}>Unlimited</AppText>
+                                        <AppText style={{ fontSize: 10, color: colors.success, marginTop: 2 }}>Unlimited</AppText>
                                     )}
                                 </View>
                             </View>
@@ -171,20 +177,15 @@ export default function InventoryScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: COLORS.background,
     },
     section: {
-        padding: SPACING.m,
+        // padding handled inline
     },
     sectionTitle: {
-        marginBottom: SPACING.m,
+        // margin handled inline
     },
     card: {
-        backgroundColor: COLORS.white,
         borderRadius: 12,
-        padding: SPACING.m,
-        marginBottom: SPACING.s,
-        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
@@ -195,33 +196,17 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
     },
-    price: {
-        color: COLORS.primary,
-        marginTop: SPACING.xs,
-    },
-    category: {
-        color: COLORS.textLight,
-        fontSize: 12,
-        marginTop: 2,
-    },
     switchContainer: {
         alignItems: 'center',
     },
     stockContainer: {
         alignItems: 'center',
     },
-    label: {
-        fontSize: 12,
-        color: COLORS.textLight,
-        marginBottom: SPACING.xs,
-    },
     stockControls: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: SPACING.xs,
     },
     stockButton: {
-        backgroundColor: COLORS.primary,
         width: 32,
         height: 32,
         borderRadius: 16,
@@ -229,27 +214,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     stockButtonText: {
-        color: COLORS.white,
         fontSize: 18,
         fontWeight: 'bold',
     },
     stockInput: {
         backgroundColor: '#f0f0f0',
         borderRadius: 8,
-        paddingHorizontal: SPACING.s,
-        paddingVertical: SPACING.xs,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
         minWidth: 50,
         textAlign: 'center',
         fontSize: 16,
-    },
-    unlimitedText: {
-        fontSize: 10,
-        color: COLORS.success,
-        marginTop: 2,
-    },
-    emptyText: {
-        textAlign: 'center',
-        color: COLORS.textLight,
-        marginTop: SPACING.l,
     },
 });

@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import AppText from '../../components/ui/AppText';
-import { COLORS } from '../../theme';
-
-const SPACING = { xs: 4, s: 8, m: 12, l: 16, xl: 24 };
 import { useAuthStore } from '../../store/useAuthStore';
+import { useBusinessStore } from '../../store/useBusinessStore';
+import { useTheme } from '../../context/ThemeContext';
 import axios from 'axios';
 
 const API_URL = 'http://10.0.2.2:5000/api';
@@ -19,6 +18,9 @@ interface Stats {
 
 export default function AnalyticsScreen() {
     const { token } = useAuthStore();
+    const { business } = useBusinessStore();
+    const { colors, spacing, shadows } = useTheme();
+
     const [stats, setStats] = useState<Stats | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -48,43 +50,56 @@ export default function AnalyticsScreen() {
 
     if (loading) {
         return (
-            <View style={styles.container}>
+            <View style={[styles.container, { backgroundColor: colors.background }]}>
                 <AppText>Loading analytics...</AppText>
             </View>
         );
     }
 
+    const isRestaurant = business?.type === 'RESTAURANT';
+
+    // Dynamic Styles Helper
+    const cardStyle = {
+        backgroundColor: colors.surface,
+        shadowColor: shadows.medium.shadowColor,
+    };
+
     return (
         <ScrollView
-            style={styles.container}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            style={[styles.container, { backgroundColor: colors.background }]}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
         >
-            <View style={styles.content}>
-                <AppText variant="h2" style={styles.title}>Business Analytics</AppText>
+            <View style={[styles.content, { padding: spacing.m }]}>
+                <AppText variant="h2" style={[styles.title, { marginBottom: spacing.l }]}>Business Analytics</AppText>
 
-                <View style={styles.card}>
-                    <AppText variant="h3" style={styles.cardTitle}>Revenue</AppText>
-                    <AppText style={styles.statValue}>GH₵{stats?.totalRevenue.toFixed(2) || '0.00'}</AppText>
-                    <AppText style={styles.statLabel}>Total Revenue</AppText>
+                <View style={[styles.card, cardStyle, { padding: spacing.l, marginBottom: spacing.m }]}>
+                    <AppText variant="h3" style={{ color: colors.textLight, marginBottom: spacing.s }}>Revenue</AppText>
+                    <AppText style={[styles.statValue, { color: colors.primary }]}>GH₵{stats?.totalRevenue.toFixed(2) || '0.00'}</AppText>
+                    <AppText style={{ color: colors.textLight, fontSize: 12 }}>Total Revenue</AppText>
                 </View>
 
-                <View style={styles.row}>
-                    <View style={[styles.card, styles.halfCard]}>
-                        <AppText variant="h3" style={styles.cardTitle}>Bookings</AppText>
-                        <AppText style={styles.statValue}>{stats?.totalBookings || 0}</AppText>
-                        <AppText style={styles.statLabel}>Total</AppText>
-                        <AppText style={styles.statSubValue}>{stats?.confirmedBookings || 0} Confirmed</AppText>
-                    </View>
+                {/* Show Bookings OR Orders based on business type */}
+                <View style={[styles.row, { marginHorizontal: -spacing.xs }]}>
+                    {!isRestaurant && (
+                        <View style={[styles.card, styles.halfCard, cardStyle, { marginHorizontal: spacing.xs }]}>
+                            <AppText variant="h3" style={{ color: colors.textLight, marginBottom: spacing.s }}>Bookings</AppText>
+                            <AppText style={[styles.statValue, { color: colors.primary }]}>{stats?.totalBookings || 0}</AppText>
+                            <AppText style={{ color: colors.textLight, fontSize: 12 }}>Total</AppText>
+                            <AppText style={{ color: colors.success, fontSize: 14, marginTop: spacing.xs }}>{stats?.confirmedBookings || 0} Confirmed</AppText>
+                        </View>
+                    )}
 
-                    <View style={[styles.card, styles.halfCard]}>
-                        <AppText variant="h3" style={styles.cardTitle}>Orders</AppText>
-                        <AppText style={styles.statValue}>{stats?.totalOrders || 0}</AppText>
-                        <AppText style={styles.statLabel}>Total</AppText>
-                        <AppText style={styles.statSubValue}>{stats?.completedOrders || 0} Completed</AppText>
-                    </View>
+                    {isRestaurant && (
+                        <View style={[styles.card, styles.halfCard, cardStyle, { marginHorizontal: spacing.xs }]}>
+                            <AppText variant="h3" style={{ color: colors.textLight, marginBottom: spacing.s }}>Orders</AppText>
+                            <AppText style={[styles.statValue, { color: colors.primary }]}>{stats?.totalOrders || 0}</AppText>
+                            <AppText style={{ color: colors.textLight, fontSize: 12 }}>Total</AppText>
+                            <AppText style={{ color: colors.success, fontSize: 14, marginTop: spacing.xs }}>{stats?.completedOrders || 0} Completed</AppText>
+                        </View>
+                    )}
                 </View>
 
-                <AppText style={styles.note}>
+                <AppText style={{ textAlign: 'center', color: colors.textLight, fontSize: 12, marginTop: spacing.m }}>
                     Pull down to refresh analytics data
                 </AppText>
             </View>
@@ -95,20 +110,15 @@ export default function AnalyticsScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: COLORS.background,
     },
     content: {
-        padding: SPACING.m,
+        // padding handled inline
     },
     title: {
-        marginBottom: SPACING.l,
+        // margin handled inline
     },
     card: {
-        backgroundColor: COLORS.white,
         borderRadius: 12,
-        padding: SPACING.l,
-        marginBottom: SPACING.m,
-        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
@@ -116,35 +126,13 @@ const styles = StyleSheet.create({
     },
     halfCard: {
         flex: 1,
-        marginHorizontal: SPACING.xs,
     },
     row: {
         flexDirection: 'row',
-        marginHorizontal: -SPACING.xs,
-    },
-    cardTitle: {
-        color: COLORS.textLight,
-        marginBottom: SPACING.s,
     },
     statValue: {
         fontSize: 32,
         fontWeight: 'bold',
-        color: COLORS.primary,
-        marginBottom: SPACING.xs,
-    },
-    statLabel: {
-        color: COLORS.textLight,
-        fontSize: 12,
-    },
-    statSubValue: {
-        color: COLORS.success,
-        fontSize: 14,
-        marginTop: SPACING.xs,
-    },
-    note: {
-        textAlign: 'center',
-        color: COLORS.textLight,
-        fontSize: 12,
-        marginTop: SPACING.m,
+        marginBottom: 4,
     },
 });

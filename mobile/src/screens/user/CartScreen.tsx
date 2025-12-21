@@ -12,6 +12,39 @@ export default function CartScreen({ navigation }: any) {
     const { items, removeItem, getTotalPrice, clearCart } = useCartStore();
     const total = getTotalPrice();
 
+    const handleCheckout = (item: any) => {
+        const partialBusiness = {
+            id: item.businessId,
+            name: item.businessName,
+            // We might lack other business details like address/image here, 
+            // but the checkout screens usually just need ID/Name for creating order/booking.
+            // If they need more, we might need to fetch it or store more in cart.
+            // BookingCheckout uses: business.name.
+            // OrderCheckout uses: business.name, business.deliveryFee (might be missing).
+        };
+
+        if (item.type === 'ROOM') {
+            // Reconstruct room object
+            const room = {
+                id: item.id,
+                name: item.name,
+                price: item.price,
+                // capacity, images etc specific to room are missing but maybe not strictly needed for checkout creation API call?
+                // The Checkout screen might display them though. 
+                // Let's hope the minimal data is enough or we might need to fetch.
+                // Actually BookingCheckout usually expects a full room object.
+                // But let's try passing what we have.
+            };
+            navigation.navigate('BookingCheckout', { room, business: partialBusiness });
+        } else {
+            // Assume MENU_ITEM or default
+            navigation.navigate('OrderCheckout', {
+                cart: [item], // Checkout only this item (or group? user said "each item")
+                business: partialBusiness
+            });
+        }
+    };
+
     const renderItem = ({ item }: { item: any }) => (
         <AppCard style={styles.card}>
             <View style={styles.row}>
@@ -28,6 +61,15 @@ export default function CartScreen({ navigation }: any) {
                     icon="delete-outline"
                     iconColor={COLORS.error}
                     onPress={() => removeItem(item.id)}
+                />
+            </View>
+
+            <View style={styles.actionRow}>
+                <AppButton
+                    title="Checkout"
+                    variant="primary"
+                    onPress={() => handleCheckout(item)}
+                    style={{ marginTop: SPACING.xs, paddingHorizontal: 10, paddingVertical: 4 }}
                 />
             </View>
         </AppCard>
@@ -66,26 +108,16 @@ export default function CartScreen({ navigation }: any) {
                     contentContainerStyle={{ paddingBottom: 100 }}
                 />
 
+                {/* Global Footer removed as requested to do per-item checkout */}
                 {items.length > 0 && (
-                    <View style={styles.footer}>
+                    <View style={styles.footerInfo}>
+                        <AppText variant="caption" color={COLORS.textLight} center>
+                            Checkout each item individually above.
+                        </AppText>
                         <View style={styles.totalRow}>
-                            <AppText variant="h3">Total</AppText>
+                            <AppText variant="h3">Total Value: </AppText>
                             <AppText variant="h2" color={COLORS.primary}>GH₵{total}</AppText>
                         </View>
-                        <AppButton
-                            title="Checkout"
-                            onPress={() => {
-                                if (items.length > 0) {
-                                    // Groups items by business for single checkout or just pass all
-                                    // For now, checkout handles one business at a time usually, 
-                                    // but we can pass the whole cart.
-                                    navigation.navigate('OrderCheckout', {
-                                        cart: items,
-                                        business: { id: items[0].businessId, name: items[0].businessName }
-                                    });
-                                }
-                            }}
-                        />
                     </View>
                 )}
             </View>
@@ -98,21 +130,22 @@ const styles = StyleSheet.create({
     content: { flex: 1, padding: SPACING.m },
     card: { marginBottom: SPACING.m },
     row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    actionRow: { marginTop: SPACING.s, alignItems: 'flex-end' },
     empty: { alignItems: 'center', justifyContent: 'center', marginTop: 100 },
-    footer: {
+    footerInfo: {
         position: 'absolute',
-        bottom: 100, // Lifted to clear CustomTabBar (85px)
+        bottom: 20,
         left: SPACING.m,
         right: SPACING.m,
         backgroundColor: COLORS.surface,
         padding: SPACING.m,
         borderRadius: SIZES.radius.l,
         ...SHADOWS.medium,
+        alignItems: 'center'
     },
     totalRow: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: SPACING.m,
-    },
+        marginTop: SPACING.xs
+    }
 });

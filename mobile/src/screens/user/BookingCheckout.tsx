@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Text, TextInput, Button, Card, Divider } from 'react-native-paper';
+import { Text, TextInput, Button, Card, Divider, RadioButton } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuthStore } from '../../store/useAuthStore';
-import { COLORS } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 // @ts-ignore
 // import { usePaystack } from 'react-native-paystack-webview';
 import PaymentWebView from '../../components/ui/PaymentWebView';
@@ -20,6 +20,7 @@ export default function BookingCheckout({ route, navigation }: any) {
     const [loading, setLoading] = useState(false);
     const [showCheckIn, setShowCheckIn] = useState(false);
     const [showCheckOut, setShowCheckOut] = useState(false);
+    const [paymentOption, setPaymentOption] = useState<'FULL' | 'DEPOSIT'>('FULL');
 
     // Payment State
     const [currentBookingId, setCurrentBookingId] = useState<string | null>(null);
@@ -28,9 +29,12 @@ export default function BookingCheckout({ route, navigation }: any) {
     const [currentReference, setCurrentReference] = useState('');
 
     const { token, user } = useAuthStore((state) => state);
+    const { colors } = useTheme();
 
     const nights = Math.max(1, Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 3600 * 24)));
     const total = nights * room.price;
+    const depositAmount = total * 0.20;
+    const amountToPay = paymentOption === 'FULL' ? total : depositAmount;
 
     const handlePaymentSuccess = async (res: any) => {
         const reference = res.reference || currentReference;
@@ -91,7 +95,7 @@ export default function BookingCheckout({ route, navigation }: any) {
             // 2. Trigger Payment
             const payRes = await axios.post(`${API_URL}/payment/initialize`, {
                 email: user?.email || 'guest@example.com',
-                amount: total,
+                amount: amountToPay,
                 metadata: {
                     purpose: 'BOOKING',
                     bookingId: booking.id,
@@ -129,7 +133,7 @@ export default function BookingCheckout({ route, navigation }: any) {
                 </Card>
 
                 <View style={styles.form}>
-                    <Button mode="outlined" onPress={() => setShowCheckIn(true)} style={styles.input} textColor={COLORS.primary}>
+                    <Button mode="outlined" onPress={() => setShowCheckIn(true)} style={styles.input} textColor={colors.primary}>
                         Check-in: {checkIn.toLocaleDateString()}
                     </Button>
                     {showCheckIn && (
@@ -144,7 +148,7 @@ export default function BookingCheckout({ route, navigation }: any) {
                         />
                     )}
 
-                    <Button mode="outlined" onPress={() => setShowCheckOut(true)} style={styles.input} textColor={COLORS.primary}>
+                    <Button mode="outlined" onPress={() => setShowCheckOut(true)} style={styles.input} textColor={colors.primary}>
                         Check-out: {checkOut.toLocaleDateString()}
                     </Button>
                     {showCheckOut && (
@@ -181,13 +185,36 @@ export default function BookingCheckout({ route, navigation }: any) {
                     </View>
                     <View style={[styles.summaryRow, styles.totalRow]}>
                         <Text variant="titleMedium">Total</Text>
-                        <Text variant="titleMedium">GH₵{total}</Text>
+                        <Text variant="titleMedium">GH₵{total.toFixed(2)}</Text>
+                    </View>
+
+                    <Divider style={{ marginVertical: 10 }} />
+
+                    <Text variant="titleMedium" style={{ marginBottom: 10 }}>Payment Option</Text>
+                    <RadioButton.Group onValueChange={value => setPaymentOption(value as 'FULL' | 'DEPOSIT')} value={paymentOption}>
+                        <View style={styles.radioRow}>
+                            <RadioButton value="FULL" color={colors.primary} />
+                            <Text onPress={() => setPaymentOption('FULL')}>Pay Full Amount (GH₵{total.toFixed(2)})</Text>
+                        </View>
+                        <View style={styles.radioRow}>
+                            <RadioButton value="DEPOSIT" color={colors.primary} />
+                            <Text onPress={() => setPaymentOption('DEPOSIT')}>Pay 20% Deposit (GH₵{depositAmount.toFixed(2)})</Text>
+                        </View>
+                    </RadioButton.Group>
+
+                    <View style={[styles.summaryRow, styles.totalRow]}>
+                        <Text variant="titleLarge" style={{ fontWeight: 'bold', color: colors.primary }}>
+                            Pay Now:
+                        </Text>
+                        <Text variant="titleLarge" style={{ fontWeight: 'bold', color: colors.primary }}>
+                            GH₵{amountToPay.toFixed(2)}
+                        </Text>
                     </View>
 
                     <Button
                         mode="contained"
                         onPress={handleBooking}
-                        style={[styles.button, { backgroundColor: COLORS.primary }]}
+                        style={[styles.button, { backgroundColor: colors.primary }]}
                         loading={loading}
                         disabled={loading}
                     >
@@ -225,4 +252,5 @@ const styles = StyleSheet.create({
     summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
     totalRow: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#eee' },
     button: { marginTop: 20, paddingVertical: 5 },
+    radioRow: { flexDirection: 'row', alignItems: 'center' },
 });

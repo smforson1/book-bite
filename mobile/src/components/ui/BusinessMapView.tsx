@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
-import { COLORS } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 interface BusinessMapViewProps {
     businesses?: Array<{
@@ -28,6 +28,7 @@ export default function BusinessMapView({
     height = 300,
     onMarkerPress
 }: BusinessMapViewProps) {
+    const { colors } = useTheme();
     const [region, setRegion] = useState({
         latitude: 5.6037,  // Default to Accra, Ghana
         longitude: -0.1870,
@@ -63,9 +64,9 @@ export default function BusinessMapView({
                 return '#1976D2'; // Blue
             case 'RESTAURANT':
             case 'CAFE':
-                return COLORS.primary; // Burnt Orange
+                return colors.primary; // Burnt Orange
             default:
-                return COLORS.primary;
+                return colors.primary;
         }
     };
 
@@ -90,7 +91,7 @@ export default function BusinessMapView({
                             longitude: singleLocation.longitude,
                         }}
                         title={singleLocation.name}
-                        pinColor={COLORS.primary}
+                        pinColor={colors.primary}
                     />
                 )}
 

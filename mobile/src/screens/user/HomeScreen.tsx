@@ -4,7 +4,8 @@ import { IconButton } from 'react-native-paper';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useFavoriteStore } from '../../store/useFavoriteStore';
 import axios from 'axios';
-import { COLORS, SPACING, SIZES, FONTS, SHADOWS } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
+import { SPACING, SIZES, FONTS, SHADOWS } from '../../theme';
 import AppText from '../../components/ui/AppText';
 import AppCard from '../../components/ui/AppCard';
 import CustomHeader from '../../components/navigation/CustomHeader';
@@ -21,6 +22,7 @@ export default function HomeScreen({ navigation }: any) {
 
     const { user, token } = useAuthStore((state: any) => state);
     const { favorites, fetchFavorites, toggleFavorite, isFavorite } = useFavoriteStore();
+    const { colors } = useTheme();
 
     const fetchBusinesses = async () => {
         try {
@@ -59,7 +61,7 @@ export default function HomeScreen({ navigation }: any) {
             <AppCard
                 onPress={() => setSelectedType(type)}
                 style={{
-                    backgroundColor: isSelected ? COLORS.primary : COLORS.white,
+                    backgroundColor: isSelected ? colors.primary : colors.white,
                     marginRight: SPACING.s,
                     paddingVertical: SPACING.s,
                     paddingHorizontal: SPACING.m,
@@ -68,7 +70,7 @@ export default function HomeScreen({ navigation }: any) {
             >
                 <AppText
                     variant="label"
-                    color={isSelected ? COLORS.white : COLORS.text}
+                    color={isSelected ? colors.white : colors.text}
                 >
                     {label}
                 </AppText>
@@ -77,16 +79,16 @@ export default function HomeScreen({ navigation }: any) {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
             <CustomHeader
                 title={`Hello, ${user?.name?.split(' ')[0] || 'Guest'} 👋`}
                 rightAction={
                     <View style={{ flexDirection: 'row' }}>
-                        <IconButton icon="bell-outline" size={24} iconColor={COLORS.text} onPress={() => { }} />
+                        <IconButton icon="bell-outline" size={24} iconColor={colors.text} onPress={() => { }} />
                         <IconButton
                             icon="account-circle-outline"
                             size={24}
-                            iconColor={COLORS.text}
+                            iconColor={colors.text}
                             onPress={() => navigation.navigate('Profile')}
                         />
                     </View>
@@ -95,14 +97,14 @@ export default function HomeScreen({ navigation }: any) {
 
             <ScrollView
                 contentContainerStyle={styles.content}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
             >
-                <View style={styles.searchContainer}>
-                    <IconButton icon="magnify" size={20} iconColor={COLORS.textLight} />
+                <View style={[styles.searchContainer, { backgroundColor: colors.white }]}>
+                    <IconButton icon="magnify" size={20} iconColor={colors.textLight} />
                     <TextInput
                         placeholder="Find your next bite..."
-                        placeholderTextColor={COLORS.textLight}
-                        style={styles.searchInput}
+                        placeholderTextColor={colors.textLight}
+                        style={[styles.searchInput, { color: colors.text }]}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                     />
@@ -130,7 +132,7 @@ export default function HomeScreen({ navigation }: any) {
                         </>
                     ) : filteredBusinesses.length === 0 ? (
                         <View style={styles.emptyState}>
-                            <AppText variant="body" color={COLORS.textLight} center>
+                            <AppText variant="body" color={colors.textLight} center>
                                 No businesses found
                             </AppText>
                         </View>
@@ -148,13 +150,13 @@ export default function HomeScreen({ navigation }: any) {
                                     imageStyle={{ borderTopLeftRadius: SIZES.radius.l, borderTopRightRadius: SIZES.radius.l }}
                                 >
                                     <View style={styles.badge}>
-                                        <AppText variant="caption" color={COLORS.white} bold>
+                                        <AppText variant="caption" color={colors.white} bold>
                                             {business.type}
                                         </AppText>
                                     </View>
                                     <IconButton
                                         icon={isFavorite(business.id) ? 'heart' : 'heart-outline'}
-                                        iconColor={isFavorite(business.id) ? COLORS.primary : COLORS.white}
+                                        iconColor={isFavorite(business.id) ? colors.primary : colors.white}
                                         size={24}
                                         style={styles.favoriteIcon}
                                         onPress={() => token && toggleFavorite(business.id, token)}
@@ -164,20 +166,20 @@ export default function HomeScreen({ navigation }: any) {
                                 <View style={styles.cardContent}>
                                     <View style={styles.row}>
                                         <AppText variant="h3" style={{ flex: 1 }}>{business.name}</AppText>
-                                        <View style={styles.rating}>
+                                        <View style={[styles.rating, { backgroundColor: colors.background }]}>
                                             <IconButton icon="star" size={14} iconColor="#FFD700" style={{ margin: 0 }} />
                                             <AppText variant="caption" bold>4.8</AppText>
                                         </View>
                                     </View>
 
                                     <View style={styles.row}>
-                                        <IconButton icon="map-marker-outline" size={16} iconColor={COLORS.textLight} style={{ marginLeft: -4, margin: 0 }} />
-                                        <AppText variant="caption" color={COLORS.textLight} style={{ flex: 1 }}>
+                                        <IconButton icon="map-marker-outline" size={16} iconColor={colors.textLight} style={{ marginLeft: -4, margin: 0 }} />
+                                        <AppText variant="caption" color={colors.textLight} style={{ flex: 1 }}>
                                             {business.address}
                                         </AppText>
                                     </View>
 
-                                    <AppText variant="body" numberOfLines={2} color={COLORS.textLight} style={styles.description}>
+                                    <AppText variant="body" numberOfLines={2} color={colors.textLight} style={styles.description}>
                                         {business.description || 'Experience the best quality food and service in town.'}
                                     </AppText>
                                 </View>
@@ -195,7 +197,6 @@ export default function HomeScreen({ navigation }: any) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: COLORS.background
     },
     content: {
         padding: SPACING.m
@@ -203,7 +204,6 @@ const styles = StyleSheet.create({
     searchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: COLORS.white,
         borderRadius: SIZES.radius.l,
         paddingHorizontal: SPACING.s,
         marginBottom: SPACING.m,
@@ -214,7 +214,6 @@ const styles = StyleSheet.create({
         flex: 1,
         fontFamily: FONTS.regular,
         fontSize: 16,
-        color: COLORS.text,
     },
     filters: {
         marginBottom: SPACING.l,
@@ -264,7 +263,6 @@ const styles = StyleSheet.create({
     rating: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: COLORS.background,
         paddingHorizontal: SPACING.s,
         borderRadius: SIZES.radius.s,
     },

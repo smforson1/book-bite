@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { IconButton } from 'react-native-paper';
-import { COLORS } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 interface RatingStarsProps {
     rating: number;
@@ -16,6 +16,7 @@ export default function RatingStars({
     size = 20,
     readonly = false
 }: RatingStarsProps) {
+    const { colors } = useTheme();
     const stars = [1, 2, 3, 4, 5];
 
     const handlePress = (value: number) => {
@@ -35,7 +36,7 @@ export default function RatingStars({
                 >
                     <IconButton
                         icon={star <= rating ? 'star' : 'star-outline'}
-                        iconColor={star <= rating ? '#FFD700' : COLORS.border}
+                        iconColor={star <= rating ? '#FFD700' : colors.border}
                         size={size}
                         style={{ margin: 0 }}
                     />

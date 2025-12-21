@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { View, StyleSheet, FlatList, Image, Dimensions, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
-import { COLORS } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -17,6 +17,7 @@ export default function ImageCarousel({
     width = SCREEN_WIDTH,
     borderRadius = 0
 }: ImageCarouselProps) {
+    const { colors } = useTheme();
     const [activeIndex, setActiveIndex] = useState(0);
     const flatListRef = useRef<FlatList>(null);
 
@@ -58,7 +59,7 @@ export default function ImageCarousel({
                             key={index}
                             style={[
                                 styles.dot,
-                                { backgroundColor: index === activeIndex ? COLORS.primary : 'rgba(255,255,255,0.5)' }
+                                { backgroundColor: index === activeIndex ? colors.primary : 'rgba(255,255,255,0.5)' }
                             ]}
                         />
                     ))}

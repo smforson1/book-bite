@@ -185,7 +185,11 @@ export const payWithWallet = async (req: AuthRequest, res: Response): Promise<vo
             if (purpose === 'BOOKING' && metadata.bookingId) {
                 await tx.booking.update({
                     where: { id: metadata.bookingId },
-                    data: { status: 'CONFIRMED', paymentId: payment.id }
+                    data: {
+                        status: 'CONFIRMED',
+                        payments: { connect: { id: payment.id } },
+                        paidAmount: { increment: amount }
+                    }
                 });
             } else if (purpose === 'ORDER' && metadata.orderId) {
                 await tx.order.update({

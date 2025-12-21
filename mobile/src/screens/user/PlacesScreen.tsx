@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl, ImageBackground } from 'react-native';
 import { IconButton } from 'react-native-paper';
 import axios from 'axios';
-import { COLORS, SPACING, SIZES, SHADOWS } from '../../theme';
+import { SPACING, SIZES, SHADOWS } from '../../theme';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useTheme } from '../../context/ThemeContext';
 import { useFavoriteStore } from '../../store/useFavoriteStore';
 import AppText from '../../components/ui/AppText';
 import AppCard from '../../components/ui/AppCard';
@@ -20,6 +21,7 @@ export default function PlacesScreen({ navigation }: any) {
     const [viewMode, setViewMode] = useState('Restaurants'); // Options: Restaurants, Hotels
     const token = useAuthStore((state) => state.token);
     const { favorites, fetchFavorites, toggleFavorite, isFavorite } = useFavoriteStore();
+    const { colors } = useTheme();
 
     const fetchBusinesses = async () => {
         try {
@@ -63,13 +65,13 @@ export default function PlacesScreen({ navigation }: any) {
                 imageStyle={{ borderTopLeftRadius: SIZES.radius.l, borderTopRightRadius: SIZES.radius.l }}
             >
                 <View style={styles.badge}>
-                    <AppText variant="caption" color={COLORS.white} bold>
+                    <AppText variant="caption" color={colors.white} bold>
                         {item.type}
                     </AppText>
                 </View>
                 <IconButton
                     icon={isFavorite(item.id) ? 'heart' : 'heart-outline'}
-                    iconColor={isFavorite(item.id) ? COLORS.primary : COLORS.white}
+                    iconColor={isFavorite(item.id) ? colors.primary : colors.white}
                     size={24}
                     style={styles.favoriteIcon}
                     onPress={() => token && toggleFavorite(item.id, token)}
@@ -79,15 +81,15 @@ export default function PlacesScreen({ navigation }: any) {
             <View style={styles.cardContent}>
                 <View style={styles.row}>
                     <AppText variant="h3" style={{ flex: 1 }}>{item.name}</AppText>
-                    <View style={styles.rating}>
+                    <View style={[styles.rating, { backgroundColor: colors.background }]}>
                         <IconButton icon="star" size={14} iconColor="#FFD700" style={{ margin: 0 }} />
                         <AppText variant="caption" bold>4.8</AppText>
                     </View>
                 </View>
 
                 <View style={styles.row}>
-                    <IconButton icon="map-marker-outline" size={16} iconColor={COLORS.textLight} style={{ marginLeft: -4, margin: 0 }} />
-                    <AppText variant="caption" color={COLORS.textLight} style={{ flex: 1 }}>
+                    <IconButton icon="map-marker-outline" size={16} iconColor={colors.textLight} style={{ marginLeft: -4, margin: 0 }} />
+                    <AppText variant="caption" color={colors.textLight} style={{ flex: 1 }}>
                         {item.address}
                     </AppText>
                 </View>
@@ -96,7 +98,7 @@ export default function PlacesScreen({ navigation }: any) {
     );
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
             <CustomHeader title="Places" />
 
             <View style={styles.content}>
@@ -110,7 +112,7 @@ export default function PlacesScreen({ navigation }: any) {
                     data={loading ? [] : filteredBusinesses}
                     renderItem={renderItem}
                     keyExtractor={item => item.id}
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
                     contentContainerStyle={{ paddingBottom: 100 }} // Clear CustomTabBar
                     ListEmptyComponent={
                         loading ? (
@@ -122,7 +124,7 @@ export default function PlacesScreen({ navigation }: any) {
                             </>
                         ) : (
                             <View style={styles.empty}>
-                                <AppText variant="body" color={COLORS.textLight} center>
+                                <AppText variant="body" color={colors.textLight} center>
                                     No {viewMode.toLowerCase()} found.
                                 </AppText>
                             </View>
@@ -135,7 +137,7 @@ export default function PlacesScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: COLORS.background },
+    container: { flex: 1 },
     content: { flex: 1, paddingHorizontal: SPACING.m },
     card: { marginBottom: SPACING.l, ...SHADOWS.medium },
     cardImage: {
@@ -156,7 +158,6 @@ const styles = StyleSheet.create({
     rating: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: COLORS.background,
         paddingHorizontal: SPACING.s,
         borderRadius: SIZES.radius.s,
     },

@@ -39,6 +39,7 @@ export const createBooking = async (req: AuthRequest, res: Response): Promise<vo
                 guests,
                 totalPrice: Number(room.price) * nights, // Correct calculation
                 status: 'PENDING',
+                paidAmount: 0,
             },
             include: {
                 room: true,
@@ -119,7 +120,7 @@ export const getManagerBookings = async (req: AuthRequest, res: Response): Promi
             include: {
                 user: { select: { name: true, email: true, phone: true } },
                 room: true,
-                payment: true
+                payments: true
             },
             orderBy: { createdAt: 'desc' },
         });

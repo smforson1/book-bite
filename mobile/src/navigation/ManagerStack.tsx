@@ -8,6 +8,11 @@ import OrderDetail from '../screens/manager/OrderDetail';
 import ProfileScreen from '../screens/user/ProfileScreen';
 
 
+import ManagerMoreScreen from '../screens/manager/ManagerMoreScreen';
+import InventoryScreen from '../screens/manager/InventoryScreen';
+import AnalyticsScreen from '../screens/manager/AnalyticsScreen';
+import ManagerWallet from '../screens/manager/ManagerWallet';
+
 const Stack = createNativeStackNavigator();
 
 export default function ManagerStack() {
@@ -40,6 +45,11 @@ export default function ManagerStack() {
             />
             <Stack.Screen name="OrderDetail" component={OrderDetail} options={{ title: 'Order Details' }} />
             <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
+
+            {/* Screens accessed via More Tab */}
+            <Stack.Screen name="Inventory" component={InventoryScreen} options={{ title: 'Inventory' }} />
+            <Stack.Screen name="Analytics" component={AnalyticsScreen} options={{ title: 'Analytics' }} />
+            <Stack.Screen name="Wallet" component={ManagerWallet} options={{ title: 'My Wallet' }} />
         </Stack.Navigator>
     );
 }

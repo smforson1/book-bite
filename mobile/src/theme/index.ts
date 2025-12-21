@@ -30,6 +30,26 @@ export const ManagerTheme = {
     border: '#CFD8DC',
 };
 
+export const DarkColors = {
+    primary: '#FF8A50', // Lighter burnt orange for dark mode
+    primaryLight: '#FFCC80',
+    primaryDark: '#E65100',
+    secondary: '#B0BEC5', // Light grey for dark backgrounds
+    background: '#121212', // True dark background
+    surface: '#1E1E1E', // Slightly lighter surface
+    card: '#2C2C2C', // Card background
+    text: '#FFFFFF', // White text
+    textLight: '#B3B3B3', // Light grey text
+    white: '#FFFFFF',
+    error: '#EF5350', // Brighter red for dark mode
+    success: '#66BB6A', // Brighter green for dark mode
+    warning: '#FFA726', // Brighter orange for dark mode
+    border: '#3A3A3A', // Dark border
+    divider: '#2A2A2A', // Subtle divider
+};
+
+export const LightColors = UserTheme; // Alias for clarity
+
 export const COLORS = UserTheme; // Default backward compatibility for now
 
 export const SPACING = {
