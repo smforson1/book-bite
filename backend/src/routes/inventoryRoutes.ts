@@ -5,7 +5,6 @@ import {
     updateMenuItemStock,
     getBusinessInventory,
     getLowStockItems,
-    getInventoryLogs,
 } from '../controllers/inventoryController';
 
 const router = express.Router();
@@ -24,8 +23,5 @@ router.put('/room/:roomId/availability', ...managerAuth, updateRoomAvailability)
 
 // Update menu item stock
 router.put('/menu-item/:menuItemId/stock', ...managerAuth, updateMenuItemStock);
-
-// Get inventory logs for a menu item
-router.get('/menu-item/:menuItemId/logs', ...managerAuth, getInventoryLogs);
 
 export default router;

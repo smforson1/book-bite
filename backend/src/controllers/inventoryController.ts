@@ -40,7 +40,7 @@ export const updateRoomAvailability = async (req: AuthRequest, res: Response): P
 export const updateMenuItemStock = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { menuItemId } = req.params;
-        const { stock, reason } = req.body;
+        const { stock } = req.body;
         const userId = req.user.userId;
 
         // Verify manager owns this menu item's business
@@ -54,23 +54,11 @@ export const updateMenuItemStock = async (req: AuthRequest, res: Response): Prom
             return;
         }
 
-        const currentStock = menuItem.stock;
-        const change = stock - currentStock;
-
-        // Update stock and create log
-        const [updatedMenuItem] = await prisma.$transaction([
-            prisma.menuItem.update({
-                where: { id: menuItemId },
-                data: { stock },
-            }),
-            prisma.inventoryLog.create({
-                data: {
-                    menuItemId,
-                    change,
-                    reason: reason || `Stock updated from ${currentStock} to ${stock}`,
-                },
-            }),
-        ]);
+        // Update stock
+        const updatedMenuItem = await prisma.menuItem.update({
+            where: { id: menuItemId },
+            data: { stock },
+        });
 
         res.status(200).json(updatedMenuItem);
     } catch (error) {
@@ -154,34 +142,5 @@ export const getLowStockItems = async (req: AuthRequest, res: Response): Promise
         res.status(200).json(lowStockItems);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching low stock items', error });
-    }
-};
-
-// Get Inventory Logs
-export const getInventoryLogs = async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-        const { menuItemId } = req.params;
-        const userId = req.user.userId;
-
-        // Verify manager owns this menu item
-        const menuItem = await prisma.menuItem.findUnique({
-            where: { id: menuItemId },
-            include: { category: { include: { business: { include: { manager: true } } } } },
-        });
-
-        if (!menuItem || menuItem.category.business.manager?.userId !== userId) {
-            res.status(403).json({ message: 'Unauthorized' });
-            return;
-        }
-
-        const logs = await prisma.inventoryLog.findMany({
-            where: { menuItemId },
-            orderBy: { timestamp: 'desc' },
-            take: 50,
-        });
-
-        res.status(200).json(logs);
-    } catch (error) {
-        res.status(500).json({ message: 'Error fetching inventory logs', error });
     }
 };
