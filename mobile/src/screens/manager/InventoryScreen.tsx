@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Switch, TextInput, TouchableOpacity, Alert } from 'react-native';
-import { AppText } from '../../components/ui/AppText';
-import { COLORS, SPACING } from '../../theme';
+import AppText from '../../components/ui/AppText';
+import { COLORS } from '../../theme';
+
+const SPACING = { xs: 4, s: 8, m: 12, l: 16, xl: 24 };
 import { useAuthStore } from '../../store/useAuthStore';
 import axios from 'axios';
 
@@ -105,7 +107,7 @@ export default function InventoryScreen() {
                                     <Switch
                                         value={room.isAvailable}
                                         onValueChange={() => toggleRoomAvailability(room.id, room.isAvailable)}
-                                        trackColor={{ false: COLORS.gray, true: COLORS.primary }}
+                                        trackColor={{ false: '#ccc', true: COLORS.primary }}
                                         thumbColor={COLORS.white}
                                     />
                                 </View>
@@ -172,16 +174,16 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.background,
     },
     section: {
-        padding: SPACING.md,
+        padding: SPACING.m,
     },
     sectionTitle: {
-        marginBottom: SPACING.md,
+        marginBottom: SPACING.m,
     },
     card: {
         backgroundColor: COLORS.white,
         borderRadius: 12,
-        padding: SPACING.md,
-        marginBottom: SPACING.sm,
+        padding: SPACING.m,
+        marginBottom: SPACING.s,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
@@ -198,7 +200,7 @@ const styles = StyleSheet.create({
         marginTop: SPACING.xs,
     },
     category: {
-        color: COLORS.textSecondary,
+        color: COLORS.textLight,
         fontSize: 12,
         marginTop: 2,
     },
@@ -210,7 +212,7 @@ const styles = StyleSheet.create({
     },
     label: {
         fontSize: 12,
-        color: COLORS.textSecondary,
+        color: COLORS.textLight,
         marginBottom: SPACING.xs,
     },
     stockControls: {
@@ -232,9 +234,9 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
     stockInput: {
-        backgroundColor: COLORS.lightGray,
+        backgroundColor: '#f0f0f0',
         borderRadius: 8,
-        paddingHorizontal: SPACING.sm,
+        paddingHorizontal: SPACING.s,
         paddingVertical: SPACING.xs,
         minWidth: 50,
         textAlign: 'center',
@@ -247,7 +249,7 @@ const styles = StyleSheet.create({
     },
     emptyText: {
         textAlign: 'center',
-        color: COLORS.textSecondary,
-        marginTop: SPACING.lg,
+        color: COLORS.textLight,
+        marginTop: SPACING.l,
     },
 });

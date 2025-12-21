@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
-import { AppText } from '../../components/ui/AppText';
-import { COLORS, SPACING } from '../../theme';
+import AppText from '../../components/ui/AppText';
+import { COLORS } from '../../theme';
+
+const SPACING = { xs: 4, s: 8, m: 12, l: 16, xl: 24 };
 import { useAuthStore } from '../../store/useAuthStore';
 import axios from 'axios';
 
@@ -96,16 +98,16 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.background,
     },
     content: {
-        padding: SPACING.md,
+        padding: SPACING.m,
     },
     title: {
-        marginBottom: SPACING.lg,
+        marginBottom: SPACING.l,
     },
     card: {
         backgroundColor: COLORS.white,
         borderRadius: 12,
-        padding: SPACING.lg,
-        marginBottom: SPACING.md,
+        padding: SPACING.l,
+        marginBottom: SPACING.m,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
@@ -121,8 +123,8 @@ const styles = StyleSheet.create({
         marginHorizontal: -SPACING.xs,
     },
     cardTitle: {
-        color: COLORS.textSecondary,
-        marginBottom: SPACING.sm,
+        color: COLORS.textLight,
+        marginBottom: SPACING.s,
     },
     statValue: {
         fontSize: 32,
@@ -131,7 +133,7 @@ const styles = StyleSheet.create({
         marginBottom: SPACING.xs,
     },
     statLabel: {
-        color: COLORS.textSecondary,
+        color: COLORS.textLight,
         fontSize: 12,
     },
     statSubValue: {
@@ -141,8 +143,8 @@ const styles = StyleSheet.create({
     },
     note: {
         textAlign: 'center',
-        color: COLORS.textSecondary,
+        color: COLORS.textLight,
         fontSize: 12,
-        marginTop: SPACING.md,
+        marginTop: SPACING.m,
     },
 });
