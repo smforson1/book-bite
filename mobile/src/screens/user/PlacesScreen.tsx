@@ -50,7 +50,7 @@ export default function PlacesScreen({ navigation }: any) {
             noPadding
         >
             <ImageBackground
-                source={{ uri: 'https://picsum.photos/700' }}
+                source={{ uri: item.images?.[0] || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1000' }}
                 style={styles.cardImage}
                 imageStyle={{ borderTopLeftRadius: SIZES.radius.l, borderTopRightRadius: SIZES.radius.l }}
             >
@@ -96,7 +96,7 @@ export default function PlacesScreen({ navigation }: any) {
                     renderItem={renderItem}
                     keyExtractor={item => item.id}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
-                    contentContainerStyle={{ paddingBottom: 20 }}
+                    contentContainerStyle={{ paddingBottom: 100 }} // Clear CustomTabBar
                     ListEmptyComponent={
                         <View style={styles.empty}>
                             <AppText variant="body" color={COLORS.textLight} center>

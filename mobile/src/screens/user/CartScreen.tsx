@@ -2,7 +2,7 @@ import React from 'react';
 import { View, StyleSheet, FlatList } from 'react-native';
 import { IconButton } from 'react-native-paper';
 import { useCartStore } from '../../store/useCartStore';
-import { COLORS, SPACING, SIZES } from '../../theme';
+import { COLORS, SPACING, SIZES, SHADOWS } from '../../theme';
 import AppText from '../../components/ui/AppText';
 import AppCard from '../../components/ui/AppCard';
 import AppButton from '../../components/ui/AppButton';
@@ -75,8 +75,15 @@ export default function CartScreen({ navigation }: any) {
                         <AppButton
                             title="Checkout"
                             onPress={() => {
-                                // Placeholder for checkout logic
-                                alert('Checkout not implemented yet');
+                                if (items.length > 0) {
+                                    // Groups items by business for single checkout or just pass all
+                                    // For now, checkout handles one business at a time usually, 
+                                    // but we can pass the whole cart.
+                                    navigation.navigate('OrderCheckout', {
+                                        cart: items,
+                                        business: { id: items[0].businessId, name: items[0].businessName }
+                                    });
+                                }
                             }}
                         />
                     </View>
@@ -94,13 +101,13 @@ const styles = StyleSheet.create({
     empty: { alignItems: 'center', justifyContent: 'center', marginTop: 100 },
     footer: {
         position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
+        bottom: 100, // Lifted to clear CustomTabBar (85px)
+        left: SPACING.m,
+        right: SPACING.m,
         backgroundColor: COLORS.surface,
         padding: SPACING.m,
-        borderTopWidth: 1,
-        borderTopColor: COLORS.border,
+        borderRadius: SIZES.radius.l,
+        ...SHADOWS.medium,
     },
     totalRow: {
         flexDirection: 'row',

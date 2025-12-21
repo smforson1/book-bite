@@ -3,6 +3,8 @@ import { View, StyleSheet, ScrollView, Image } from 'react-native';
 import { Text, Button, Card, Divider, List, Chip } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useCartStore } from '../../store/useCartStore';
+import { COLORS } from '../../theme';
 import axios from 'axios';
 
 const API_URL = 'http://10.0.2.2:5000/api';
@@ -13,9 +15,9 @@ export default function BusinessDetails({ route, navigation }: any) {
     const [loading, setLoading] = useState(true);
     const [rooms, setRooms] = useState<any[]>([]);
     const [menu, setMenu] = useState<any[]>([]);
-    // Cart state could be global, but for simple MVP local is okay or pass params
-    // actually for order, we need to select items.
-    const [cart, setCart] = useState<any[]>([]);
+
+    // Global Cart Store
+    const { items: cartItems, addItem, removeItem } = useCartStore();
 
     useEffect(() => {
         fetchDetails();
@@ -40,12 +42,14 @@ export default function BusinessDetails({ route, navigation }: any) {
         }
     };
 
-    const addToCart = (item: any) => {
-        setCart([...cart, { ...item, quantity: 1 }]);
-    };
-
-    const removeFromCart = (itemId: string) => {
-        setCart(cart.filter((i) => i.id !== itemId));
+    const handleAddToCart = (item: any) => {
+        addItem({
+            id: item.id,
+            name: item.name,
+            price: Number(item.price),
+            businessId: business.id,
+            businessName: business.name,
+        });
     };
 
     if (loading || !business) {
@@ -93,13 +97,23 @@ export default function BusinessDetails({ route, navigation }: any) {
                                     <Text variant="titleMedium" style={styles.price}>
                                         GH₵{room.price} / night
                                     </Text>
-                                    <Button
-                                        mode="contained"
-                                        onPress={() => navigation.navigate('BookingCheckout', { room, business })}
-                                        style={styles.bookBtn}
-                                    >
-                                        Book Now
-                                    </Button>
+                                    <View style={styles.buttonRow}>
+                                        <Button
+                                            mode="contained"
+                                            onPress={() => navigation.navigate('BookingCheckout', { room, business })}
+                                            style={[styles.flexButton, { backgroundColor: COLORS.primary }]}
+                                        >
+                                            Book Now
+                                        </Button>
+                                        <Button
+                                            mode="outlined"
+                                            onPress={() => handleAddToCart(room)}
+                                            style={[styles.flexButton, { borderColor: COLORS.primary }]}
+                                            textColor={COLORS.primary}
+                                        >
+                                            Add to Cart
+                                        </Button>
+                                    </View>
                                 </Card.Content>
                             </Card>
                         ))}
@@ -128,15 +142,25 @@ export default function BusinessDetails({ route, navigation }: any) {
                                                         GH₵{item.price}
                                                     </Text>
                                                 </View>
-                                                {cart.find((c) => c.id === item.id) ? (
-                                                    <Button mode="outlined" onPress={() => removeFromCart(item.id)} compact>
-                                                        Remove
+                                                <View style={styles.buttonRow}>
+                                                    <Button
+                                                        mode="contained"
+                                                        onPress={() => navigation.navigate('OrderCheckout', { cart: [{ ...item, quantity: 1 }], business })}
+                                                        style={[styles.flexButton, { backgroundColor: COLORS.primary }]}
+                                                        compact
+                                                    >
+                                                        Order Now
                                                     </Button>
-                                                ) : (
-                                                    <Button mode="contained" compact onPress={() => addToCart(item)}>
-                                                        Add
+                                                    <Button
+                                                        mode="outlined"
+                                                        onPress={() => handleAddToCart(item)}
+                                                        style={[styles.flexButton, { borderColor: COLORS.primary }]}
+                                                        textColor={COLORS.primary}
+                                                        compact
+                                                    >
+                                                        Add to Cart
                                                     </Button>
-                                                )}
+                                                </View>
                                             </View>
                                         </Card.Content>
                                     </Card>
@@ -147,16 +171,16 @@ export default function BusinessDetails({ route, navigation }: any) {
                 )}
             </ScrollView>
 
-            {!isHotel && cart.length > 0 && (
-                <View style={styles.footer}>
+            {!isHotel && cartItems.length > 0 && (
+                <View style={[styles.footer, { backgroundColor: COLORS.primary }]}>
                     <Text variant="titleMedium" style={{ color: '#fff' }}>
-                        {cart.length} items • GH₵{cart.reduce((sum, i) => sum + Number(i.price), 0)}
+                        {cartItems.length} items • GH₵{cartItems.reduce((sum, i) => sum + (Number(i.price) * i.quantity), 0)}
                     </Text>
                     <Button
                         mode="contained"
                         buttonColor="#fff"
-                        textColor="#000"
-                        onPress={() => navigation.navigate('OrderCheckout', { cart, business })}
+                        textColor={COLORS.primary}
+                        onPress={() => navigation.navigate('OrderCheckout', { cart: cartItems, business })}
                     >
                         View Cart
                     </Button>
@@ -178,12 +202,14 @@ const styles = StyleSheet.create({
     sectionTitle: { padding: 20, fontWeight: 'bold' },
     categoryTitle: { paddingHorizontal: 20, paddingVertical: 10, backgroundColor: '#f5f5f5' },
     card: { marginHorizontal: 20, marginBottom: 15 },
-    price: { color: '#2e7d32', fontWeight: 'bold', marginTop: 5 },
+    price: { color: '#E65100', fontWeight: 'bold', marginTop: 5 },
     bookBtn: { marginTop: 10 },
-    menuItemRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    menuItemRow: { flexDirection: 'column', alignItems: 'stretch' },
+    buttonRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
+    flexButton: { flex: 1 },
     footer: {
         padding: 15,
-        backgroundColor: '#333',
+        backgroundColor: '#E65100',
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -192,5 +218,5 @@ const styles = StyleSheet.create({
         width: '100%',
     },
     cardDetailImage: { height: 150 },
-    menuThumb: { width: 70, height: 70, borderRadius: 8, marginRight: 15 },
+    menuThumb: { width: '100%', height: 150, borderRadius: 8, marginBottom: 10 },
 });

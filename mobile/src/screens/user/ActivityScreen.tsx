@@ -125,7 +125,7 @@ export default function ActivityScreen({ navigation, route }: any) {
                             </AppText>
                         </View>
                     }
-                    contentContainerStyle={{ paddingBottom: 20 }}
+                    contentContainerStyle={{ paddingBottom: 100 }} // Clear CustomTabBar
                 />
             </View>
         </View>

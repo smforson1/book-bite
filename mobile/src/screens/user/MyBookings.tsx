@@ -3,6 +3,7 @@ import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { Text, Card, SegmentedButtons } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/useAuthStore';
+import { COLORS } from '../../theme';
 import axios from 'axios';
 
 const API_URL = 'http://10.0.2.2:5000/api';
@@ -52,6 +53,8 @@ export default function MyBookings() {
                         { value: 'bookings', label: 'Bookings' },
                         { value: 'orders', label: 'Orders' },
                     ]}
+                    theme={{ colors: { secondaryContainer: COLORS.primaryLight, outline: COLORS.primary } }}
+                    style={styles.segmentedButtons}
                 />
             </View>
 
@@ -73,9 +76,9 @@ export default function MyBookings() {
                                         style={{
                                             color:
                                                 item.status === 'PENDING'
-                                                    ? '#f57c00'
+                                                    ? COLORS.warning
                                                     : item.status === 'CONFIRMED'
-                                                        ? '#2e7d32'
+                                                        ? COLORS.success
                                                         : '#d32f2f',
                                             fontWeight: 'bold',
                                         }}
@@ -101,7 +104,7 @@ export default function MyBookings() {
                                     </>
                                 )}
 
-                                <Text variant="titleMedium" style={styles.price}>
+                                <Text variant="titleMedium" style={[styles.price, { color: COLORS.primary }]}>
                                     Total: GH₵{item.totalPrice}
                                 </Text>
                             </Card.Content>
@@ -114,9 +117,10 @@ export default function MyBookings() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f5f5' },
-    header: { padding: 20, backgroundColor: '#fff' },
-    title: { marginBottom: 15, fontWeight: 'bold' },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    header: { padding: 20, backgroundColor: COLORS.surface },
+    title: { marginBottom: 15, fontWeight: 'bold', color: COLORS.primary },
+    segmentedButtons: { marginTop: 5 },
     content: { padding: 20 },
     card: { marginBottom: 15 },
     emptyState: { alignItems: 'center', marginTop: 50 },

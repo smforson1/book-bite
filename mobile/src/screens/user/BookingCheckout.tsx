@@ -4,6 +4,7 @@ import { Text, TextInput, Button, Card, Divider } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuthStore } from '../../store/useAuthStore';
+import { COLORS } from '../../theme';
 // @ts-ignore
 // import { usePaystack } from 'react-native-paystack-webview';
 import PaymentWebView from '../../components/ui/PaymentWebView';
@@ -128,7 +129,7 @@ export default function BookingCheckout({ route, navigation }: any) {
                 </Card>
 
                 <View style={styles.form}>
-                    <Button mode="outlined" onPress={() => setShowCheckIn(true)} style={styles.input}>
+                    <Button mode="outlined" onPress={() => setShowCheckIn(true)} style={styles.input} textColor={COLORS.primary}>
                         Check-in: {checkIn.toLocaleDateString()}
                     </Button>
                     {showCheckIn && (
@@ -143,7 +144,7 @@ export default function BookingCheckout({ route, navigation }: any) {
                         />
                     )}
 
-                    <Button mode="outlined" onPress={() => setShowCheckOut(true)} style={styles.input}>
+                    <Button mode="outlined" onPress={() => setShowCheckOut(true)} style={styles.input} textColor={COLORS.primary}>
                         Check-out: {checkOut.toLocaleDateString()}
                     </Button>
                     {showCheckOut && (
@@ -186,7 +187,7 @@ export default function BookingCheckout({ route, navigation }: any) {
                     <Button
                         mode="contained"
                         onPress={handleBooking}
-                        style={styles.button}
+                        style={[styles.button, { backgroundColor: COLORS.primary }]}
                         loading={loading}
                         disabled={loading}
                     >

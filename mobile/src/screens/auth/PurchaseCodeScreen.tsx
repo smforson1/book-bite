@@ -139,7 +139,7 @@ export default function PurchaseCodeScreen({ navigation }: any) {
                     Pay With Paystack
                 </Button>
 
-                <Button mode="text" onPress={() => navigation.goBack()} style={{ marginTop: 10 }}>
+                <Button mode="text" onPress={() => navigation.goBack()} style={{ marginTop: 10 }} textColor={theme.colors.primary}>
                     Back to Login
                 </Button>
 
