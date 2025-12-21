@@ -173,7 +173,12 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
                 body = 'Your order has been cancelled.';
             }
 
-            await sendPushNotification(pushToken, title, body);
+            await sendPushNotification({
+                userId: order.userId,
+                title,
+                body,
+                data: { orderId: order.id, screen: 'OrderDetails' },
+            });
         }
 
         // Notify Manager if User updated it (Cancelled)

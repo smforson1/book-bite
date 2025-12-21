@@ -173,12 +173,13 @@ export const verifyPayment = async (req: Request, res: Response): Promise<void> 
                 ]);
 
                 // Send Notification to Manager
-                if (order.business?.manager?.user?.pushToken) {
-                    await sendPushNotification(
-                        order.business.manager.user.pushToken,
-                        'New Order Received! 🍔',
-                        `Order #${order.id.slice(0, 5)} has been paid and confirmed.`
-                    );
+                if (order.business?.manager?.userId) {
+                    await sendPushNotification({
+                        userId: order.business.manager.userId,
+                        title: 'New Order Received! 🍔',
+                        body: `Order #${order.id.slice(0, 5)} has been paid and confirmed.`,
+                        data: { orderId: order.id, screen: 'OrderDetails' },
+                    });
                 }
             }
         }

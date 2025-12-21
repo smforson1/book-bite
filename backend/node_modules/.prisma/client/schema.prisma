@@ -217,3 +217,13 @@ model Favorite {
 
   @@unique([userId, businessId])
 }
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  body      String
+  data      Json?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
