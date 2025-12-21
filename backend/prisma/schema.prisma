@@ -155,6 +155,11 @@ model Review {
   business   Business @relation(fields: [businessId], references: [id])
   rating     Int
   comment    String?
+  images     String[] @default([])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, businessId])
 }
 
 model Payment {

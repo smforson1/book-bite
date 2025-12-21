@@ -21,6 +21,7 @@ import paymentRoutes from './routes/paymentRoutes';
 import walletRoutes from './routes/walletRoutes';
 import userRoutes from './routes/userRoutes';
 import favoriteRoutes from './routes/favoriteRoutes';
+import reviewRoutes from './routes/reviewRoutes';
 
 import uploadRoutes from './routes/uploadRoutes';
 
@@ -35,6 +36,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/favorites', favoriteRoutes);
+app.use('/api/reviews', reviewRoutes);
 app.use('/api/upload', uploadRoutes);
 
 app.get('/health', (req, res) => {

@@ -42,6 +42,7 @@ export const SPACING = {
 };
 
 export const SIZES = {
+    width: 375, // Default width, will be overridden by Dimensions
     radius: {
         s: 8,
         m: 12,

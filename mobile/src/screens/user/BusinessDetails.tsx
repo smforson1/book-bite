@@ -6,8 +6,12 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useCartStore } from '../../store/useCartStore';
 import { COLORS, SIZES } from '../../theme';
 import ImageCarousel from '../../components/ui/ImageCarousel';
-import { Dimensions } from 'react-native';
+import { Dimensions, Share } from 'react-native';
 import BusinessDetailsSkeleton from '../../components/skeletons/BusinessDetailsSkeleton';
+import ReviewCard from '../../components/ui/ReviewCard';
+import RatingStars from '../../components/ui/RatingStars';
+import AppText from '../../components/ui/AppText';
+import { IconButton } from 'react-native-paper';
 import axios from 'axios';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -21,6 +25,8 @@ export default function BusinessDetails({ route, navigation }: any) {
     const [loading, setLoading] = useState(true);
     const [rooms, setRooms] = useState<any[]>([]);
     const [menu, setMenu] = useState<any[]>([]);
+    const [reviews, setReviews] = useState<any[]>([]);
+    const [averageRating, setAverageRating] = useState(0);
 
     // Global Cart Store
     const { items: cartItems, addItem, removeItem } = useCartStore();
@@ -41,6 +47,16 @@ export default function BusinessDetails({ route, navigation }: any) {
                 const menuRes = await axios.get(`${API_URL}/menu-items/business/${id}`);
                 setMenu(menuRes.data);
             }
+
+            // Fetch reviews
+            const reviewsRes = await axios.get(`${API_URL}/reviews/business/${id}`);
+            setReviews(reviewsRes.data.reviews || []);
+
+            // Calculate average rating
+            if (reviewsRes.data.reviews && reviewsRes.data.reviews.length > 0) {
+                const avg = reviewsRes.data.reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviewsRes.data.reviews.length;
+                setAverageRating(avg);
+            }
         } catch (error) {
             console.error('Failed to fetch details', error);
         } finally {
@@ -56,6 +72,17 @@ export default function BusinessDetails({ route, navigation }: any) {
             businessId: business.id,
             businessName: business.name,
         });
+    };
+
+    const handleShare = async () => {
+        try {
+            await Share.share({
+                message: `Check out ${business.name} on Book Bite! ${business.description || ''}`,
+                title: business.name,
+            });
+        } catch (error) {
+            console.error('Share failed', error);
+        }
     };
 
     if (loading || !business) {
@@ -181,6 +208,53 @@ export default function BusinessDetails({ route, navigation }: any) {
                         ))}
                     </>
                 )}
+
+                {/* Reviews Section */}
+                <Divider style={styles.divider} />
+
+                <View style={styles.reviewsHeader}>
+                    <View>
+                        <Text variant="titleLarge" style={styles.sectionTitle}>
+                            Reviews
+                        </Text>
+                        {reviews.length > 0 && (
+                            <View style={styles.ratingRow}>
+                                <RatingStars rating={Math.round(averageRating)} readonly size={18} />
+                                <AppText variant="body" style={{ marginLeft: 8 }}>
+                                    {averageRating.toFixed(1)} ({reviews.length} {reviews.length === 1 ? 'review' : 'reviews'})
+                                </AppText>
+                            </View>
+                        )}
+                    </View>
+                    <Button
+                        mode="contained"
+                        onPress={() => navigation.navigate('AddReview', { businessId: business.id, businessName: business.name })}
+                        buttonColor={COLORS.primary}
+                        compact
+                    >
+                        Write Review
+                    </Button>
+                </View>
+
+                {reviews.length > 0 ? (
+                    reviews.slice(0, 3).map((review) => (
+                        <ReviewCard key={review.id} review={review} />
+                    ))
+                ) : (
+                    <AppText variant="body" color={COLORS.textLight} style={{ padding: 20, textAlign: 'center' }}>
+                        No reviews yet. Be the first to review!
+                    </AppText>
+                )}
+
+                {reviews.length > 3 && (
+                    <Button
+                        mode="text"
+                        textColor={COLORS.primary}
+                        onPress={() => {/* TODO: Navigate to all reviews screen */ }}
+                    >
+                        View All {reviews.length} Reviews
+                    </Button>
+                )}
             </ScrollView>
 
             {!isHotel && cartItems.length > 0 && (
@@ -231,4 +305,16 @@ const styles = StyleSheet.create({
     },
     cardDetailImage: { height: 150 },
     menuThumb: { width: '100%', height: 150, borderRadius: 8, marginBottom: 10 },
+    reviewsHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        paddingHorizontal: 20,
+        marginBottom: 15,
+    },
+    ratingRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 5,
+    },
 });

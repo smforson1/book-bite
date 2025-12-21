@@ -30,6 +30,11 @@ export default function UserStack() {
                 options={{ title: 'Complete Order' }}
             />
             <Stack.Screen
+                name="AddReview"
+                component={require('../screens/user/AddReviewScreen').default}
+                options={{ title: 'Write a Review' }}
+            />
+            <Stack.Screen
                 name="Profile"
                 component={require('../screens/user/ProfileScreen').default}
                 options={{ headerShown: false }}
