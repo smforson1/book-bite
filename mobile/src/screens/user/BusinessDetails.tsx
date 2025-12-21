@@ -116,42 +116,62 @@ export default function BusinessDetails({ route, navigation }: any) {
                         <Text variant="titleLarge" style={styles.sectionTitle}>
                             Available Rooms
                         </Text>
-                        {rooms.map((room) => (
-                            <Card key={room.id} style={styles.card}>
-                                {room.images && (
-                                    <ImageCarousel
-                                        images={room.images}
-                                        height={180}
-                                        width={CARD_WIDTH}
-                                        borderRadius={SIZES.radius.l} // Need to import SIZES or just use 12
-                                    />
-                                )}
-                                <Card.Content>
-                                    <Text variant="titleMedium">{room.name}</Text>
-                                    <Text variant="bodyMedium">Capacity: {room.capacity} guests</Text>
-                                    <Text variant="titleMedium" style={styles.price}>
-                                        GH₵{room.price} / night
-                                    </Text>
-                                    <View style={styles.buttonRow}>
-                                        <Button
-                                            mode="contained"
-                                            onPress={() => navigation.navigate('BookingCheckout', { room, business })}
-                                            style={[styles.flexButton, { backgroundColor: COLORS.primary }]}
-                                        >
-                                            Book Now
-                                        </Button>
-                                        <Button
-                                            mode="outlined"
-                                            onPress={() => handleAddToCart(room)}
-                                            style={[styles.flexButton, { borderColor: COLORS.primary }]}
-                                            textColor={COLORS.primary}
-                                        >
-                                            Add to Cart
-                                        </Button>
-                                    </View>
-                                </Card.Content>
-                            </Card>
-                        ))}
+                        {rooms.map((room) => {
+                            const utilities = room.amenities
+                                ? room.amenities.filter((a: string) => a.startsWith('UTILITY:')).map((a: string) => a.replace('UTILITY:', ''))
+                                : [];
+
+                            return (
+                                <Card key={room.id} style={styles.card}>
+                                    {room.images && (
+                                        <ImageCarousel
+                                            images={room.images}
+                                            height={180}
+                                            width={CARD_WIDTH}
+                                            borderRadius={SIZES.radius.l}
+                                        />
+                                    )}
+                                    <Card.Content>
+                                        <Text variant="titleMedium">{room.name}</Text>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                                            <Chip icon="account-group" compact style={{ marginRight: 8 }}>{room.capacity} Pax</Chip>
+                                            <Chip icon="door" compact>{room.totalStock || 1} Rooms Total</Chip>
+                                        </View>
+
+                                        {utilities.length > 0 && (
+                                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                                                {utilities.map((u: string, idx: number) => (
+                                                    <View key={idx} style={{ backgroundColor: '#f0f0f0', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 }}>
+                                                        <Text variant="labelSmall" style={{ color: '#666' }}>{u}</Text>
+                                                    </View>
+                                                ))}
+                                            </View>
+                                        )}
+
+                                        <Text variant="titleMedium" style={styles.price}>
+                                            GH₵{room.price} / year
+                                        </Text>
+                                        <View style={styles.buttonRow}>
+                                            <Button
+                                                mode="contained"
+                                                onPress={() => navigation.navigate('BookingCheckout', { room, business })}
+                                                style={[styles.flexButton, { backgroundColor: COLORS.primary }]}
+                                            >
+                                                Book Now
+                                            </Button>
+                                            <Button
+                                                mode="outlined"
+                                                onPress={() => handleAddToCart(room)}
+                                                style={[styles.flexButton, { borderColor: COLORS.primary }]}
+                                                textColor={COLORS.primary}
+                                            >
+                                                Add to Cart
+                                            </Button>
+                                        </View>
+                                    </Card.Content>
+                                </Card>
+                            );
+                        })}
                     </>
                 ) : (
                     <>

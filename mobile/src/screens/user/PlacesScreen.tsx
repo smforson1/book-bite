@@ -50,6 +50,7 @@ export default function PlacesScreen({ navigation }: any) {
     const filteredBusinesses = businesses.filter((b) => {
         if (viewMode === 'Restaurants') return b.type === 'RESTAURANT' || b.type === 'CAFE';
         if (viewMode === 'Hotels') return b.type === 'HOTEL';
+        if (viewMode === 'Hostels') return b.type === 'HOSTEL';
         return true;
     });
 
@@ -103,7 +104,7 @@ export default function PlacesScreen({ navigation }: any) {
 
             <View style={styles.content}>
                 <SegmentedControl
-                    options={['Restaurants', 'Hotels']}
+                    options={['Restaurants', 'Hotels', 'Hostels']}
                     selectedOption={viewMode}
                     onOptionPress={setViewMode}
                 />

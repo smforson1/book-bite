@@ -113,9 +113,9 @@ export default function HomeScreen({ navigation }: any) {
                 <View style={styles.filters}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                         <FilterChip label="All" type={null} />
+                        <FilterChip label="Hostels" type="HOSTEL" />
                         <FilterChip label="Hotels" type="HOTEL" />
                         <FilterChip label="Restaurants" type="RESTAURANT" />
-                        <FilterChip label="Cafes" type="CAFE" />
                     </ScrollView>
                 </View>
 
