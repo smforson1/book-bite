@@ -108,13 +108,13 @@ export const verifyPayment = async (req: Request, res: Response): Promise<void> 
                 include: { business: { include: { manager: true } } }
             });
 
-            // Credit Wallet
-            if (booking.business?.manager?.id) {
-                const managerId = booking.business.manager.id;
+            // Credit Wallet (Manager's User Wallet)
+            if (booking.business?.manager?.userId) {
+                const userId = booking.business.manager.userId;
                 // Upsert wallet just in case
-                let wallet = await prisma.wallet.findUnique({ where: { managerId } });
+                let wallet = await prisma.wallet.findUnique({ where: { userId } });
                 if (!wallet) {
-                    wallet = await prisma.wallet.create({ data: { managerId } });
+                    wallet = await prisma.wallet.create({ data: { userId } });
                 }
 
                 await prisma.$transaction([
@@ -146,13 +146,13 @@ export const verifyPayment = async (req: Request, res: Response): Promise<void> 
                 include: { business: { include: { manager: { include: { user: true } } } } }
             });
 
-            // Credit Wallet
-            if (order.business?.manager?.id) {
-                const managerId = order.business.manager.id;
+            // Credit Wallet (Manager's User Wallet)
+            if (order.business?.manager?.userId) {
+                const userId = order.business.manager.userId;
                 // Upsert wallet
-                let wallet = await prisma.wallet.findUnique({ where: { managerId } });
+                let wallet = await prisma.wallet.findUnique({ where: { userId } });
                 if (!wallet) {
-                    wallet = await prisma.wallet.create({ data: { managerId } });
+                    wallet = await prisma.wallet.create({ data: { userId } });
                 }
 
                 await prisma.$transaction([

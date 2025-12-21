@@ -38,6 +38,34 @@ model User {
   reviews        Review[]
   favorites      Favorite[]
   payments       Payment[]
+  wallet         Wallet?
+}
+
+model Wallet {
+  id           String              @id @default(uuid())
+  userId       String              @unique
+  user         User                @relation(fields: [userId], references: [id])
+  balance      Decimal             @default(0.0)
+  currency     String              @default("GHS")
+  updatedAt    DateTime            @updatedAt
+  transactions WalletTransaction[]
+}
+
+model WalletTransaction {
+  id          String          @id @default(uuid())
+  walletId    String
+  wallet      Wallet          @relation(fields: [walletId], references: [id])
+  amount      Decimal
+  type        TransactionType
+  description String
+  reference   String? // Paystack reference or internal ID
+  status      String          @default("SUCCESS") // SUCCESS, FAILED, PENDING
+  createdAt   DateTime        @default(now())
+}
+
+enum TransactionType {
+  CREDIT // Top-up
+  DEBIT  // Payment
 }
 
 model ActivationCode {
@@ -56,7 +84,6 @@ model ManagerProfile {
   userId   String    @unique
   user     User      @relation(fields: [userId], references: [id])
   business Business?
-  Wallet   Wallet?
 }
 
 model Business {
@@ -182,31 +209,6 @@ model Payment {
   createdAt DateTime @default(now())
 }
 
-model Wallet {
-  id        String         @id @default(uuid())
-  managerId String         @unique
-  manager   ManagerProfile @relation(fields: [managerId], references: [id])
-  balance   Decimal        @default(0.00)
-  currency  String         @default("NGN")
-
-  transactions WalletTransaction[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model WalletTransaction {
-  id          String  @id @default(uuid())
-  walletId    String
-  wallet      Wallet  @relation(fields: [walletId], references: [id])
-  amount      Decimal
-  type        String // CREDIT, DEBIT
-  status      String // PENDING, SUCCESS, FAILED
-  reference   String? // Payment reference or Payout ID
-  description String?
-
-  createdAt DateTime @default(now())
-}
 
 model Favorite {
   id         String   @id @default(uuid())

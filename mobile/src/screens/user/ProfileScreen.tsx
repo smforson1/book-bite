@@ -84,6 +84,11 @@ export default function ProfileScreen({ navigation }: any) {
                 <View style={styles.section}>
                     <AppText variant="h3" style={styles.sectionTitle}>Account</AppText>
                     <MenuItem
+                        icon="wallet"
+                        title="My Wallet"
+                        onPress={() => navigation.navigate('Wallet')}
+                    />
+                    <MenuItem
                         icon="cog"
                         title="Settings"
                         onPress={() => { }}

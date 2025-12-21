@@ -1,178 +1,203 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import axios from 'axios';
+
+interface AuthRequest extends Request {
+    user: { userId: string; email: string };
+}
 
 const prisma = new PrismaClient();
 
-interface AuthRequest extends Request {
-    user?: any;
-}
-
-// Get Wallet Details
+// Get Wallet Balance & Transactions
 export const getWallet = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const userId = req.user.userId;
 
-        // Find manager profile for this user
-        const manager = await prisma.managerProfile.findUnique({
-            where: { userId },
-        });
-
-        if (!manager) {
-            res.status(404).json({ message: 'Manager profile not found' });
-            return;
-        }
-
-        // Find or create wallet
         let wallet = await prisma.wallet.findUnique({
-            where: { managerId: manager.id },
+            where: { userId },
             include: {
                 transactions: {
                     orderBy: { createdAt: 'desc' },
-                    take: 20 // Recent transactions
+                    take: 20
                 }
             }
         });
 
         if (!wallet) {
+            // Create wallet if it doesn't exist
             wallet = await prisma.wallet.create({
-                data: { managerId: manager.id },
+                data: { userId },
                 include: { transactions: true }
             });
         }
 
         res.status(200).json(wallet);
     } catch (error) {
-        console.error('Get Wallet Error', error);
         res.status(500).json({ message: 'Error fetching wallet', error });
     }
 };
 
-// Request Payout
-export const requestPayout = async (req: AuthRequest, res: Response): Promise<void> => {
+// Initialize Top Up (Paystack)
+export const initializeTopUp = async (req: AuthRequest, res: Response): Promise<void> => {
+    const key = (process.env.PAYSTACK_SECRET_KEY || '').trim();
     try {
-        const userId = req.user.userId;
         const { amount } = req.body;
+        const { email, userId } = req.user;
 
-        const manager = await prisma.managerProfile.findUnique({ where: { userId } });
-        if (!manager) {
-            res.status(404).json({ message: 'Manager not found' });
+        const response = await axios.post(
+            'https://api.paystack.co/transaction/initialize',
+            {
+                email,
+                amount: Math.round(amount * 100),
+                currency: 'GHS',
+                metadata: {
+                    purpose: 'TOP_UP',
+                    userId
+                }
+            },
+            { headers: { Authorization: `Bearer ${key}` } }
+        );
+
+        res.status(200).json(response.data.data);
+    } catch (error: any) {
+        res.status(500).json({ message: 'Top-up initialization failed', error: error.message });
+    }
+};
+
+// Verify Top Up (Called by Frontend after success)
+// Note: Real production apps use Webhooks for this. We use strict verification for now.
+export const verifyTopUp = async (req: AuthRequest, res: Response): Promise<void> => {
+    const key = (process.env.PAYSTACK_SECRET_KEY || '').trim();
+    try {
+        const { reference } = req.body;
+        const userId = req.user.userId;
+
+        // Verify with Paystack
+        const verifyResponse = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
+            headers: { Authorization: `Bearer ${key}` }
+        });
+
+        const data = verifyResponse.data.data;
+        if (data.status !== 'success') {
+            res.status(400).json({ message: 'Payment verification failed' });
             return;
         }
 
-        const wallet = await prisma.wallet.findUnique({ where: { managerId: manager.id } });
-
-        if (!wallet || Number(wallet.balance) < amount) {
-            res.status(400).json({ message: 'Insufficient balance' });
+        // Check if transaction already processed (Idempotency)
+        const existingTx = await prisma.walletTransaction.findFirst({
+            where: { reference }
+        });
+        if (existingTx) {
+            res.status(200).json({ message: 'Transaction already processed' });
             return;
         }
 
-        // Create Debit Transaction (Pending)
-        // In real app, we'd also create a PayoutRequest record for Admin to review. 
-        // For now, we'll deduct and mark as PENDING withdrawal.
+        // Credit Wallet
+        const amount = data.amount / 100;
+
+        let wallet = await prisma.wallet.findUnique({ where: { userId } });
+        if (!wallet) {
+            wallet = await prisma.wallet.create({ data: { userId } });
+        }
 
         await prisma.$transaction([
             prisma.wallet.update({
                 where: { id: wallet.id },
-                data: { balance: { decrement: amount } }
+                data: { balance: { increment: amount } }
             }),
             prisma.walletTransaction.create({
                 data: {
                     walletId: wallet.id,
-                    amount: amount,
-                    type: 'DEBIT',
-                    status: 'PENDING', // Waiting admin approval
-                    description: 'Payout Request',
+                    amount,
+                    type: 'CREDIT',
+                    status: 'SUCCESS',
+                    description: 'Wallet Top Up',
+                    reference
+                }
+            }),
+            // Track as global Payment too for analytics
+            prisma.payment.create({
+                data: {
+                    userId,
+                    amount,
+                    currency: data.currency,
+                    status: 'SUCCESS',
+                    purpose: 'TOP_UP',
+                    reference,
+                    metadata: data.metadata
                 }
             })
         ]);
 
-        res.status(200).json({ message: 'Payout requested successfully' });
-    } catch (error) {
-        console.error('Payout Request Error', error);
-        res.status(500).json({ message: 'Error requesting payout', error });
+        res.status(200).json({ message: 'Wallet credited successfully', balance: Number(wallet.balance) + amount });
+
+    } catch (error: any) {
+        res.status(500).json({ message: 'Verification failed', error: error.message });
     }
 };
 
-// Admin: Get All Payouts
-export const getAdminPayouts = async (req: AuthRequest, res: Response): Promise<void> => {
+// Pay with Wallet
+export const payWithWallet = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-        const payouts = await prisma.walletTransaction.findMany({
-            where: { type: 'DEBIT', description: 'Payout Request' }, // Filter logic
-            include: {
-                wallet: {
-                    include: {
-                        manager: {
-                            include: {
-                                user: {
-                                    select: { name: true, email: true }
-                                },
-                                business: {
-                                    select: { name: true }
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            orderBy: { createdAt: 'desc' }
-        });
-        res.status(200).json(payouts);
-    } catch (error) {
-        res.status(500).json({ message: 'Error fetching payouts', error });
-    }
-};
+        const { amount, purpose, metadata } = req.body; // purpose: BOOKING | ORDER
+        const userId = req.user.userId;
 
-// Admin: Process Payout
-export const processPayout = async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-        const { id } = req.params;
-        const { status, rejectionReason } = req.body; // status: SUCCESS or FAILED
+        const wallet = await prisma.wallet.findUnique({ where: { userId } });
 
-        const transaction = await prisma.walletTransaction.findUnique({
-            where: { id },
-            include: { wallet: true }
-        });
-
-        if (!transaction) {
-            res.status(404).json({ message: 'Transaction not found' });
+        if (!wallet || Number(wallet.balance) < amount) {
+            res.status(400).json({ message: 'Insufficient wallet balance' });
             return;
         }
 
-        if (transaction.status !== 'PENDING') {
-            res.status(400).json({ message: 'Transaction is not pending' });
-            return;
-        }
-
-        if (status === 'SUCCESS') {
-            // Confirm Payout
-            await prisma.walletTransaction.update({
-                where: { id },
-                data: { status: 'SUCCESS' }
+        // Process Deduction
+        await prisma.$transaction(async (tx) => {
+            // 1. Debit User Wallet
+            await tx.wallet.update({
+                where: { id: wallet.id },
+                data: { balance: { decrement: amount } }
             });
-            // Here you would trigger external bank transfer logic
-        } else if (status === 'FAILED') {
-            // Reject Payout - Refund Wallet
-            await prisma.$transaction([
-                prisma.walletTransaction.update({
-                    where: { id },
-                    data: {
-                        status: 'FAILED',
-                        description: transaction.description + (rejectionReason ? ` - Rejected: ${rejectionReason}` : ' - Rejected')
-                    }
-                }),
-                prisma.wallet.update({
-                    where: { id: transaction.walletId },
-                    data: { balance: { increment: transaction.amount } }
-                })
-            ]);
-        } else {
-            res.status(400).json({ message: 'Invalid status' });
-            return;
-        }
 
-        res.status(200).json({ message: `Payout ${status === 'SUCCESS' ? 'approved' : 'rejected'} successfully` });
-    } catch (error) {
-        console.error('Process Payout Error', error);
-        res.status(500).json({ message: 'Error processing payout', error });
+            await tx.walletTransaction.create({
+                data: {
+                    walletId: wallet.id,
+                    amount,
+                    type: 'DEBIT',
+                    status: 'SUCCESS',
+                    description: `Payment for ${purpose}`,
+                    reference: `WAL-${Date.now()}`
+                }
+            });
+
+            // 2. Create Payment Record (Internal)
+            const payment = await tx.payment.create({
+                data: {
+                    userId,
+                    amount,
+                    currency: wallet.currency,
+                    status: 'SUCCESS',
+                    purpose, // BOOKING or ORDER
+                    reference: `WAL-${Date.now()}`, // Internal Ref
+                    metadata
+                }
+            });
+
+            // 3. Update Booking or Order status
+            if (purpose === 'BOOKING' && metadata.bookingId) {
+                await tx.booking.update({
+                    where: { id: metadata.bookingId },
+                    data: { status: 'CONFIRMED', paymentId: payment.id }
+                });
+            } else if (purpose === 'ORDER' && metadata.orderId) {
+                await tx.order.update({
+                    where: { id: metadata.orderId },
+                    data: { status: 'CONFIRMED', paymentId: payment.id }
+                });
+            }
+        });
+
+        res.status(200).json({ message: 'Payment successful' });
+
+    } catch (error: any) {
+        res.status(500).json({ message: 'Wallet payment failed', error: error.message });
     }
 };

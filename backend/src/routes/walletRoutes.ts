@@ -1,15 +1,22 @@
 import express from 'express';
-import { verifyToken, requireRole } from '../middleware/auth';
-import { getWallet, requestPayout, getAdminPayouts, processPayout } from '../controllers/walletController';
+import { verifyToken } from '../middleware/auth';
+import {
+    getWallet,
+    initializeTopUp,
+    verifyTopUp,
+    payWithWallet
+} from '../controllers/walletController';
 
 const router = express.Router();
 
-// Manager Routes
-router.get('/', verifyToken, requireRole(['MANAGER']), getWallet);
-router.post('/payout', verifyToken, requireRole(['MANAGER']), requestPayout);
+// Get Wallet
+router.get('/', verifyToken, getWallet as unknown as express.RequestHandler);
 
-// Admin Routes
-router.get('/admin/payouts', verifyToken, requireRole(['ADMIN']), getAdminPayouts);
-router.put('/admin/payouts/:id', verifyToken, requireRole(['ADMIN']), processPayout);
+// Top Up
+router.post('/top-up/initialize', verifyToken, initializeTopUp as unknown as express.RequestHandler);
+router.post('/top-up/verify', verifyToken, verifyTopUp as unknown as express.RequestHandler);
+
+// Pay with Wallet
+router.post('/pay', verifyToken, payWithWallet as unknown as express.RequestHandler);
 
 export default router;

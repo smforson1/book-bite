@@ -39,6 +39,11 @@ export default function UserStack() {
                 component={require('../screens/user/ProfileScreen').default}
                 options={{ headerShown: false }}
             />
+            <Stack.Screen
+                name="Wallet"
+                component={require('../screens/user/WalletScreen').default}
+                options={{ headerShown: false }}
+            />
         </Stack.Navigator>
     );
 }
