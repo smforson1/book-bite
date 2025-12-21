@@ -114,7 +114,8 @@ model Room {
   description String?
   price       Decimal
   capacity    Int
-  amenities   String[]
+  totalStock  Int      @default(1)
+  amenities   String[] // e.g. ["UTILITY:Shared_Meter"]
   images      String[]
   isAvailable Boolean   @default(true)
   bookings    Booking[]

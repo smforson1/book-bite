@@ -10,7 +10,7 @@ interface AuthRequest extends Request {
 // Create Room
 export const createRoom = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-        const { businessId, name, description, price, capacity, amenities, images } = req.body;
+        const { businessId, name, description, price, capacity, amenities, images, totalStock } = req.body;
         const userId = req.user.userId;
 
         // Verify business ownership
@@ -33,6 +33,7 @@ export const createRoom = async (req: AuthRequest, res: Response): Promise<void>
                 description,
                 price: parseFloat(price),
                 capacity,
+                totalStock: totalStock ? parseInt(totalStock) : 1,
                 amenities: amenities || [],
                 images: images || [],
             },
@@ -63,7 +64,7 @@ export const getRoomsByBusiness = async (req: Request, res: Response): Promise<v
 export const updateRoom = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
-        const { name, description, price, capacity, amenities, images, isAvailable } = req.body;
+        const { name, description, price, capacity, amenities, images, isAvailable, totalStock } = req.body;
         const userId = req.user.userId;
 
         // Verify ownership
@@ -86,6 +87,7 @@ export const updateRoom = async (req: AuthRequest, res: Response): Promise<void>
                 description,
                 price: price ? parseFloat(price) : undefined,
                 capacity,
+                totalStock: totalStock ? parseInt(totalStock) : undefined,
                 amenities,
                 images,
                 isAvailable,

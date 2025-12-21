@@ -20,12 +20,31 @@ export const createBooking = async (req: AuthRequest, res: Response): Promise<vo
         });
 
         if (!room || !room.isAvailable) {
-            res.status(400).json({ message: 'Room not available' });
+            res.status(400).json({ message: 'Room not available or does not exist' });
             return;
         }
 
         const checkInDate = new Date(checkIn);
         const checkOutDate = new Date(checkOut);
+
+        // Inventory Check: Count overlapping bookings
+        const activeBookings = await prisma.booking.count({
+            where: {
+                roomId,
+                status: { not: 'CANCELLED' },
+                // Check for date overlap: (StartA < EndB) and (EndA > StartB)
+                checkIn: { lt: checkOutDate },
+                checkOut: { gt: checkInDate },
+            },
+        });
+
+        const totalStock = room.totalStock || 1; // Default to 1 if not set
+
+        if (activeBookings >= totalStock) {
+            res.status(400).json({ message: `Room sold out for these dates. Only ${totalStock} available.` });
+            return;
+        }
+
         const diffTime = Math.abs(checkOutDate.getTime() - checkInDate.getTime());
         const nights = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
 
