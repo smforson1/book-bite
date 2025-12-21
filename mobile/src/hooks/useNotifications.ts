@@ -19,8 +19,8 @@ Notifications.setNotificationHandler({
 export function useNotifications() {
     const [expoPushToken, setExpoPushToken] = useState('');
     const [notification, setNotification] = useState<Notifications.Notification | null>(null);
-    const notificationListener = useRef<Notifications.Subscription>();
-    const responseListener = useRef<Notifications.Subscription>();
+    const notificationListener = useRef<Notifications.Subscription | undefined>();
+    const responseListener = useRef<Notifications.Subscription | undefined>();
     const { token, user } = useAuthStore();
 
     useEffect(() => {
@@ -55,7 +55,7 @@ export function useNotifications() {
                 Notifications.removeNotificationSubscription(responseListener.current);
             }
         };
-    }, []);
+    }, [token, user]);
 
     const savePushTokenToBackend = async (pushToken: string) => {
         if (!token || !user) return;
