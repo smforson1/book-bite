@@ -4,8 +4,14 @@ import { Text, Button, Card, Divider, List, Chip } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useCartStore } from '../../store/useCartStore';
-import { COLORS } from '../../theme';
+import { COLORS, SIZES } from '../../theme';
+import ImageCarousel from '../../components/ui/ImageCarousel';
+import { Dimensions } from 'react-native';
+import BusinessDetailsSkeleton from '../../components/skeletons/BusinessDetailsSkeleton';
 import axios from 'axios';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_WIDTH = SCREEN_WIDTH - 40; // 20 margin on each side
 
 const API_URL = 'http://10.0.2.2:5000/api';
 
@@ -53,11 +59,7 @@ export default function BusinessDetails({ route, navigation }: any) {
     };
 
     if (loading || !business) {
-        return (
-            <View style={styles.center}>
-                <Text>Loading...</Text>
-            </View>
-        );
+        return <BusinessDetailsSkeleton />;
     }
 
     const isHotel = business.type === 'HOTEL' || business.type === 'HOSTEL';
@@ -65,9 +67,9 @@ export default function BusinessDetails({ route, navigation }: any) {
     return (
         <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={styles.content}>
-                <Image
-                    source={{ uri: business.images?.[0] || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1000&auto=format&fit=crop' }}
-                    style={styles.image}
+                <ImageCarousel
+                    images={business.images}
+                    height={250}
                 />
                 <Text variant="headlineMedium" style={styles.title}>
                     {business.name}
@@ -88,8 +90,13 @@ export default function BusinessDetails({ route, navigation }: any) {
                         </Text>
                         {rooms.map((room) => (
                             <Card key={room.id} style={styles.card}>
-                                {room.images?.[0] && (
-                                    <Card.Cover source={{ uri: room.images[0] }} style={styles.cardDetailImage} />
+                                {room.images && (
+                                    <ImageCarousel
+                                        images={room.images}
+                                        height={180}
+                                        width={CARD_WIDTH}
+                                        borderRadius={SIZES.radius.l} // Need to import SIZES or just use 12
+                                    />
                                 )}
                                 <Card.Content>
                                     <Text variant="titleMedium">{room.name}</Text>
@@ -132,8 +139,13 @@ export default function BusinessDetails({ route, navigation }: any) {
                                     <Card key={item.id} style={styles.card}>
                                         <Card.Content>
                                             <View style={styles.menuItemRow}>
-                                                {item.images?.[0] && (
-                                                    <Image source={{ uri: item.images[0] }} style={styles.menuThumb} />
+                                                {item.images && (
+                                                    <ImageCarousel
+                                                        images={item.images}
+                                                        height={180}
+                                                        width={CARD_WIDTH}
+                                                        borderRadius={8}
+                                                    />
                                                 )}
                                                 <View style={{ flex: 1 }}>
                                                     <Text variant="titleMedium">{item.name}</Text>

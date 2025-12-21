@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, Image, ImageBackground, TextInput } from 'react-native';
 import { IconButton } from 'react-native-paper';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useFavoriteStore } from '../../store/useFavoriteStore';
 import axios from 'axios';
 import { COLORS, SPACING, SIZES, FONTS, SHADOWS } from '../../theme';
 import AppText from '../../components/ui/AppText';
 import AppCard from '../../components/ui/AppCard';
 import CustomHeader from '../../components/navigation/CustomHeader';
+import BusinessCardSkeleton from '../../components/skeletons/BusinessCardSkeleton';
 
 const API_URL = 'http://10.0.2.2:5000/api';
 
@@ -17,7 +19,8 @@ export default function HomeScreen({ navigation }: any) {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedType, setSelectedType] = useState<string | null>(null);
 
-    const { user } = useAuthStore((state: any) => state);
+    const { user, token } = useAuthStore((state: any) => state);
+    const { favorites, fetchFavorites, toggleFavorite, isFavorite } = useFavoriteStore();
 
     const fetchBusinesses = async () => {
         try {
@@ -34,6 +37,9 @@ export default function HomeScreen({ navigation }: any) {
 
     useEffect(() => {
         fetchBusinesses();
+        if (token) {
+            fetchFavorites(token);
+        }
     }, []);
 
     const onRefresh = () => {
@@ -111,49 +117,74 @@ export default function HomeScreen({ navigation }: any) {
                     </ScrollView>
                 </View>
 
-                <AppText variant="h3" style={styles.sectionTitle}>Featured Places</AppText>
+                {/* Featured Businesses */}
+                <View style={styles.section}>
+                    <AppText variant="h2" style={styles.sectionTitle}>Featured Businesses</AppText>
 
-                {filteredBusinesses.map((business) => (
-                    <AppCard
-                        key={business.id}
-                        style={styles.card}
-                        onPress={() => navigation.navigate('BusinessDetails', { id: business.id })}
-                        noPadding
-                    >
-                        <ImageBackground
-                            source={{ uri: business.images?.[0] || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1000&auto=format&fit=crop' }}
-                            style={styles.cardImage}
-                            imageStyle={{ borderTopLeftRadius: SIZES.radius.l, borderTopRightRadius: SIZES.radius.l }}
-                        >
-                            <View style={styles.badge}>
-                                <AppText variant="caption" color={COLORS.white} bold>
-                                    {business.type}
-                                </AppText>
-                            </View>
-                        </ImageBackground>
-
-                        <View style={styles.cardContent}>
-                            <View style={styles.row}>
-                                <AppText variant="h3" style={{ flex: 1 }}>{business.name}</AppText>
-                                <View style={styles.rating}>
-                                    <IconButton icon="star" size={14} iconColor="#FFD700" style={{ margin: 0 }} />
-                                    <AppText variant="caption" bold>4.8</AppText>
-                                </View>
-                            </View>
-
-                            <View style={styles.row}>
-                                <IconButton icon="map-marker-outline" size={16} iconColor={COLORS.textLight} style={{ marginLeft: -4, margin: 0 }} />
-                                <AppText variant="caption" color={COLORS.textLight} style={{ flex: 1 }}>
-                                    {business.address}
-                                </AppText>
-                            </View>
-
-                            <AppText variant="body" numberOfLines={2} color={COLORS.textLight} style={styles.description}>
-                                {business.description || 'Experience the best quality food and service in town.'}
+                    {loading ? (
+                        // Show skeleton loaders while loading
+                        <>
+                            <BusinessCardSkeleton />
+                            <BusinessCardSkeleton />
+                            <BusinessCardSkeleton />
+                        </>
+                    ) : filteredBusinesses.length === 0 ? (
+                        <View style={styles.emptyState}>
+                            <AppText variant="body" color={COLORS.textLight} center>
+                                No businesses found
                             </AppText>
                         </View>
-                    </AppCard>
-                ))}
+                    ) : (
+                        filteredBusinesses.map((business) => (
+                            <AppCard
+                                key={business.id}
+                                style={styles.card}
+                                onPress={() => navigation.navigate('BusinessDetails', { id: business.id })}
+                                noPadding
+                            >
+                                <ImageBackground
+                                    source={{ uri: business.images?.[0] || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1000&auto=format&fit=crop' }}
+                                    style={styles.cardImage}
+                                    imageStyle={{ borderTopLeftRadius: SIZES.radius.l, borderTopRightRadius: SIZES.radius.l }}
+                                >
+                                    <View style={styles.badge}>
+                                        <AppText variant="caption" color={COLORS.white} bold>
+                                            {business.type}
+                                        </AppText>
+                                    </View>
+                                    <IconButton
+                                        icon={isFavorite(business.id) ? 'heart' : 'heart-outline'}
+                                        iconColor={isFavorite(business.id) ? COLORS.primary : COLORS.white}
+                                        size={24}
+                                        style={styles.favoriteIcon}
+                                        onPress={() => token && toggleFavorite(business.id, token)}
+                                    />
+                                </ImageBackground>
+
+                                <View style={styles.cardContent}>
+                                    <View style={styles.row}>
+                                        <AppText variant="h3" style={{ flex: 1 }}>{business.name}</AppText>
+                                        <View style={styles.rating}>
+                                            <IconButton icon="star" size={14} iconColor="#FFD700" style={{ margin: 0 }} />
+                                            <AppText variant="caption" bold>4.8</AppText>
+                                        </View>
+                                    </View>
+
+                                    <View style={styles.row}>
+                                        <IconButton icon="map-marker-outline" size={16} iconColor={COLORS.textLight} style={{ marginLeft: -4, margin: 0 }} />
+                                        <AppText variant="caption" color={COLORS.textLight} style={{ flex: 1 }}>
+                                            {business.address}
+                                        </AppText>
+                                    </View>
+
+                                    <AppText variant="body" numberOfLines={2} color={COLORS.textLight} style={styles.description}>
+                                        {business.description || 'Experience the best quality food and service in town.'}
+                                    </AppText>
+                                </View>
+                            </AppCard>
+                        ))
+                    )}
+                </View>
 
                 <View style={{ height: 80 }} />
             </ScrollView>
@@ -208,6 +239,19 @@ const styles = StyleSheet.create({
         paddingHorizontal: SPACING.s,
         paddingVertical: SPACING.xs,
         borderRadius: SIZES.radius.s,
+    },
+    favoriteIcon: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+    },
+    section: {
+        marginBottom: SPACING.l,
+    },
+    emptyState: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: SPACING.xl,
     },
     cardContent: {
         padding: SPACING.m,

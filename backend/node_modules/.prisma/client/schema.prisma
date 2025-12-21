@@ -36,6 +36,7 @@ model User {
   bookings       Booking[]
   orders         Order[]
   reviews        Review[]
+  favorites      Favorite[]
   payments       Payment[]
 }
 
@@ -75,6 +76,7 @@ model Business {
   orders         Order[]
   bookings       Booking[]
   reviews        Review[]
+  favorites      Favorite[]
 }
 
 model Room {
@@ -198,4 +200,15 @@ model WalletTransaction {
   description String?
 
   createdAt DateTime @default(now())
+}
+
+model Favorite {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, businessId])
 }

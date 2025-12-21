@@ -3,10 +3,13 @@ import { View, StyleSheet, FlatList, RefreshControl, ImageBackground } from 'rea
 import { IconButton } from 'react-native-paper';
 import axios from 'axios';
 import { COLORS, SPACING, SIZES, SHADOWS } from '../../theme';
+import { useAuthStore } from '../../store/useAuthStore';
+import { useFavoriteStore } from '../../store/useFavoriteStore';
 import AppText from '../../components/ui/AppText';
 import AppCard from '../../components/ui/AppCard';
 import CustomHeader from '../../components/navigation/CustomHeader';
 import SegmentedControl from '../../components/ui/SegmentedControl';
+import BusinessCardSkeleton from '../../components/skeletons/BusinessCardSkeleton';
 
 const API_URL = 'http://10.0.2.2:5000/api';
 
@@ -15,6 +18,8 @@ export default function PlacesScreen({ navigation }: any) {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [viewMode, setViewMode] = useState('Restaurants'); // Options: Restaurants, Hotels
+    const token = useAuthStore((state) => state.token);
+    const { favorites, fetchFavorites, toggleFavorite, isFavorite } = useFavoriteStore();
 
     const fetchBusinesses = async () => {
         try {
@@ -30,6 +35,9 @@ export default function PlacesScreen({ navigation }: any) {
 
     useEffect(() => {
         fetchBusinesses();
+        if (token) {
+            fetchFavorites(token);
+        }
     }, []);
 
     const onRefresh = () => {
@@ -59,6 +67,13 @@ export default function PlacesScreen({ navigation }: any) {
                         {item.type}
                     </AppText>
                 </View>
+                <IconButton
+                    icon={isFavorite(item.id) ? 'heart' : 'heart-outline'}
+                    iconColor={isFavorite(item.id) ? COLORS.primary : COLORS.white}
+                    size={24}
+                    style={styles.favoriteIcon}
+                    onPress={() => token && toggleFavorite(item.id, token)}
+                />
             </ImageBackground>
 
             <View style={styles.cardContent}>
@@ -92,17 +107,26 @@ export default function PlacesScreen({ navigation }: any) {
                 />
 
                 <FlatList
-                    data={filteredBusinesses}
+                    data={loading ? [] : filteredBusinesses}
                     renderItem={renderItem}
                     keyExtractor={item => item.id}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
                     contentContainerStyle={{ paddingBottom: 100 }} // Clear CustomTabBar
                     ListEmptyComponent={
-                        <View style={styles.empty}>
-                            <AppText variant="body" color={COLORS.textLight} center>
-                                No {viewMode.toLowerCase()} found.
-                            </AppText>
-                        </View>
+                        loading ? (
+                            // Show skeleton loaders while loading
+                            <>
+                                <BusinessCardSkeleton />
+                                <BusinessCardSkeleton />
+                                <BusinessCardSkeleton />
+                            </>
+                        ) : (
+                            <View style={styles.empty}>
+                                <AppText variant="body" color={COLORS.textLight} center>
+                                    No {viewMode.toLowerCase()} found.
+                                </AppText>
+                            </View>
+                        )
                     }
                 />
             </View>
@@ -135,6 +159,11 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.background,
         paddingHorizontal: SPACING.s,
         borderRadius: SIZES.radius.s,
+    },
+    favoriteIcon: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
     },
     empty: { marginTop: 50, alignItems: 'center' },
 });
