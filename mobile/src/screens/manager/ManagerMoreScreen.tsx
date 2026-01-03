@@ -3,15 +3,21 @@ import { View, StyleSheet, ScrollView } from 'react-native';
 import { List, Divider } from 'react-native-paper';
 import { useTheme } from '../../context/ThemeContext';
 import { useBusinessStore } from '../../store/useBusinessStore';
-import AppText from '../../components/ui/AppText';
+import CustomHeader from '../../components/navigation/CustomHeader';
 
 export default function ManagerMoreScreen({ navigation }: any) {
-    const { colors, spacing } = useTheme();
+    const { colors } = useTheme();
 
     const business = useBusinessStore((state) => state.business);
     const isRestaurant = business?.type === 'RESTAURANT';
 
     const menuItems = [
+        {
+            title: 'My Profile',
+            description: 'Manage your account details',
+            icon: 'account-circle-outline',
+            screen: 'Profile',
+        },
         {
             title: 'Inventory Management',
             description: isRestaurant ? 'Manage menu items stock' : 'Manage room categories',
@@ -39,27 +45,27 @@ export default function ManagerMoreScreen({ navigation }: any) {
     ];
 
     return (
-        <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-            <View style={{ padding: spacing.m }}>
-                <AppText variant="h2" style={{ marginBottom: spacing.m }}>More Options</AppText>
-            </View>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
+            <CustomHeader title="More Options" />
 
-            <View style={{ backgroundColor: colors.surface }}>
-                {menuItems.map((item, index) => (
-                    <React.Fragment key={item.title}>
-                        <List.Item
-                            title={item.title}
-                            description={item.description}
-                            left={(props) => <List.Icon {...props} icon={item.icon} color={colors.primary} />}
-                            right={(props) => <List.Icon {...props} icon="chevron-right" />}
-                            onPress={() => navigation.navigate(item.screen)}
-                            titleStyle={{ fontWeight: 'bold' }}
-                        />
-                        {index < menuItems.length - 1 && <Divider />}
-                    </React.Fragment>
-                ))}
-            </View>
-        </ScrollView>
+            <ScrollView style={styles.container}>
+                <View style={{ backgroundColor: colors.surface, marginTop: 10 }}>
+                    {menuItems.map((item, index) => (
+                        <React.Fragment key={item.title}>
+                            <List.Item
+                                title={item.title}
+                                description={item.description}
+                                left={(props) => <List.Icon {...props} icon={item.icon} color={colors.primary} />}
+                                right={(props) => <List.Icon {...props} icon="chevron-right" />}
+                                onPress={() => navigation.navigate(item.screen)}
+                                titleStyle={{ fontWeight: 'bold' }}
+                            />
+                            {index < menuItems.length - 1 && <Divider />}
+                        </React.Fragment>
+                    ))}
+                </View>
+            </ScrollView>
+        </View>
     );
 }
 
