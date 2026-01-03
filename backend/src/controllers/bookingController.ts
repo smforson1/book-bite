@@ -225,3 +225,99 @@ export const getManagerBookings = async (req: AuthRequest, res: Response): Promi
         res.status(500).json({ message: 'Error fetching manager bookings', error });
     }
 };
+// Get Occupancy Stats for Manager Dashboard
+export const getOccupancyStats = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const userId = req.user.userId;
+        const manager = await prisma.managerProfile.findUnique({
+            where: { userId },
+            include: { business: true }
+        });
+
+        if (!manager?.business) {
+            res.status(404).json({ message: 'Business not found' });
+            return;
+        }
+
+        const businessId = manager.business.id;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1);
+
+        // 1. Check-ins Today
+        const checkInsToday = await prisma.booking.count({
+            where: {
+                businessId,
+                status: 'CONFIRMED',
+                checkIn: { gte: today, lt: tomorrow }
+            }
+        });
+
+        // 2. Check-outs Today
+        const checkOutsToday = await prisma.booking.count({
+            where: {
+                businessId,
+                status: 'CONFIRMED',
+                checkOut: { gte: today, lt: tomorrow }
+            }
+        });
+
+        // 3. Current Active Guests
+        const activeBookings = await prisma.booking.findMany({
+            where: {
+                businessId,
+                status: 'CONFIRMED',
+                checkIn: { lte: new Date() },
+                checkOut: { gt: new Date() }
+            },
+            select: { guests: true, roomCount: true }
+        });
+
+        const activeGuests = activeBookings.reduce((sum, b) => sum + b.guests, 0);
+        const occupiedUnits = activeBookings.reduce((sum, b) => sum + b.roomCount, 0);
+
+        res.status(200).json({
+            checkInsToday,
+            checkOutsToday,
+            activeGuests,
+            occupiedUnits
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching occupancy stats', error });
+    }
+};
+
+// Get List of Active Guests
+export const getActiveGuests = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const userId = req.user.userId;
+        const manager = await prisma.managerProfile.findUnique({
+            where: { userId },
+            include: { business: true }
+        });
+
+        if (!manager?.business) {
+            res.status(404).json({ message: 'Business not found' });
+            return;
+        }
+
+        const bookings = await prisma.booking.findMany({
+            where: {
+                businessId: manager.business.id,
+                status: 'CONFIRMED',
+                checkIn: { lte: new Date() },
+                checkOut: { gt: new Date() }
+            },
+            include: {
+                user: { select: { name: true, email: true, phone: true } },
+                room: true
+            },
+            orderBy: { checkOut: 'asc' }
+        });
+
+        res.status(200).json(bookings);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching active guests', error });
+    }
+};
