@@ -53,7 +53,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
                     }
                     if (route.name === 'Orders') iconName = 'clipboard-list';
                     if (route.name === 'Wallet') iconName = 'wallet';
-                    if (route.name === 'More') iconName = 'dots-vertical';
+                    if (route.name === 'More') iconName = 'dots-horizontal';
 
                     const animatedIconStyle = useAnimatedStyle(() => {
                         return {
