@@ -1,9 +1,6 @@
 import React from 'react';
-import { View, StyleSheet, Image } from 'react-native';
+import { View, StyleSheet, Image, Dimensions } from 'react-native';
 import { Card } from 'react-native-paper';
-import AppText from './AppText';
-import RatingStars from './RatingStars';
-import ImageCarousel from './ImageCarousel';
 import { useTheme } from '../../context/ThemeContext';
 import AppText from './AppText';
 import RatingStars from './RatingStars';

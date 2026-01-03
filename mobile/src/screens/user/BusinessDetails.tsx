@@ -162,7 +162,7 @@ export default function BusinessDetails({ route, navigation }: any) {
                             onPress={() => navigation.navigate('BookingCheckout', { room, business })}
                             style={[styles.flexButton, { backgroundColor: colors.primary }]}
                         >
-                            <AppText variant="button" color={colors.white}>Book Now</AppText>
+                            <AppText variant="label" color={colors.white} bold>Book Now</AppText>
                         </Button>
                         <Button
                             mode="outlined"
@@ -286,7 +286,7 @@ export default function BusinessDetails({ route, navigation }: any) {
                                                         style={[styles.flexButton, { backgroundColor: colors.primary }]}
                                                         compact
                                                     >
-                                                        <AppText variant="button" color={colors.white}>Order Now</AppText>
+                                                        <AppText variant="label" color={colors.white} bold>Order Now</AppText>
                                                     </Button>
                                                     <Button
                                                         mode="outlined"
