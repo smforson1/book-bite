@@ -5,8 +5,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useTheme } from '../../context/ThemeContext';
-// @ts-ignore
-// import { usePaystack } from 'react-native-paystack-webview';
+import AppText from '../../components/ui/AppText';
+import AppCard from '../../components/ui/AppCard';
+import AppButton from '../../components/ui/AppButton';
 import PaymentWebView from '../../components/ui/PaymentWebView';
 import axios from 'axios';
 
@@ -135,24 +136,22 @@ export default function BookingCheckout({ route, navigation }: any) {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <ScrollView contentContainerStyle={styles.content}>
-                <Text variant="headlineMedium" style={styles.title}>
+                <AppText variant="h1" style={styles.title} center>
                     Confirm Booking
-                </Text>
+                </AppText>
 
-                <Card style={styles.card}>
-                    <Card.Content>
-                        <Text variant="titleLarge">{business.name}</Text>
-                        <Text variant="titleMedium" style={{ marginTop: 10 }}>
-                            {room.name}
-                        </Text>
-                        <Text variant="bodyMedium">{room.description}</Text>
-                    </Card.Content>
-                </Card>
+                <AppCard style={styles.card}>
+                    <AppText variant="h2">{business.name}</AppText>
+                    <AppText variant="h3" style={{ marginTop: 10 }}>
+                        {room.name}
+                    </AppText>
+                    <AppText variant="body" color={colors.textLight}>{room.description}</AppText>
+                </AppCard>
 
                 <View style={styles.form}>
-                    <Button mode="outlined" onPress={() => setShowCheckIn(true)} style={styles.input} textColor={colors.primary}>
+                    <Button mode="outlined" onPress={() => setShowCheckIn(true)} style={[styles.input, { borderColor: colors.border }]} textColor={colors.primary}>
                         {isHostel ? "Move-in Date: " : "Check-in: "}{checkIn.toLocaleDateString()}
                     </Button>
                     {showCheckIn && (
@@ -167,7 +166,7 @@ export default function BookingCheckout({ route, navigation }: any) {
                         />
                     )}
 
-                    <Button mode="outlined" onPress={() => setShowCheckOut(true)} style={styles.input} textColor={colors.primary}>
+                    <Button mode="outlined" onPress={() => setShowCheckOut(true)} style={[styles.input, { borderColor: colors.border }]} textColor={colors.primary}>
                         {isHostel ? "Move-out Date: " : "Check-out: "}{checkOut.toLocaleDateString()}
                     </Button>
                     {showCheckOut && (
@@ -185,16 +184,16 @@ export default function BookingCheckout({ route, navigation }: any) {
 
                     {isHostel && (
                         <View style={{ marginBottom: 15 }}>
-                            <Text variant="titleMedium" style={{ marginBottom: 5 }}>Bed Space Gender *</Text>
+                            <AppText variant="h3" style={{ marginBottom: 5 }}>Bed Space Gender *</AppText>
                             <RadioButton.Group onValueChange={val => setGender(val as 'MALE' | 'FEMALE')} value={gender || ''}>
                                 <View style={{ flexDirection: 'row', gap: 20 }}>
                                     <View style={styles.radioRow}>
                                         <RadioButton value="MALE" color={colors.primary} />
-                                        <Text>Male</Text>
+                                        <AppText>Male</AppText>
                                     </View>
                                     <View style={styles.radioRow}>
                                         <RadioButton value="FEMALE" color={colors.primary} />
-                                        <Text>Female</Text>
+                                        <AppText>Female</AppText>
                                     </View>
                                 </View>
                             </RadioButton.Group>
@@ -209,107 +208,92 @@ export default function BookingCheckout({ route, navigation }: any) {
                                 onChangeText={setGuests}
                                 keyboardType="number-pad"
                                 mode="outlined"
+                                theme={{ colors: { primary: colors.primary, text: colors.text, placeholder: colors.textLight } }}
+                                style={{ backgroundColor: colors.surface }}
                             />
                         </View>
                         <View style={{ flex: 1, marginLeft: 10 }}>
-                            <Text variant="bodyMedium" style={{ marginBottom: 5 }}>
+                            <AppText variant="body" style={{ marginBottom: 5 }}>
                                 {isHostel ? `Bed Spaces (${roomCount})` : `Rooms (${roomCount})`}
-                            </Text>
+                            </AppText>
                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                <Button mode="outlined" compact onPress={() => setRoomCount(Math.max(1, roomCount - 1))}>-</Button>
-                                <Text style={{ marginHorizontal: 10 }}>{roomCount}</Text>
+                                <Button mode="outlined" compact onPress={() => setRoomCount(Math.max(1, roomCount - 1))} textColor={colors.primary} style={{ borderColor: colors.border }}>-</Button>
+                                <AppText style={{ marginHorizontal: 10 }}>{roomCount}</AppText>
                                 <Button
                                     mode="outlined"
                                     compact
                                     onPress={() => setRoomCount(Math.min(room.totalStock || 10, roomCount + 1))}
+                                    textColor={colors.primary}
+                                    style={{ borderColor: colors.border }}
                                 >+</Button>
                             </View>
                         </View>
                     </View>
 
-                    <Divider style={styles.divider} />
+                    <Divider style={[styles.divider, { backgroundColor: colors.border }]} />
 
                     <View style={styles.summaryRow}>
-                        <Text>{isHostel ? "Price per Year/Bed" : "Price per night"}</Text>
-                        <Text>GH₵{room.price}</Text>
+                        <AppText>{isHostel ? "Price per Year/Bed" : "Price per night"}</AppText>
+                        <AppText>GH₵{room.price}</AppText>
                     </View>
 
                     {!isHostel && (
                         <View style={styles.summaryRow}>
-                            <Text>Nights</Text>
-                            <Text>{nights}</Text>
+                            <AppText>Nights</AppText>
+                            <AppText>{nights}</AppText>
                         </View>
                     )}
 
                     <View style={styles.summaryRow}>
-                        <Text>{isHostel ? "Bed Spaces" : "Rooms"}</Text>
-                        <Text>{roomCount}</Text>
+                        <AppText>{isHostel ? "Bed Spaces" : "Rooms"}</AppText>
+                        <AppText>{roomCount}</AppText>
                     </View>
-                    <View style={[styles.summaryRow, styles.totalRow]}>
-                        <Text variant="titleMedium">Total</Text>
-                        <Text variant="titleMedium">GH₵{effectiveTotal.toFixed(2)}</Text>
+                    <View style={[styles.summaryRow, styles.totalRow, { borderTopColor: colors.border }]}>
+                        <AppText variant="h3">Total</AppText>
+                        <AppText variant="h3">GH₵{effectiveTotal.toFixed(2)}</AppText>
                     </View>
 
-                    <Divider style={{ marginVertical: 10 }} />
+                    <Divider style={{ marginVertical: 10, backgroundColor: colors.border }} />
 
-                    <Text variant="titleMedium" style={{ marginBottom: 10 }}>Payment Option</Text>
+                    <AppText variant="h3" style={{ marginBottom: 10 }}>Payment Option</AppText>
                     <RadioButton.Group onValueChange={value => setPaymentOption(value as 'FULL' | 'DEPOSIT')} value={paymentOption}>
                         <View style={styles.radioRow}>
                             <RadioButton value="FULL" color={colors.primary} />
-                            <Text onPress={() => setPaymentOption('FULL')}>Pay Full Amount (GH₵{effectiveTotal.toFixed(2)})</Text>
+                            <AppText onPress={() => setPaymentOption('FULL')}>Pay Full Amount (GH₵{effectiveTotal.toFixed(2)})</AppText>
                         </View>
 
-                        {/* Only show Deposit option if more than 3 rooms are booked */}
                         {roomCount > 3 && (
                             <View style={styles.radioRow}>
                                 <RadioButton value="DEPOSIT" color={colors.primary} />
-                                <Text onPress={() => setPaymentOption('DEPOSIT')}>
-                                    Pay 20% Deposit (GH₵{depositAmount.toFixed(2)})
-                                    {'\n'}
-                                    <Text variant="bodySmall" style={{ color: 'gray' }}>Mass Booking Benefit</Text>
-                                </Text>
+                                <View>
+                                    <AppText onPress={() => setPaymentOption('DEPOSIT')}>
+                                        Pay 20% Deposit (GH₵{depositAmount.toFixed(2)})
+                                    </AppText>
+                                    <AppText variant="caption" color={colors.textLight}>Mass Booking Benefit</AppText>
+                                </View>
                             </View>
                         )}
                     </RadioButton.Group>
 
                     {roomCount <= 3 && (
-                        <Text variant="bodySmall" style={{ color: 'gray', fontStyle: 'italic', marginTop: 5 }}>
+                        <AppText variant="caption" color={colors.textLight} style={{ fontStyle: 'italic', marginTop: 5 }}>
                             Deposit option available for bookings of 4+ rooms.
-                        </Text>
+                        </AppText>
                     )}
 
-                    <View style={[styles.summaryRow, styles.totalRow]}>
-                        <Text variant="titleLarge" style={{ fontWeight: 'bold', color: colors.primary }}>
+                    <View style={[styles.summaryRow, styles.totalRow, { borderTopColor: colors.border, marginTop: 15 }]}>
+                        <AppText variant="h2" bold color={colors.primary}>
                             Pay Now:
-                        </Text>
-                        <Text variant="titleLarge" style={{ fontWeight: 'bold', color: colors.primary }}>
+                        </AppText>
+                        <AppText variant="h2" bold color={colors.primary}>
                             GH₵{amountToPay.toFixed(2)}
-                        </Text>
+                        </AppText>
                     </View>
 
-                    <Button
-                        mode="contained"
+                    <AppButton
+                        title="Confirm & Pay"
                         onPress={handleBooking}
-                        style={[styles.button, { backgroundColor: colors.primary }]}
-                        loading={loading}
-                        disabled={loading}
-                    >
-                        Confirm & Pay
-                    </Button>
-
-                    <PaymentWebView
-                        visible={showWebView}
-                        url={paymentUrl}
-                        onClose={() => setShowWebView(false)}
-                        onSuccess={(ref) => {
-                            setShowWebView(false);
-                            handlePaymentSuccess({ reference: ref });
-                        }}
-                        onCancel={() => {
-                            setShowWebView(false);
-                            setLoading(false);
-                            Alert.alert('Cancelled', 'Payment was cancelled');
-                        }}
+                        isLoading={loading}
                     />
                 </View>
             </ScrollView>
@@ -318,16 +302,15 @@ export default function BookingCheckout({ route, navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff' },
+    container: { flex: 1 },
     content: { padding: 20 },
-    title: { marginBottom: 20, textAlign: 'center' },
+    title: { marginBottom: 20 },
     card: { marginBottom: 20 },
     form: { gap: 10 },
     input: { marginBottom: 10 },
     divider: { marginVertical: 15 },
     summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
-    totalRow: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#eee' },
-    button: { marginTop: 20, paddingVertical: 5 },
+    totalRow: { marginTop: 10, paddingTop: 10, borderTopWidth: 1 },
     radioRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 4 },
     row: { flexDirection: 'row', alignItems: 'center' }
 });

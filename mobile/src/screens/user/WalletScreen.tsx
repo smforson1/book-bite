@@ -11,7 +11,7 @@ import axios from 'axios';
 const API_URL = 'http://10.0.2.2:5000/api';
 
 export default function WalletScreen({ navigation }: any) {
-    const { colors, spacing } = useTheme();
+    const { colors, spacing, isDark } = useTheme();
     const { token } = useAuthStore();
 
     const [balance, setBalance] = useState(0);
@@ -90,10 +90,13 @@ export default function WalletScreen({ navigation }: any) {
 
     const renderTransaction = ({ item }: any) => {
         const isCredit = item.type === 'CREDIT';
+        const successBg = isDark ? '#1B3320' : '#E8F5E9';
+        const errorBg = isDark ? '#3D1B1B' : '#FFEBEE';
+
         return (
-            <Card style={styles.transactionCard} mode="contained">
+            <Card style={[styles.transactionCard, { backgroundColor: colors.surface }]} mode="contained">
                 <View style={styles.transactionRow}>
-                    <View style={[styles.iconBox, { backgroundColor: isCredit ? '#E8F5E9' : '#FFEBEE' }]}>
+                    <View style={[styles.iconBox, { backgroundColor: isCredit ? successBg : errorBg }]}>
                         <IconButton
                             icon={isCredit ? 'arrow-down-left' : 'arrow-up-right'}
                             iconColor={isCredit ? colors.success : colors.error}
@@ -147,7 +150,7 @@ export default function WalletScreen({ navigation }: any) {
                     renderItem={renderTransaction}
                     keyExtractor={item => item.id}
                     contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }}
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchWalletData(); }} />}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchWalletData(); }} colors={[colors.primary]} />}
                     ListEmptyComponent={
                         <View style={{ alignItems: 'center', marginTop: 40 }}>
                             <AppText color={colors.textLight}>No transactions yet</AppText>
@@ -159,7 +162,7 @@ export default function WalletScreen({ navigation }: any) {
             {/* Top Up Modal */}
             <Portal>
                 <Modal visible={showTopUpModal} onDismiss={() => setShowTopUpModal(false)} contentContainerStyle={styles.modal}>
-                    <View style={{ backgroundColor: 'white', padding: 20, borderRadius: 12 }}>
+                    <View style={{ backgroundColor: colors.surface, padding: 20, borderRadius: 12 }}>
                         <AppText variant="h3" style={{ textAlign: 'center', marginBottom: 16 }}>Top Up Wallet</AppText>
                         <TextInput
                             label="Amount (GHS)"
@@ -168,10 +171,11 @@ export default function WalletScreen({ navigation }: any) {
                             keyboardType="numeric"
                             mode="outlined"
                             left={<TextInput.Affix text="GH₵" />}
-                            style={{ marginBottom: 16, backgroundColor: 'white' }}
+                            style={{ marginBottom: 16, backgroundColor: colors.surface }}
                             autoFocus
+                            theme={{ colors: { primary: colors.primary, text: colors.text, placeholder: colors.textLight } }}
                         />
-                        <Button mode="contained" onPress={handleInitializeTopUp} loading={loading} disabled={loading}>
+                        <Button mode="contained" onPress={handleInitializeTopUp} loading={loading} disabled={loading} buttonColor={colors.primary}>
                             Proceed to Pay
                         </Button>
                     </View>
@@ -203,7 +207,6 @@ const styles = StyleSheet.create({
     },
     transactionCard: {
         marginBottom: 8,
-        backgroundColor: 'white'
     },
     transactionRow: {
         flexDirection: 'row',

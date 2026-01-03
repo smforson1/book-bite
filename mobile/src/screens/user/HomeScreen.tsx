@@ -61,11 +61,11 @@ export default function HomeScreen({ navigation }: any) {
             <AppCard
                 onPress={() => setSelectedType(type)}
                 style={{
-                    backgroundColor: isSelected ? colors.primary : colors.white,
-                    marginRight: SPACING.s,
-                    paddingVertical: SPACING.s,
-                    paddingHorizontal: SPACING.m,
-                    borderRadius: SIZES.radius.xl,
+                    backgroundColor: isSelected ? colors.primary : colors.surface,
+                    marginRight: 8,
+                    paddingVertical: 8,
+                    paddingHorizontal: 16,
+                    borderRadius: 30,
                 }}
             >
                 <AppText
@@ -99,7 +99,7 @@ export default function HomeScreen({ navigation }: any) {
                 contentContainerStyle={styles.content}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
             >
-                <View style={[styles.searchContainer, { backgroundColor: colors.white }]}>
+                <View style={[styles.searchContainer, { backgroundColor: colors.surface }]}>
                     <IconButton icon="magnify" size={20} iconColor={colors.textLight} />
                     <TextInput
                         placeholder="Find your next bite..."

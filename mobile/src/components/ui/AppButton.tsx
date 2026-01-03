@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { COLORS, SIZES, SPACING } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 import AppText from './AppText';
 
 interface AppButtonProps {
@@ -23,6 +23,7 @@ export default function AppButton({
     isLoading = false,
     disabled = false
 }: AppButtonProps) {
+    const { colors, sizes, spacing } = useTheme();
     const scale = useSharedValue(1);
 
     const animatedStyle = useAnimatedStyle(() => ({
@@ -38,17 +39,17 @@ export default function AppButton({
         scale.value = withSpring(1);
     };
 
-    const bgColor = variant === 'primary' ? COLORS.primary
-        : variant === 'secondary' ? COLORS.secondary
+    const bgColor = variant === 'primary' ? colors.primary
+        : variant === 'secondary' ? colors.secondary
             : variant === 'ghost' ? 'transparent'
                 : 'transparent';
 
-    const textColor = variant === 'primary' ? COLORS.white
-        : variant === 'secondary' ? COLORS.white
-            : variant === 'outline' ? COLORS.primary
-                : COLORS.text;
+    const textColor = variant === 'primary' ? colors.white
+        : variant === 'secondary' ? colors.white
+            : variant === 'outline' ? colors.primary
+                : colors.text;
 
-    const borderColor = variant === 'outline' ? COLORS.primary : 'transparent';
+    const borderColor = variant === 'outline' ? colors.primary : 'transparent';
 
     return (
         <AnimatedPressable
@@ -58,7 +59,12 @@ export default function AppButton({
             disabled={disabled || isLoading}
             style={[
                 styles.container,
-                { backgroundColor: disabled ? COLORS.border : bgColor, borderColor },
+                {
+                    backgroundColor: disabled ? colors.border : bgColor,
+                    borderColor,
+                    borderRadius: sizes.radius.m,
+                    paddingHorizontal: spacing.l,
+                },
                 variant === 'outline' && styles.outline,
                 animatedStyle
             ]}
@@ -66,7 +72,7 @@ export default function AppButton({
             {isLoading ? (
                 <ActivityIndicator color={textColor} />
             ) : (
-                <AppText variant="h3" color={disabled ? COLORS.textLight : textColor} style={styles.text}>
+                <AppText variant="h3" color={disabled ? colors.textLight : textColor} style={styles.text}>
                     {title}
                 </AppText>
             )}
@@ -77,11 +83,9 @@ export default function AppButton({
 const styles = StyleSheet.create({
     container: {
         height: 50,
-        borderRadius: SIZES.radius.m,
         justifyContent: 'center',
         alignItems: 'center',
         flexDirection: 'row',
-        paddingHorizontal: SPACING.l,
     },
     outline: {
         borderWidth: 2,

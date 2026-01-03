@@ -21,7 +21,7 @@ export default function ProfileScreen({ navigation }: any) {
     const MenuItem = ({ icon, title, onPress, danger = false }: any) => (
         <AppCard onPress={onPress} style={styles.menuItem}>
             <View style={styles.menuRow}>
-                <View style={[styles.iconBox, { backgroundColor: colors.primary + '10' }, danger && { backgroundColor: '#FFEBEE' }]}>
+                <View style={[styles.iconBox, { backgroundColor: colors.primary + '10' }, danger && { backgroundColor: isDark ? '#3D1B1B' : '#FFEBEE' }]}>
                     <IconButton
                         icon={icon}
                         size={20}

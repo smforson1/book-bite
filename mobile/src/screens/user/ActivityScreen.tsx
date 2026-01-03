@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl } from 'react-native';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
-import { COLORS, SPACING, SIZES, SHADOWS } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 import AppText from '../../components/ui/AppText';
 import AppCard from '../../components/ui/AppCard';
 import AppButton from '../../components/ui/AppButton';
@@ -12,6 +12,7 @@ import SegmentedControl from '../../components/ui/SegmentedControl';
 const API_URL = 'http://10.0.2.2:5000/api';
 
 export default function ActivityScreen({ navigation, route }: any) {
+    const { colors, spacing, sizes } = useTheme();
     const [activeTab, setActiveTab] = useState('Bookings'); // Bookings | Orders
 
     useEffect(() => {
@@ -52,13 +53,13 @@ export default function ActivityScreen({ navigation, route }: any) {
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'PENDING': return '#F57C00'; // Orange
-            case 'CONFIRMED': return COLORS.success;
-            case 'COMPLETED': return COLORS.success;
-            case 'CANCELLED': return COLORS.error;
-            case 'KITCHEN': return '#F57C00';
+            case 'PENDING': return colors.warning || '#F57C00'; // Orange
+            case 'CONFIRMED': return colors.success;
+            case 'COMPLETED': return colors.success;
+            case 'CANCELLED': return colors.error;
+            case 'KITCHEN': return colors.warning || '#F57C00';
             case 'DELIVERY': return '#1976D2';
-            default: return COLORS.textLight;
+            default: return colors.textLight;
         }
     };
 
@@ -75,26 +76,26 @@ export default function ActivityScreen({ navigation, route }: any) {
 
             {activeTab === 'Bookings' ? (
                 <>
-                    <AppText variant="body" color={COLORS.textLight}>
+                    <AppText variant="body" color={colors.textLight}>
                         {new Date(item.checkIn).toLocaleDateString()} - {new Date(item.checkOut).toLocaleDateString()}
                     </AppText>
-                    <AppText variant="caption" color={COLORS.textLight}>
+                    <AppText variant="caption" color={colors.textLight}>
                         Room: {item.room?.name}
                     </AppText>
                 </>
             ) : (
                 <>
-                    <AppText variant="body" color={COLORS.textLight}>
+                    <AppText variant="body" color={colors.textLight}>
                         {item.items?.map((i: any) => `${i.quantity}x ${i.name}`).join(', ')}
                     </AppText>
-                    <AppText variant="caption" color={COLORS.textLight}>
+                    <AppText variant="caption" color={colors.textLight}>
                         {new Date(item.createdAt).toLocaleDateString()}
                     </AppText>
                 </>
             )}
 
-            <View style={styles.cardFooter}>
-                <AppText variant="h3" color={COLORS.primary}>
+            <View style={[styles.cardFooter, { borderTopColor: colors.border }]}>
+                <AppText variant="h3" color={colors.primary}>
                     GH₵{item.totalPrice}
                 </AppText>
                 {/* <AppButton title="View" variant="ghost" onPress={() => {}} style={{ height: 32 }} /> */}
@@ -103,10 +104,10 @@ export default function ActivityScreen({ navigation, route }: any) {
     );
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
             <CustomHeader title="Activity" />
 
-            <View style={styles.content}>
+            <View style={[styles.content, { paddingHorizontal: spacing.m }]}>
                 <SegmentedControl
                     options={['Bookings', 'Orders']}
                     selectedOption={activeTab}
@@ -117,10 +118,10 @@ export default function ActivityScreen({ navigation, route }: any) {
                     data={items}
                     renderItem={renderItem}
                     keyExtractor={item => item.id}
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
                     ListEmptyComponent={
                         <View style={styles.empty}>
-                            <AppText variant="body" color={COLORS.textLight} center>
+                            <AppText variant="body" color={colors.textLight} center>
                                 No {activeTab.toLowerCase()} found.
                             </AppText>
                         </View>
@@ -133,11 +134,11 @@ export default function ActivityScreen({ navigation, route }: any) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: COLORS.background },
-    content: { flex: 1, paddingHorizontal: SPACING.m },
-    card: { marginBottom: SPACING.m },
-    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING.s },
-    statusBadge: { paddingHorizontal: SPACING.s, paddingVertical: 4, borderRadius: SIZES.radius.s },
-    cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: SPACING.m, paddingTop: SPACING.s, borderTopWidth: 1, borderTopColor: COLORS.border },
+    container: { flex: 1 },
+    content: { flex: 1 },
+    card: { marginBottom: 16 }, // Using spacing instead of static
+    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+    statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+    cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, paddingTop: 8, borderTopWidth: 1 },
     empty: { marginTop: 50, alignItems: 'center' },
 });

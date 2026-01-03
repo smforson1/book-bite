@@ -5,13 +5,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AppText from '../../components/ui/AppText';
 import RatingStars from '../../components/ui/RatingStars';
 import ImageUpload from '../../components/ui/ImageUpload';
-import { COLORS, SPACING } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 import { useAuthStore } from '../../store/useAuthStore';
 import axios from 'axios';
 
 const API_URL = 'http://10.0.2.2:5000/api';
 
 export default function AddReviewScreen({ route, navigation }: any) {
+    const { colors, spacing } = useTheme();
     const { businessId, businessName } = route.params;
     const token = useAuthStore((state) => state.token);
 
@@ -56,12 +57,12 @@ export default function AddReviewScreen({ route, navigation }: any) {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1 }}
             >
-                <ScrollView contentContainerStyle={styles.content}>
+                <ScrollView contentContainerStyle={[styles.content, { padding: spacing.l }]}>
                     <AppText variant="h2" style={styles.title}>
                         Review {businessName}
                     </AppText>
@@ -88,9 +89,10 @@ export default function AddReviewScreen({ route, navigation }: any) {
                             onChangeText={setComment}
                             multiline
                             numberOfLines={5}
-                            outlineColor={COLORS.border}
-                            activeOutlineColor={COLORS.primary}
-                            style={styles.textInput}
+                            outlineColor={colors.border}
+                            activeOutlineColor={colors.primary}
+                            style={[styles.textInput, { backgroundColor: colors.surface }]}
+                            theme={{ colors: { primary: colors.primary, text: colors.text, placeholder: colors.textLight } }}
                         />
                     </View>
 
@@ -101,8 +103,8 @@ export default function AddReviewScreen({ route, navigation }: any) {
                         <ImageUpload onImageUploaded={handleImageUpload} />
 
                         {images.length > 0 && (
-                            <View style={styles.imagePreview}>
-                                <AppText variant="caption" color={COLORS.textLight}>
+                            <View style={[styles.imagePreview, { backgroundColor: colors.surface }]}>
+                                <AppText variant="caption" color={colors.textLight}>
                                     {images.length} photo(s) uploaded
                                 </AppText>
                             </View>
@@ -114,7 +116,7 @@ export default function AddReviewScreen({ route, navigation }: any) {
                         onPress={handleSubmit}
                         loading={loading}
                         disabled={loading || rating === 0}
-                        buttonColor={COLORS.primary}
+                        buttonColor={colors.primary}
                         style={styles.submitButton}
                     >
                         Submit Review
@@ -126,33 +128,19 @@ export default function AddReviewScreen({ route, navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: COLORS.white,
-    },
-    content: {
-        padding: SPACING.l,
-    },
-    title: {
-        marginBottom: SPACING.xl,
-    },
-    section: {
-        marginBottom: SPACING.xl,
-    },
-    label: {
-        marginBottom: SPACING.m,
-    },
-    textInput: {
-        backgroundColor: COLORS.white,
-    },
+    container: { flex: 1 },
+    content: {},
+    title: { marginBottom: 24 },
+    section: { marginBottom: 24 },
+    label: { marginBottom: 12 },
+    textInput: {},
     imagePreview: {
-        marginTop: SPACING.m,
-        padding: SPACING.m,
-        backgroundColor: COLORS.background,
+        marginTop: 12,
+        padding: 12,
         borderRadius: 8,
     },
     submitButton: {
-        marginTop: SPACING.l,
-        paddingVertical: SPACING.s,
+        marginTop: 20,
+        paddingVertical: 8,
     },
 });

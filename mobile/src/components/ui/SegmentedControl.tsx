@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, StyleSheet, Pressable, useWindowDimensions } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import { COLORS, SIZES, SHADOWS, FONTS, SPACING } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 import AppText from './AppText';
 
 interface SegmentedControlProps {
@@ -11,9 +11,10 @@ interface SegmentedControlProps {
 }
 
 export default function SegmentedControl({ options, selectedOption, onOptionPress }: SegmentedControlProps) {
+    const { colors, spacing, sizes, shadows } = useTheme();
     const { width } = useWindowDimensions();
     // Assuming full width minus padding. Adjust 40 based on parent padding
-    const containerWidth = width - (SPACING.m * 2);
+    const containerWidth = width - (spacing.m * 2);
     const segmentWidth = (containerWidth - 8) / options.length; // 8 is padding
 
     const sliderPosition = useSharedValue(0);
@@ -33,8 +34,25 @@ export default function SegmentedControl({ options, selectedOption, onOptionPres
     }));
 
     return (
-        <View style={[styles.container, { width: containerWidth }]}>
-            <Animated.View style={[styles.slider, animatedStyle]} />
+        <View style={[
+            styles.container,
+            {
+                width: containerWidth,
+                backgroundColor: colors.surface,
+                borderRadius: sizes.radius.l,
+                marginVertical: spacing.m,
+                ...shadows.light,
+            }
+        ]}>
+            <Animated.View style={[
+                styles.slider,
+                {
+                    backgroundColor: colors.primary + '15',
+                    borderColor: colors.primary + '30',
+                    borderRadius: sizes.radius.m,
+                },
+                animatedStyle
+            ]} />
             {options.map((option) => {
                 const isSelected = selectedOption === option;
                 return (
@@ -45,7 +63,7 @@ export default function SegmentedControl({ options, selectedOption, onOptionPres
                     >
                         <AppText
                             variant="label"
-                            color={isSelected ? COLORS.primary : COLORS.textLight}
+                            color={isSelected ? colors.primary : colors.textLight}
                             bold={isSelected}
                             style={styles.label}
                         >
@@ -62,21 +80,14 @@ const styles = StyleSheet.create({
     container: {
         flexDirection: 'row',
         height: 44,
-        backgroundColor: COLORS.surface,
-        borderRadius: SIZES.radius.l,
         padding: 4,
-        marginVertical: SPACING.m,
-        ...SHADOWS.light,
     },
     slider: {
         position: 'absolute',
         top: 4,
         bottom: 4,
         left: 4,
-        backgroundColor: COLORS.primary + '15', // Light primary tint
-        borderRadius: SIZES.radius.m,
         borderWidth: 1,
-        borderColor: COLORS.primary + '30',
     },
     segment: {
         justifyContent: 'center',

@@ -4,6 +4,7 @@ import { Text, Card, SegmentedButtons } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useTheme } from '../../context/ThemeContext';
+import AppText from '../../components/ui/AppText';
 import axios from 'axios';
 
 const API_URL = 'http://10.0.2.2:5000/api';
@@ -44,9 +45,9 @@ export default function MyBookings() {
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <View style={[styles.header, { backgroundColor: colors.surface }]}>
-                <Text variant="headlineMedium" style={[styles.title, { color: colors.primary }]}>
+                <AppText variant="h1" style={[styles.title, { color: colors.primary }]}>
                     My Activity
-                </Text>
+                </AppText>
                 <SegmentedButtons
                     value={activeTab}
                     onValueChange={setActiveTab}
@@ -61,53 +62,52 @@ export default function MyBookings() {
 
             <ScrollView
                 contentContainerStyle={styles.content}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
             >
                 {items.length === 0 ? (
                     <View style={styles.emptyState}>
-                        <Text>No {activeTab} found.</Text>
+                        <AppText color={colors.textLight}>No {activeTab} found.</AppText>
                     </View>
                 ) : (
                     items.map((item) => (
-                        <Card key={item.id} style={styles.card}>
+                        <Card key={item.id} style={[styles.card, { backgroundColor: colors.surface }]}>
                             <Card.Content>
                                 <View style={styles.row}>
-                                    <Text variant="titleMedium">{item.business?.name || 'Unknown Business'}</Text>
-                                    <Text
-                                        style={{
-                                            color:
-                                                item.status === 'PENDING'
-                                                    ? colors.warning
-                                                    : item.status === 'CONFIRMED'
-                                                        ? colors.success
-                                                        : '#d32f2f',
-                                            fontWeight: 'bold',
-                                        }}
+                                    <AppText variant="h3">{item.business?.name || 'Unknown Business'}</AppText>
+                                    <AppText
+                                        bold
+                                        color={
+                                            item.status === 'PENDING'
+                                                ? colors.warning
+                                                : item.status === 'CONFIRMED'
+                                                    ? colors.success
+                                                    : colors.error
+                                        }
                                     >
                                         {item.status}
-                                    </Text>
+                                    </AppText>
                                 </View>
 
                                 {activeTab === 'bookings' ? (
                                     <>
-                                        <Text variant="bodyMedium">
+                                        <AppText variant="body" color={colors.textLight}>
                                             {new Date(item.checkIn).toLocaleDateString()} -{' '}
                                             {new Date(item.checkOut).toLocaleDateString()}
-                                        </Text>
-                                        <Text variant="bodyMedium">Room: {item.room?.name}</Text>
+                                        </AppText>
+                                        <AppText variant="caption" color={colors.textLight}>Room: {item.room?.name}</AppText>
                                     </>
                                 ) : (
                                     <>
-                                        <Text variant="bodyMedium">Items: {item.items?.length || 0}</Text>
-                                        <Text variant="bodyMedium" numberOfLines={1}>
+                                        <AppText variant="body" color={colors.textLight}>Items: {item.items?.length || 0}</AppText>
+                                        <AppText variant="caption" color={colors.textLight} numberOfLines={1}>
                                             {item.items?.map((i: any) => i.name).join(', ')}
-                                        </Text>
+                                        </AppText>
                                     </>
                                 )}
 
-                                <Text variant="titleMedium" style={[styles.price, { color: colors.primary }]}>
+                                <AppText variant="h3" style={[styles.price, { color: colors.primary }]}>
                                     Total: GH₵{item.totalPrice}
-                                </Text>
+                                </AppText>
                             </Card.Content>
                         </Card>
                     ))

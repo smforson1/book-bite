@@ -5,7 +5,7 @@ import { MotiView } from 'moti';
 import axios from 'axios';
 
 import { useAuthStore } from '../../store/useAuthStore';
-import { COLORS, SPACING, SIZES, SHADOWS } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 import AppText from '../../components/ui/AppText';
 import AppCard from '../../components/ui/AppCard';
 import AppButton from '../../components/ui/AppButton';
@@ -14,6 +14,7 @@ import CustomHeader from '../../components/navigation/CustomHeader';
 const API_URL = 'http://10.0.2.2:5000/api';
 
 export default function MyOrders({ navigation }: any) {
+    const { colors, spacing, sizes } = useTheme();
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -46,12 +47,12 @@ export default function MyOrders({ navigation }: any) {
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'PENDING': return COLORS.primary;
-            case 'KITCHEN': return '#f57c00'; // Orange
+            case 'PENDING': return colors.primary;
+            case 'KITCHEN': return colors.warning || '#f57c00'; // Orange
             case 'DELIVERY': return '#1976d2'; // Blue
-            case 'COMPLETED': return COLORS.success;
-            case 'CANCELLED': return COLORS.error;
-            default: return COLORS.textLight;
+            case 'COMPLETED': return colors.success;
+            case 'CANCELLED': return colors.error;
+            default: return colors.textLight;
         }
     };
 
@@ -71,7 +72,7 @@ export default function MyOrders({ navigation }: any) {
                     </View>
                 </View>
 
-                <AppText variant="caption" style={styles.date}>
+                <AppText variant="caption" style={styles.date} color={colors.textLight}>
                     {new Date(item.createdAt).toLocaleString()}
                 </AppText>
 
@@ -83,29 +84,28 @@ export default function MyOrders({ navigation }: any) {
                     ))}
                 </View>
 
-                <View style={styles.footer}>
-                    <AppText variant="h3" style={styles.total}>
+                <View style={[styles.footer, { borderTopColor: colors.border }]}>
+                    <AppText variant="h3" style={[styles.total, { color: colors.primary }]}>
                         Total: GH₵{item.totalPrice}
                     </AppText>
-                    {/* Placeholder for reorder or track button */}
                 </View>
             </AppCard>
         </MotiView>
     );
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
             <CustomHeader title="My Orders" />
 
-            <View style={styles.content}>
+            <View style={[styles.content, { paddingHorizontal: spacing.m }]}>
                 <FlatList
                     data={orders}
                     renderItem={renderItem}
                     keyExtractor={item => item.id}
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
                     ListEmptyComponent={
                         <View style={styles.empty}>
-                            <AppText variant="body" color={COLORS.textLight} center style={{ marginBottom: SPACING.l }}>
+                            <AppText variant="body" color={colors.textLight} center style={{ marginBottom: spacing.l }}>
                                 No orders yet. Time for a bite?
                             </AppText>
                             <AppButton
@@ -122,49 +122,14 @@ export default function MyOrders({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: COLORS.background
-    },
-    content: {
-        flex: 1,
-        paddingHorizontal: SPACING.m,
-    },
-    card: {
-        marginBottom: SPACING.m
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: SPACING.s
-    },
-    statusBadge: {
-        paddingHorizontal: SPACING.s,
-        paddingVertical: 4,
-        borderRadius: SIZES.radius.s,
-    },
-    date: {
-        color: COLORS.textLight,
-        marginBottom: SPACING.m
-    },
-    items: {
-        marginBottom: SPACING.m
-    },
-    footer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: SPACING.s,
-        paddingTop: SPACING.s,
-        borderTopWidth: 1,
-        borderTopColor: COLORS.border
-    },
-    total: {
-        color: COLORS.primary
-    },
-    empty: {
-        alignItems: 'center',
-        marginTop: 100,
-        paddingHorizontal: SPACING.xl,
-    },
+    container: { flex: 1 },
+    content: { flex: 1 },
+    card: { marginBottom: 16 },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+    statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+    date: { marginBottom: 16 },
+    items: { marginBottom: 16 },
+    footer: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, paddingTop: 8, borderTopWidth: 1 },
+    total: {},
+    empty: { alignItems: 'center', marginTop: 100, paddingHorizontal: 32 },
 });

@@ -5,8 +5,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useCartStore } from '../../store/useCartStore';
 import { useTheme } from '../../context/ThemeContext';
-// @ts-ignore
-// import { usePaystack } from 'react-native-paystack-webview';
+import AppText from '../../components/ui/AppText';
+import AppCard from '../../components/ui/AppCard';
+import AppButton from '../../components/ui/AppButton';
 import PaymentWebView from '../../components/ui/PaymentWebView';
 import axios from 'axios';
 
@@ -121,36 +122,35 @@ export default function OrderCheckout({ route, navigation }: any) {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <ScrollView contentContainerStyle={styles.content}>
-                <Text variant="headlineMedium" style={styles.title}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+            <ScrollView contentContainerStyle={[styles.content, { padding: 20 }]}>
+                <AppText variant="h1" style={styles.title} center>
                     Complete Order
-                </Text>
+                </AppText>
 
-                <Card style={styles.card}>
-                    <Card.Content>
-                        <Text variant="titleLarge">{business.name}</Text>
-                        <Divider style={{ marginVertical: 10 }} />
-                        {cart.map((item: any, index: number) => (
-                            <View key={index} style={styles.itemRow}>
-                                <Text>{item.name}</Text>
-                                <Text>GH₵{item.price}</Text>
-                            </View>
-                        ))}
-                        <View style={[styles.itemRow, styles.totalRow]}>
-                            <Text variant="titleMedium">Total</Text>
-                            <Text variant="titleMedium">GH₵{total}</Text>
+                <AppCard style={styles.card}>
+                    <AppText variant="h2">{business.name}</AppText>
+                    <Divider style={{ marginVertical: 10, backgroundColor: colors.border }} />
+                    {cart.map((item: any, index: number) => (
+                        <View key={index} style={styles.itemRow}>
+                            <AppText>{item.name}</AppText>
+                            <AppText>GH₵{item.price}</AppText>
                         </View>
-                    </Card.Content>
-                </Card>
+                    ))}
+                    <View style={[styles.itemRow, styles.totalRow, { borderTopColor: colors.border }]}>
+                        <AppText variant="h3">Total</AppText>
+                        <AppText variant="h3">GH₵{total}</AppText>
+                    </View>
+                </AppCard>
 
                 <TextInput
                     label="Delivery Address *"
                     value={address}
                     onChangeText={setAddress}
                     mode="outlined"
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.surface }]}
                     multiline
+                    theme={{ colors: { primary: colors.primary, text: colors.text, placeholder: colors.textLight } }}
                 />
 
                 <TextInput
@@ -158,19 +158,16 @@ export default function OrderCheckout({ route, navigation }: any) {
                     value={notes}
                     onChangeText={setNotes}
                     mode="outlined"
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.surface }]}
                     multiline
+                    theme={{ colors: { primary: colors.primary, text: colors.text, placeholder: colors.textLight } }}
                 />
 
-                <Button
-                    mode="contained"
+                <AppButton
+                    title="Pay & Place Order"
                     onPress={handleOrder}
-                    style={[styles.button, { backgroundColor: useTheme().colors.primary }]}
-                    loading={loading}
-                    disabled={loading}
-                >
-                    Pay & Place Order
-                </Button>
+                    isLoading={loading}
+                />
 
                 <PaymentWebView
                     visible={showWebView}
@@ -192,12 +189,11 @@ export default function OrderCheckout({ route, navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff' },
-    content: { padding: 20 },
-    title: { marginBottom: 20, textAlign: 'center' },
+    container: { flex: 1 },
+    content: {},
+    title: { marginBottom: 20 },
     card: { marginBottom: 20 },
     itemRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
-    totalRow: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#eee' },
+    totalRow: { marginTop: 10, paddingTop: 10, borderTopWidth: 1 },
     input: { marginBottom: 15 },
-    button: { marginTop: 10, paddingVertical: 5 },
 });
