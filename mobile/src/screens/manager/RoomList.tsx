@@ -132,15 +132,25 @@ export default function RoomList({ navigation }: any) {
                     <Text variant="headlineMedium" style={[styles.title, { color: colors.primary, marginBottom: 0 }]}>
                         Rooms
                     </Text>
-                    {business?.type === 'HOTEL' && (
-                        <Button
-                            mode="outlined"
-                            onPress={() => Alert.alert('Coming Soon', 'Room Category management separate screen will be here. For now, you can add categories when adding/editing rooms.')}
-                            style={{ borderRadius: 8 }}
-                        >
-                            Categories
-                        </Button>
-                    )}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <IconButton
+                            icon="calendar-plus"
+                            mode="contained-tonal"
+                            containerColor={colors.primary + '15'}
+                            iconColor={colors.primary}
+                            size={24}
+                            onPress={() => navigation.navigate('AddManualBooking')}
+                        />
+                        {business?.type === 'HOTEL' && (
+                            <Button
+                                mode="outlined"
+                                onPress={() => Alert.alert('Coming Soon', 'Room Category management separate screen will be here. For now, you can add categories when adding/editing rooms.')}
+                                style={{ borderRadius: 8 }}
+                            >
+                                Categories
+                            </Button>
+                        )}
+                    </View>
                 </View>
 
                 {loading ? (
