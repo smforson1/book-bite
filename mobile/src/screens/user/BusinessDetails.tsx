@@ -4,6 +4,7 @@ import { Text, Button, Card, Divider, List, Chip } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useCartStore } from '../../store/useCartStore';
+import { useTheme } from '../../context/ThemeContext';
 import { COLORS, SIZES } from '../../theme';
 import ImageCarousel from '../../components/ui/ImageCarousel';
 import { Dimensions, Share } from 'react-native';
@@ -28,6 +29,8 @@ export default function BusinessDetails({ route, navigation }: any) {
     const [menu, setMenu] = useState<any[]>([]);
     const [reviews, setReviews] = useState<any[]>([]);
     const [averageRating, setAverageRating] = useState(0);
+
+    const { colors, spacing } = useTheme();
 
     // Global Cart Store
     const { items: cartItems, addItem, removeItem } = useCartStore();
@@ -141,14 +144,16 @@ export default function BusinessDetails({ route, navigation }: any) {
                     {utilities.length > 0 && (
                         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
                             {utilities.map((u: string, idx: number) => (
-                                <View key={idx} style={{ backgroundColor: '#f0f0f0', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 }}>
-                                    <Text variant="labelSmall" style={{ color: '#666' }}>{u}</Text>
+                                <View key={idx} style={{ backgroundColor: colors.border + '50', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 }}>
+                                    <View style={{ paddingHorizontal: 4 }}>
+                                        <Text variant="labelSmall" style={{ color: colors.textLight }}>{u}</Text>
+                                    </View>
                                 </View>
                             ))}
                         </View>
                     )}
 
-                    <Text variant="titleMedium" style={styles.price}>
+                    <Text variant="titleMedium" style={[styles.price, { color: colors.primary }]}>
                         GH₵{room.price} / {business.type === 'HOSTEL' ? 'year' : 'night'}
                     </Text>
                     <View style={styles.buttonRow}>
@@ -162,8 +167,8 @@ export default function BusinessDetails({ route, navigation }: any) {
                         <Button
                             mode="outlined"
                             onPress={() => handleAddToCart(room)}
-                            style={[styles.flexButton, { borderColor: COLORS.primary }]}
-                            textColor={COLORS.primary}
+                            style={[styles.flexButton, { borderColor: colors.primary }]}
+                            textColor={colors.primary}
                         >
                             Add to Cart
                         </Button>
@@ -209,9 +214,9 @@ export default function BusinessDetails({ route, navigation }: any) {
                                         <List.Accordion
                                             key={category.id}
                                             title={category.name}
-                                            left={props => <List.Icon {...props} icon="folder" color={COLORS.primary} />}
-                                            style={{ backgroundColor: '#fff', paddingHorizontal: 10 }}
-                                            titleStyle={{ color: '#333', fontWeight: 'bold' }}
+                                            left={props => <List.Icon {...props} icon="folder" color={colors.primary} />}
+                                            style={{ backgroundColor: colors.surface, paddingHorizontal: 10 }}
+                                            titleStyle={{ color: colors.text, fontWeight: 'bold' }}
                                         >
                                             {categoryRooms.map(room => renderRoomItem(room))}
                                         </List.Accordion>
@@ -221,9 +226,9 @@ export default function BusinessDetails({ route, navigation }: any) {
                                 {rooms.filter(r => !r.categoryId).length > 0 && (
                                     <List.Accordion
                                         title="Other Rooms"
-                                        left={props => <List.Icon {...props} icon="folder-outline" color="#666" />}
-                                        style={{ backgroundColor: '#fff', paddingHorizontal: 10 }}
-                                        titleStyle={{ color: '#666' }}
+                                        left={props => <List.Icon {...props} icon="folder-outline" color={colors.textLight} />}
+                                        style={{ backgroundColor: colors.surface, paddingHorizontal: 10 }}
+                                        titleStyle={{ color: colors.textLight }}
                                     >
                                         {rooms.filter(r => !r.categoryId).map(room => renderRoomItem(room))}
                                     </List.Accordion>
@@ -310,7 +315,7 @@ export default function BusinessDetails({ route, navigation }: any) {
                     <Button
                         mode="contained"
                         onPress={() => navigation.navigate('AddReview', { businessId: business.id, businessName: business.name })}
-                        buttonColor={COLORS.primary}
+                        buttonColor={colors.primary}
                         compact
                     >
                         Write Review
@@ -339,14 +344,14 @@ export default function BusinessDetails({ route, navigation }: any) {
             </ScrollView>
 
             {!isHotel && cartItems.length > 0 && (
-                <View style={[styles.footer, { backgroundColor: COLORS.primary }]}>
+                <View style={[styles.footer, { backgroundColor: colors.primary }]}>
                     <Text variant="titleMedium" style={{ color: '#fff' }}>
                         {cartItems.length} items • GH₵{cartItems.reduce((sum, i) => sum + (Number(i.price) * i.quantity), 0)}
                     </Text>
                     <Button
                         mode="contained"
                         buttonColor="#fff"
-                        textColor={COLORS.primary}
+                        textColor={colors.primary}
                         onPress={() => navigation.navigate('OrderCheckout', { cart: cartItems, business })}
                     >
                         View Cart
@@ -358,7 +363,7 @@ export default function BusinessDetails({ route, navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff' },
+    container: { flex: 1 },
     content: { paddingBottom: 80 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     image: { width: '100%', height: 200 },
@@ -369,7 +374,7 @@ const styles = StyleSheet.create({
     sectionTitle: { padding: 20, fontWeight: 'bold' },
     categoryTitle: { paddingHorizontal: 20, paddingVertical: 10, backgroundColor: '#f5f5f5' },
     card: { marginHorizontal: 20, marginBottom: 15 },
-    price: { color: '#E65100', fontWeight: 'bold', marginTop: 5 },
+    price: { fontWeight: 'bold', marginTop: 5 },
     bookBtn: { marginTop: 10 },
     menuItemRow: { flexDirection: 'column', alignItems: 'stretch' },
     buttonRow: { flexDirection: 'row', gap: 10, marginTop: 10 },

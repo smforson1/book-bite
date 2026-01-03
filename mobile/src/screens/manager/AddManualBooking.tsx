@@ -214,7 +214,7 @@ export default function AddManualBooking({ navigation }: any) {
                         <View style={[styles.row, { marginTop: 15 }]}>
                             <View style={{ flex: 1 }}>
                                 <Text variant="labelLarge">{isHostel ? 'Bed Spaces' : 'Rooms'}</Text>
-                                <View style={styles.stepper}>
+                                <View style={[styles.stepper, { borderColor: colors.border }]}>
                                     <IconButton icon="minus" size={20} onPress={() => setRoomCount(Math.max(1, roomCount - 1))} />
                                     <Text>{roomCount}</Text>
                                     <IconButton icon="plus" size={20} onPress={() => setRoomCount(roomCount + 1)} />
@@ -285,5 +285,5 @@ const styles = StyleSheet.create({
     input: { marginBottom: 12 },
     row: { flexDirection: 'row', gap: 15, alignItems: 'flex-end' },
     dateButton: { marginTop: 5 },
-    stepper: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: '#ccc', borderRadius: 4, marginTop: 5 },
+    stepper: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderRadius: 4, marginTop: 5 },
 });

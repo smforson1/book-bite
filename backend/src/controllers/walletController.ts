@@ -181,21 +181,73 @@ export const payWithWallet = async (req: AuthRequest, res: Response): Promise<vo
                 }
             });
 
-            // 3. Update Booking or Order status
+            // 3. Update Booking or Order status AND credit manager
             if (purpose === 'BOOKING' && metadata.bookingId) {
-                await tx.booking.update({
+                const booking = await tx.booking.update({
                     where: { id: metadata.bookingId },
                     data: {
                         status: 'CONFIRMED',
                         payments: { connect: { id: payment.id } },
                         paidAmount: { increment: amount }
+                    },
+                    include: { business: { include: { manager: true } } }
+                });
+
+                // Credit Manager
+                if (booking.business?.manager?.userId) {
+                    const managerUserId = booking.business.manager.userId;
+                    let managerWallet = await tx.wallet.findUnique({ where: { userId: managerUserId } });
+                    if (!managerWallet) {
+                        managerWallet = await tx.wallet.create({ data: { userId: managerUserId } });
                     }
-                });
+
+                    await tx.wallet.update({
+                        where: { id: managerWallet.id },
+                        data: { balance: { increment: amount } }
+                    });
+
+                    await tx.walletTransaction.create({
+                        data: {
+                            walletId: managerWallet.id,
+                            amount,
+                            type: 'CREDIT',
+                            status: 'SUCCESS',
+                            description: `Booking Revenue #${booking.id.slice(0, 8)}...`,
+                            reference: payment.reference
+                        }
+                    });
+                }
             } else if (purpose === 'ORDER' && metadata.orderId) {
-                await tx.order.update({
+                const order = await tx.order.update({
                     where: { id: metadata.orderId },
-                    data: { status: 'CONFIRMED', paymentId: payment.id }
+                    data: { status: 'CONFIRMED', paymentId: payment.id },
+                    include: { business: { include: { manager: true } } }
                 });
+
+                // Credit Manager
+                if (order.business?.manager?.userId) {
+                    const managerUserId = order.business.manager.userId;
+                    let managerWallet = await tx.wallet.findUnique({ where: { userId: managerUserId } });
+                    if (!managerWallet) {
+                        managerWallet = await tx.wallet.create({ data: { userId: managerUserId } });
+                    }
+
+                    await tx.wallet.update({
+                        where: { id: managerWallet.id },
+                        data: { balance: { increment: amount } }
+                    });
+
+                    await tx.walletTransaction.create({
+                        data: {
+                            walletId: managerWallet.id,
+                            amount,
+                            type: 'CREDIT',
+                            status: 'SUCCESS',
+                            description: `Order Revenue #${order.id.slice(0, 8)}...`,
+                            reference: payment.reference
+                        }
+                    });
+                }
             }
         });
 

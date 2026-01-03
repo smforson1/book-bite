@@ -53,7 +53,7 @@ export default function BookingDetail({ route, navigation }: any) {
 
                 <Card style={styles.card}>
                     <Card.Content>
-                        <Text variant="titleMedium" style={styles.sectionTitle}>Guest Information</Text>
+                        <Text variant="titleMedium" style={[styles.sectionTitle, { color: colors.textLight }]}>Guest Information</Text>
                         <Text variant="bodyLarge" style={{ fontWeight: 'bold' }}>{booking.guestName || booking.user?.name || 'Guest'}</Text>
                         {booking.user?.email && <Text>Email: {booking.user.email}</Text>}
                         {booking.user?.phone && <Text>Phone: {booking.user.phone}</Text>}
@@ -67,7 +67,7 @@ export default function BookingDetail({ route, navigation }: any) {
 
                 <Card style={styles.card}>
                     <Card.Content>
-                        <Text variant="titleMedium" style={styles.sectionTitle}>Stay Details</Text>
+                        <Text variant="titleMedium" style={[styles.sectionTitle, { color: colors.textLight }]}>Stay Details</Text>
                         <View style={styles.row}>
                             <View style={{ flex: 1 }}>
                                 <Text variant="labelSmall">Room Type</Text>
@@ -96,7 +96,7 @@ export default function BookingDetail({ route, navigation }: any) {
 
                 <Card style={styles.card}>
                     <Card.Content>
-                        <Text variant="titleMedium" style={styles.sectionTitle}>Payment Info</Text>
+                        <Text variant="titleMedium" style={[styles.sectionTitle, { color: colors.textLight }]}>Payment Info</Text>
                         <View style={styles.summaryRow}>
                             <Text>Total Price</Text>
                             <Text style={{ fontWeight: 'bold' }}>GH₵{Number(booking.totalPrice).toFixed(2)}</Text>
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
     container: { flex: 1 },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
     card: { marginBottom: 15 },
-    sectionTitle: { marginBottom: 10, color: '#666' },
+    sectionTitle: { marginBottom: 10 },
     row: { flexDirection: 'row', justifyContent: 'space-between' },
     summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
     actions: { marginTop: 10 },
