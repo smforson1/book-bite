@@ -24,6 +24,7 @@ export default function BusinessDetails({ route, navigation }: any) {
     const [business, setBusiness] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [rooms, setRooms] = useState<any[]>([]);
+    const [categories, setCategories] = useState<any[]>([]);
     const [menu, setMenu] = useState<any[]>([]);
     const [reviews, setReviews] = useState<any[]>([]);
     const [averageRating, setAverageRating] = useState(0);
@@ -41,8 +42,14 @@ export default function BusinessDetails({ route, navigation }: any) {
             setBusiness(bizRes.data);
 
             if (bizRes.data.type === 'HOTEL' || bizRes.data.type === 'HOSTEL') {
-                const roomsRes = await axios.get(`${API_URL}/rooms/business/${id}`);
+                const [roomsRes, catsRes] = await Promise.all([
+                    axios.get(`${API_URL}/rooms/business/${id}`),
+                    bizRes.data.type === 'HOTEL'
+                        ? axios.get(`${API_URL}/room-categories/business/${id}`)
+                        : Promise.resolve({ data: [] })
+                ]);
                 setRooms(roomsRes.data);
+                setCategories(catsRes.data);
             } else {
                 const menuRes = await axios.get(`${API_URL}/menu-items/business/${id}`);
                 setMenu(menuRes.data);
@@ -90,6 +97,82 @@ export default function BusinessDetails({ route, navigation }: any) {
         return <BusinessDetailsSkeleton />;
     }
 
+    const renderRoomItem = (room: any) => {
+        const utilities = room.amenities
+            ? room.amenities.filter((a: string) => a.startsWith('UTILITY:')).map((a: string) => a.replace('UTILITY:', ''))
+            : [];
+
+        return (
+            <Card key={room.id} style={styles.card}>
+                {room.images && (
+                    <ImageCarousel
+                        images={room.images}
+                        height={180}
+                        width={CARD_WIDTH}
+                        borderRadius={SIZES.radius.l}
+                    />
+                )}
+                <Card.Content>
+                    <Text variant="titleMedium">{room.name}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, flexWrap: 'wrap', gap: 8 }}>
+                        <Chip icon="account-group" compact>{room.capacity} Pax</Chip>
+
+                        {/* Inventory Display */}
+                        {business.type === 'HOSTEL' ? (
+                            <>
+                                {(room.stockMale > 0 || (!room.stockMale && !room.stockFemale)) && (
+                                    <Chip icon="gender-male" compact mode="outlined">
+                                        {room.availableMale !== undefined ? room.availableMale : room.stockMale} Male Beds Left
+                                    </Chip>
+                                )}
+                                {(room.stockFemale > 0) && (
+                                    <Chip icon="gender-female" compact mode="outlined">
+                                        {room.availableFemale !== undefined ? room.availableFemale : room.stockFemale} Female Beds Left
+                                    </Chip>
+                                )}
+                            </>
+                        ) : (
+                            <Chip icon="door" compact>
+                                {room.availableStock !== undefined ? room.availableStock : room.totalStock} Rooms Left
+                            </Chip>
+                        )}
+                    </View>
+
+                    {utilities.length > 0 && (
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
+                            {utilities.map((u: string, idx: number) => (
+                                <View key={idx} style={{ backgroundColor: '#f0f0f0', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 }}>
+                                    <Text variant="labelSmall" style={{ color: '#666' }}>{u}</Text>
+                                </View>
+                            ))}
+                        </View>
+                    )}
+
+                    <Text variant="titleMedium" style={styles.price}>
+                        GH₵{room.price} / {business.type === 'HOSTEL' ? 'year' : 'night'}
+                    </Text>
+                    <View style={styles.buttonRow}>
+                        <Button
+                            mode="contained"
+                            onPress={() => navigation.navigate('BookingCheckout', { room, business })}
+                            style={[styles.flexButton, { backgroundColor: COLORS.primary }]}
+                        >
+                            Book Now
+                        </Button>
+                        <Button
+                            mode="outlined"
+                            onPress={() => handleAddToCart(room)}
+                            style={[styles.flexButton, { borderColor: COLORS.primary }]}
+                            textColor={COLORS.primary}
+                        >
+                            Add to Cart
+                        </Button>
+                    </View>
+                </Card.Content>
+            </Card>
+        );
+    };
+
     const isHotel = business.type === 'HOTEL' || business.type === 'HOSTEL';
 
     return (
@@ -114,64 +197,41 @@ export default function BusinessDetails({ route, navigation }: any) {
                 {isHotel ? (
                     <>
                         <Text variant="titleLarge" style={styles.sectionTitle}>
-                            Available Rooms
+                            Available {business.type === 'HOTEL' ? 'Rooms' : 'Bed Spaces'}
                         </Text>
-                        {rooms.map((room) => {
-                            const utilities = room.amenities
-                                ? room.amenities.filter((a: string) => a.startsWith('UTILITY:')).map((a: string) => a.replace('UTILITY:', ''))
-                                : [];
 
-                            return (
-                                <Card key={room.id} style={styles.card}>
-                                    {room.images && (
-                                        <ImageCarousel
-                                            images={room.images}
-                                            height={180}
-                                            width={CARD_WIDTH}
-                                            borderRadius={SIZES.radius.l}
-                                        />
-                                    )}
-                                    <Card.Content>
-                                        <Text variant="titleMedium">{room.name}</Text>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                                            <Chip icon="account-group" compact style={{ marginRight: 8 }}>{room.capacity} Pax</Chip>
-                                            <Chip icon="door" compact>{room.totalStock || 1} Rooms Total</Chip>
-                                        </View>
+                        {business.type === 'HOTEL' ? (
+                            <>
+                                {categories.map((category) => {
+                                    const categoryRooms = rooms.filter(r => r.categoryId === category.id);
+                                    if (categoryRooms.length === 0) return null;
+                                    return (
+                                        <List.Accordion
+                                            key={category.id}
+                                            title={category.name}
+                                            left={props => <List.Icon {...props} icon="folder" color={COLORS.primary} />}
+                                            style={{ backgroundColor: '#fff', paddingHorizontal: 10 }}
+                                            titleStyle={{ color: '#333', fontWeight: 'bold' }}
+                                        >
+                                            {categoryRooms.map(room => renderRoomItem(room))}
+                                        </List.Accordion>
+                                    );
+                                })}
 
-                                        {utilities.length > 0 && (
-                                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-                                                {utilities.map((u: string, idx: number) => (
-                                                    <View key={idx} style={{ backgroundColor: '#f0f0f0', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 }}>
-                                                        <Text variant="labelSmall" style={{ color: '#666' }}>{u}</Text>
-                                                    </View>
-                                                ))}
-                                            </View>
-                                        )}
-
-                                        <Text variant="titleMedium" style={styles.price}>
-                                            GH₵{room.price} / year
-                                        </Text>
-                                        <View style={styles.buttonRow}>
-                                            <Button
-                                                mode="contained"
-                                                onPress={() => navigation.navigate('BookingCheckout', { room, business })}
-                                                style={[styles.flexButton, { backgroundColor: COLORS.primary }]}
-                                            >
-                                                Book Now
-                                            </Button>
-                                            <Button
-                                                mode="outlined"
-                                                onPress={() => handleAddToCart(room)}
-                                                style={[styles.flexButton, { borderColor: COLORS.primary }]}
-                                                textColor={COLORS.primary}
-                                            >
-                                                Add to Cart
-                                            </Button>
-                                        </View>
-                                    </Card.Content>
-                                </Card>
-                            );
-                        })}
+                                {rooms.filter(r => !r.categoryId).length > 0 && (
+                                    <List.Accordion
+                                        title="Other Rooms"
+                                        left={props => <List.Icon {...props} icon="folder-outline" color="#666" />}
+                                        style={{ backgroundColor: '#fff', paddingHorizontal: 10 }}
+                                        titleStyle={{ color: '#666' }}
+                                    >
+                                        {rooms.filter(r => !r.categoryId).map(room => renderRoomItem(room))}
+                                    </List.Accordion>
+                                )}
+                            </>
+                        ) : (
+                            rooms.map((room) => renderRoomItem(room))
+                        )}
                     </>
                 ) : (
                     <>

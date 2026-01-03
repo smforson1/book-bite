@@ -2,18 +2,28 @@ import React from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { List, Divider } from 'react-native-paper';
 import { useTheme } from '../../context/ThemeContext';
+import { useBusinessStore } from '../../store/useBusinessStore';
 import AppText from '../../components/ui/AppText';
 
 export default function ManagerMoreScreen({ navigation }: any) {
     const { colors, spacing } = useTheme();
 
+    const business = useBusinessStore((state) => state.business);
+    const isRestaurant = business?.type === 'RESTAURANT';
+
     const menuItems = [
         {
             title: 'Inventory Management',
-            description: 'Manage rooms or menu items stock',
+            description: isRestaurant ? 'Manage menu items stock' : 'Manage room categories',
             icon: 'clipboard-list-outline',
             screen: 'Inventory',
         },
+        ...(!isRestaurant ? [{
+            title: 'Record Walk-in',
+            description: 'Manual booking for non-app users',
+            icon: 'calendar-plus',
+            screen: 'AddManualBooking',
+        }] : []),
         {
             title: 'Business Analytics',
             description: 'Revenue and performance stats',

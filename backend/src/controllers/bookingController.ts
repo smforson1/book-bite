@@ -11,8 +11,13 @@ interface AuthRequest extends Request {
 // Create Booking
 export const createBooking = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-        const { roomId, checkIn, checkOut, guests } = req.body;
-        const userId = req.user.userId;
+        const { roomId, checkIn, checkOut, guests, roomCount = 1, bookingGender, guestName, isManual, guestUserId } = req.body;
+
+        // If it's a manual booking by a manager, we allow setting a different (or no) userId
+        let userId = req.user.userId;
+        if (isManual && req.user.role === 'MANAGER') {
+            userId = guestUserId || null;
+        }
 
         const room = await prisma.room.findUnique({
             where: { id: roomId },
@@ -24,29 +29,56 @@ export const createBooking = async (req: AuthRequest, res: Response): Promise<vo
             return;
         }
 
+        const isHostel = room.business.type === 'HOSTEL';
+
+        // Gender Validation for Hostels
+        if (isHostel && !bookingGender) {
+            res.status(400).json({ message: 'Please select a gender (Male/Female) for this hostel booking.' });
+            return;
+        }
+
         const checkInDate = new Date(checkIn);
         const checkOutDate = new Date(checkOut);
 
-        // Inventory Check: Count overlapping bookings
-        const activeBookings = await prisma.booking.count({
+        // Inventory Check: Count overlapping bookings (sum of roomCounts)
+        // For Hostels, filter by bookingGender to check specific stock
+        const genderFilter = isHostel ? { bookingGender } : {};
+
+        const overlappingBookings = await prisma.booking.findMany({
             where: {
                 roomId,
                 status: { not: 'CANCELLED' },
+                ...genderFilter,
                 // Check for date overlap: (StartA < EndB) and (EndA > StartB)
                 checkIn: { lt: checkOutDate },
                 checkOut: { gt: checkInDate },
             },
+            select: { roomCount: true }
         });
 
-        const totalStock = room.totalStock || 1; // Default to 1 if not set
+        const activeRoomCount = overlappingBookings.reduce((sum, b) => sum + b.roomCount, 0);
 
-        if (activeBookings >= totalStock) {
-            res.status(400).json({ message: `Room sold out for these dates. Only ${totalStock} available.` });
+        // Determine correct stock limit
+        let limit = room.totalStock || 1;
+        if (isHostel) {
+            limit = bookingGender === 'MALE' ? (room.stockMale || 0) : (room.stockFemale || 0);
+        }
+
+        if (activeRoomCount + Number(roomCount) > limit) {
+            const typeLabel = isHostel ? `${bookingGender?.toLowerCase()} bed spaces` : 'rooms';
+            res.status(400).json({
+                message: `Not enough ${typeLabel} available. requested: ${roomCount}, available: ${Math.max(0, limit - activeRoomCount)}`
+            });
             return;
         }
 
         const diffTime = Math.abs(checkOutDate.getTime() - checkInDate.getTime());
         const nights = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
+
+        // Yearly Pricing for Hostels (Ignore nights)
+        const totalPrice = isHostel
+            ? Number(room.price) * Number(roomCount)
+            : Number(room.price) * nights * Number(roomCount);
 
         const booking = await prisma.booking.create({
             data: {
@@ -56,9 +88,12 @@ export const createBooking = async (req: AuthRequest, res: Response): Promise<vo
                 checkIn: checkInDate,
                 checkOut: checkOutDate,
                 guests,
-                totalPrice: Number(room.price) * nights, // Correct calculation
-                status: 'PENDING',
-                paidAmount: 0,
+                roomCount: Number(roomCount),
+                bookingGender: isHostel ? bookingGender : null,
+                guestName,
+                totalPrice,
+                status: (isManual && req.body.status) ? req.body.status : 'PENDING',
+                paidAmount: (isManual && req.body.paidAmount) ? parseFloat(req.body.paidAmount) : 0,
             },
             include: {
                 room: true,
@@ -66,8 +101,28 @@ export const createBooking = async (req: AuthRequest, res: Response): Promise<vo
             },
         });
 
+        // 6. Create Notification for Manager
+        // We already fetched room with business, but we need the manager's userId.
+        // Let's optimize by fetching it early or doing a separate query.
+        const businessParams = await prisma.business.findUnique({
+            where: { id: room.businessId },
+            include: { manager: true }
+        });
+
+        if (!isManual && businessParams?.manager?.userId) {
+            await prisma.notification.create({
+                data: {
+                    userId: businessParams.manager.userId,
+                    title: 'New Booking Received',
+                    body: `New booking for ${room.name} (${Number(roomCount)} bed${Number(roomCount) > 1 ? 's' : ''}). check dashboard.`,
+                    data: { bookingId: booking.id, type: 'BOOKING' }
+                }
+            });
+        }
+
         res.status(201).json(booking);
     } catch (error) {
+        console.error("Booking Error", error);
         res.status(500).json({ message: 'Error creating booking', error });
     }
 };
@@ -98,14 +153,35 @@ export const updateBookingStatus = async (req: AuthRequest, res: Response): Prom
         const { id } = req.params;
         const { status } = req.body;
         const userId = req.user.userId;
+        const role = req.user.role;
 
-        const booking = await prisma.booking.findFirst({
-            where: { id, userId },
+        const booking = await prisma.booking.findUnique({
+            where: { id },
+            include: { business: true }
         });
 
         if (!booking) {
             res.status(404).json({ message: 'Booking not found' });
             return;
+        }
+
+        // Permission Check: Owner or Manager of the business
+        if (role !== 'MANAGER' && booking.userId !== userId) {
+            // For non-managers, they can only update their own bookings
+            res.status(403).json({ message: 'Unauthorized' });
+            return;
+        }
+
+        // If manager, verify it's THEIR business (optional but safer)
+        if (role === 'MANAGER') {
+            const manager = await prisma.managerProfile.findUnique({
+                where: { userId },
+                include: { business: true }
+            });
+            if (!manager || manager.business?.id !== booking.businessId) {
+                res.status(403).json({ message: 'Unauthorized' });
+                return;
+            }
         }
 
         const updated = await prisma.booking.update({

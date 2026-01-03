@@ -140,7 +140,7 @@ export default function ManagerDashboard({ navigation }: any) {
                 title={business.name}
                 rightAction={
                     <View style={{ flexDirection: 'row' }}>
-                        <IconButton icon="bell-outline" size={24} iconColor={colors.text} onPress={() => { }} />
+                        <IconButton icon="bell-outline" size={24} iconColor={colors.text} onPress={() => navigation.navigate('Notifications')} />
                         <IconButton
                             icon="account-circle-outline"
                             size={24}
@@ -192,13 +192,23 @@ export default function ManagerDashboard({ navigation }: any) {
                             onPress={() => navigation.navigate('Wallet')}
                             color="#43A047"
                         />
-                        <ActionCard
-                            icon="cog-outline"
-                            label="Settings"
-                            subLabel="Business Info"
-                            onPress={() => navigation.navigate('BusinessSetup')}
-                            color="#78909C"
-                        />
+                        {!isRestaurant ? (
+                            <ActionCard
+                                icon="calendar-plus"
+                                label="Manual Booking"
+                                subLabel="Record Walk-in"
+                                onPress={() => navigation.navigate('AddManualBooking')}
+                                color="#E91E63"
+                            />
+                        ) : (
+                            <ActionCard
+                                icon="cog-outline"
+                                label="Settings"
+                                subLabel="Business Info"
+                                onPress={() => navigation.navigate('BusinessSetup')}
+                                color="#78909C"
+                            />
+                        )}
                     </View>
                 </View>
 
@@ -214,7 +224,11 @@ export default function ManagerDashboard({ navigation }: any) {
                     </AppCard>
                 ) : (
                     activity.map((item) => (
-                        <AppCard key={item.id} style={styles.activityItem} onPress={() => navigation.navigate('OrderDetail', { order: item })}>
+                        <AppCard
+                            key={item.id}
+                            style={styles.activityItem}
+                            onPress={() => navigation.navigate(isRestaurant ? 'OrderDetail' : 'BookingDetail', isRestaurant ? { order: item } : { booking: item })}
+                        >
                             <View style={styles.activityRow}>
                                 <Avatar.Text
                                     size={40}

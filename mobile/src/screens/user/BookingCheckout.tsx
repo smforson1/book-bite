@@ -17,6 +17,8 @@ export default function BookingCheckout({ route, navigation }: any) {
     const [checkIn, setCheckIn] = useState(new Date());
     const [checkOut, setCheckOut] = useState(new Date(Date.now() + 86400000)); // +1 day
     const [guests, setGuests] = useState('1');
+    const [roomCount, setRoomCount] = useState(1);
+    const [gender, setGender] = useState<'MALE' | 'FEMALE' | null>(null);
     const [loading, setLoading] = useState(false);
     const [showCheckIn, setShowCheckIn] = useState(false);
     const [showCheckOut, setShowCheckOut] = useState(false);
@@ -31,10 +33,20 @@ export default function BookingCheckout({ route, navigation }: any) {
     const { token, user } = useAuthStore((state) => state);
     const { colors } = useTheme();
 
-    const nights = Math.max(1, Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 3600 * 24)));
-    const total = nights * room.price;
-    const depositAmount = total * 0.20;
-    const amountToPay = paymentOption === 'FULL' ? total : depositAmount;
+    const isHostel = business?.type === 'HOSTEL';
+
+    const nights = isHostel ? 1 : Math.max(1, Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 3600 * 24)));
+    const effectiveTotal = isHostel
+        ? room.price * roomCount
+        : nights * room.price * roomCount;
+
+    const depositAmount = effectiveTotal * 0.20;
+    const amountToPay = paymentOption === 'FULL' ? effectiveTotal : depositAmount;
+
+    // Reset payment option if room count drops <= 3
+    if (roomCount <= 3 && paymentOption === 'DEPOSIT') {
+        setPaymentOption('FULL');
+    }
 
     const handlePaymentSuccess = async (res: any) => {
         const reference = res.reference || currentReference;
@@ -49,7 +61,7 @@ export default function BookingCheckout({ route, navigation }: any) {
             await axios.post(`${API_URL}/payment/verify`, {
                 reference,
                 email: user?.email,
-                amount: total,
+                amount: amountToPay, // Use actual paid amount
                 metadata: {
                     purpose: 'BOOKING',
                     bookingId: currentBookingId,
@@ -74,6 +86,11 @@ export default function BookingCheckout({ route, navigation }: any) {
             return;
         }
 
+        if (isHostel && !gender) {
+            Alert.alert('Error', 'Please select a gender (Male/Female) for your bed space.');
+            return;
+        }
+
         setLoading(true);
         try {
             // 1. Create Pending Booking
@@ -84,6 +101,8 @@ export default function BookingCheckout({ route, navigation }: any) {
                     checkIn: checkIn.toISOString(),
                     checkOut: checkOut.toISOString(),
                     guests: parseInt(guests),
+                    roomCount: roomCount,
+                    bookingGender: isHostel ? gender : undefined,
                     status: 'PENDING'
                 },
                 { headers: { Authorization: `Bearer ${token}` } }
@@ -110,7 +129,7 @@ export default function BookingCheckout({ route, navigation }: any) {
         } catch (error: any) {
             console.error('Initialize error:', error.response?.data || error.message);
             const errorMsg = error.response?.data?.error || error.message;
-            Alert.alert('Error', `Payment initiation failed: ${errorMsg}`);
+            Alert.alert('Error', `Booking failed: ${errorMsg}`);
             setLoading(false);
         }
     };
@@ -134,7 +153,7 @@ export default function BookingCheckout({ route, navigation }: any) {
 
                 <View style={styles.form}>
                     <Button mode="outlined" onPress={() => setShowCheckIn(true)} style={styles.input} textColor={colors.primary}>
-                        Check-in: {checkIn.toLocaleDateString()}
+                        {isHostel ? "Move-in Date: " : "Check-in: "}{checkIn.toLocaleDateString()}
                     </Button>
                     {showCheckIn && (
                         <DateTimePicker
@@ -149,7 +168,7 @@ export default function BookingCheckout({ route, navigation }: any) {
                     )}
 
                     <Button mode="outlined" onPress={() => setShowCheckOut(true)} style={styles.input} textColor={colors.primary}>
-                        Check-out: {checkOut.toLocaleDateString()}
+                        {isHostel ? "Move-out Date: " : "Check-out: "}{checkOut.toLocaleDateString()}
                     </Button>
                     {showCheckOut && (
                         <DateTimePicker
@@ -164,28 +183,71 @@ export default function BookingCheckout({ route, navigation }: any) {
                         />
                     )}
 
-                    <TextInput
-                        label="Guests"
-                        value={guests}
-                        onChangeText={setGuests}
-                        keyboardType="number-pad"
-                        mode="outlined"
-                        style={styles.input}
-                    />
+                    {isHostel && (
+                        <View style={{ marginBottom: 15 }}>
+                            <Text variant="titleMedium" style={{ marginBottom: 5 }}>Bed Space Gender *</Text>
+                            <RadioButton.Group onValueChange={val => setGender(val as 'MALE' | 'FEMALE')} value={gender || ''}>
+                                <View style={{ flexDirection: 'row', gap: 20 }}>
+                                    <View style={styles.radioRow}>
+                                        <RadioButton value="MALE" color={colors.primary} />
+                                        <Text>Male</Text>
+                                    </View>
+                                    <View style={styles.radioRow}>
+                                        <RadioButton value="FEMALE" color={colors.primary} />
+                                        <Text>Female</Text>
+                                    </View>
+                                </View>
+                            </RadioButton.Group>
+                        </View>
+                    )}
+
+                    <View style={styles.row}>
+                        <View style={{ flex: 1, marginRight: 10 }}>
+                            <TextInput
+                                label="Guests"
+                                value={guests}
+                                onChangeText={setGuests}
+                                keyboardType="number-pad"
+                                mode="outlined"
+                            />
+                        </View>
+                        <View style={{ flex: 1, marginLeft: 10 }}>
+                            <Text variant="bodyMedium" style={{ marginBottom: 5 }}>
+                                {isHostel ? `Bed Spaces (${roomCount})` : `Rooms (${roomCount})`}
+                            </Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <Button mode="outlined" compact onPress={() => setRoomCount(Math.max(1, roomCount - 1))}>-</Button>
+                                <Text style={{ marginHorizontal: 10 }}>{roomCount}</Text>
+                                <Button
+                                    mode="outlined"
+                                    compact
+                                    onPress={() => setRoomCount(Math.min(room.totalStock || 10, roomCount + 1))}
+                                >+</Button>
+                            </View>
+                        </View>
+                    </View>
 
                     <Divider style={styles.divider} />
 
                     <View style={styles.summaryRow}>
-                        <Text>Price per night</Text>
+                        <Text>{isHostel ? "Price per Year/Bed" : "Price per night"}</Text>
                         <Text>GH₵{room.price}</Text>
                     </View>
+
+                    {!isHostel && (
+                        <View style={styles.summaryRow}>
+                            <Text>Nights</Text>
+                            <Text>{nights}</Text>
+                        </View>
+                    )}
+
                     <View style={styles.summaryRow}>
-                        <Text>Nights</Text>
-                        <Text>{nights}</Text>
+                        <Text>{isHostel ? "Bed Spaces" : "Rooms"}</Text>
+                        <Text>{roomCount}</Text>
                     </View>
                     <View style={[styles.summaryRow, styles.totalRow]}>
                         <Text variant="titleMedium">Total</Text>
-                        <Text variant="titleMedium">GH₵{total.toFixed(2)}</Text>
+                        <Text variant="titleMedium">GH₵{effectiveTotal.toFixed(2)}</Text>
                     </View>
 
                     <Divider style={{ marginVertical: 10 }} />
@@ -194,13 +256,27 @@ export default function BookingCheckout({ route, navigation }: any) {
                     <RadioButton.Group onValueChange={value => setPaymentOption(value as 'FULL' | 'DEPOSIT')} value={paymentOption}>
                         <View style={styles.radioRow}>
                             <RadioButton value="FULL" color={colors.primary} />
-                            <Text onPress={() => setPaymentOption('FULL')}>Pay Full Amount (GH₵{total.toFixed(2)})</Text>
+                            <Text onPress={() => setPaymentOption('FULL')}>Pay Full Amount (GH₵{effectiveTotal.toFixed(2)})</Text>
                         </View>
-                        <View style={styles.radioRow}>
-                            <RadioButton value="DEPOSIT" color={colors.primary} />
-                            <Text onPress={() => setPaymentOption('DEPOSIT')}>Pay 20% Deposit (GH₵{depositAmount.toFixed(2)})</Text>
-                        </View>
+
+                        {/* Only show Deposit option if more than 3 rooms are booked */}
+                        {roomCount > 3 && (
+                            <View style={styles.radioRow}>
+                                <RadioButton value="DEPOSIT" color={colors.primary} />
+                                <Text onPress={() => setPaymentOption('DEPOSIT')}>
+                                    Pay 20% Deposit (GH₵{depositAmount.toFixed(2)})
+                                    {'\n'}
+                                    <Text variant="bodySmall" style={{ color: 'gray' }}>Mass Booking Benefit</Text>
+                                </Text>
+                            </View>
+                        )}
                     </RadioButton.Group>
+
+                    {roomCount <= 3 && (
+                        <Text variant="bodySmall" style={{ color: 'gray', fontStyle: 'italic', marginTop: 5 }}>
+                            Deposit option available for bookings of 4+ rooms.
+                        </Text>
+                    )}
 
                     <View style={[styles.summaryRow, styles.totalRow]}>
                         <Text variant="titleLarge" style={{ fontWeight: 'bold', color: colors.primary }}>
@@ -252,5 +328,6 @@ const styles = StyleSheet.create({
     summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
     totalRow: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#eee' },
     button: { marginTop: 20, paddingVertical: 5 },
-    radioRow: { flexDirection: 'row', alignItems: 'center' },
+    radioRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 4 },
+    row: { flexDirection: 'row', alignItems: 'center' }
 });

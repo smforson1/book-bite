@@ -7,6 +7,7 @@ import authRoutes from './routes/authRoutes';
 import adminRoutes from './routes/adminRoutes';
 import businessRoutes from './routes/businessRoutes';
 import roomRoutes from './routes/roomRoutes';
+import roomCategoryRoutes from './routes/roomCategoryRoutes';
 import menuRoutes from './routes/menuRoutes';
 import bookingRoutes from './routes/bookingRoutes';
 import orderRoutes from './routes/orderRoutes';
@@ -24,6 +25,7 @@ import favoriteRoutes from './routes/favoriteRoutes';
 import reviewRoutes from './routes/reviewRoutes';
 import inventoryRoutes from './routes/inventoryRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
+import notificationRoutes from './routes/notificationRoutes';
 
 import uploadRoutes from './routes/uploadRoutes';
 
@@ -32,6 +34,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/business', businessRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/rooms', roomRoutes);
+app.use('/api/room-categories', roomCategoryRoutes);
 app.use('/api/menu-items', menuRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/orders', orderRoutes);
@@ -41,6 +44,7 @@ app.use('/api/favorites', favoriteRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use('/api/upload', uploadRoutes);
 
 app.get('/health', (req, res) => {

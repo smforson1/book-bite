@@ -3,6 +3,7 @@ import { View, StyleSheet, FlatList, RefreshControl } from 'react-native';
 import { Text, Card, SegmentedButtons, Chip } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useBusinessStore } from '../../store/useBusinessStore';
 import { useTheme } from '../../context/ThemeContext';
 import { useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
@@ -10,21 +11,26 @@ import axios from 'axios';
 const API_URL = 'http://10.0.2.2:5000/api';
 
 export default function OrderList({ navigation }: any) {
-    const [orders, setOrders] = useState<any[]>([]);
+    const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [filter, setFilter] = useState('active'); // active, completed, cancelled
+
     const token = useAuthStore((state) => state.token);
+    const business = useBusinessStore((state) => state.business);
     const { colors } = useTheme();
 
-    const fetchOrders = async () => {
+    const isRestaurant = business?.type === 'RESTAURANT';
+
+    const fetchData = async () => {
         try {
-            const response = await axios.get(`${API_URL}/orders/manager`, {
+            const endpoint = isRestaurant ? `${API_URL}/orders/manager` : `${API_URL}/bookings/manager`;
+            const response = await axios.get(endpoint, {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            setOrders(response.data);
+            setItems(response.data);
         } catch (error) {
-            console.error('Failed to fetch orders', error);
+            console.error('Failed to fetch data', error);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -33,13 +39,13 @@ export default function OrderList({ navigation }: any) {
 
     useFocusEffect(
         useCallback(() => {
-            fetchOrders();
+            fetchData();
         }, [])
     );
 
     const onRefresh = () => {
         setRefreshing(true);
-        fetchOrders();
+        fetchData();
     };
 
     const getStatusColor = (status: string) => {
@@ -53,26 +59,33 @@ export default function OrderList({ navigation }: any) {
         }
     };
 
-    const filteredOrders = orders.filter(order => {
+    const filteredItems = items.filter(item => {
         if (filter === 'active') {
-            return ['PENDING', 'KITCHEN', 'DELIVERY'].includes(order.status);
+            return isRestaurant
+                ? ['PENDING', 'KITCHEN', 'DELIVERY'].includes(item.status)
+                : ['PENDING', 'CONFIRMED'].includes(item.status);
         }
-        if (filter === 'completed') return order.status === 'COMPLETED';
-        if (filter === 'cancelled') return order.status === 'CANCELLED';
+        if (filter === 'completed') return item.status === 'COMPLETED';
+        if (filter === 'cancelled') return item.status === 'CANCELLED';
         return true;
     });
 
     const renderItem = ({ item }: { item: any }) => (
-        <Card style={[styles.card, { backgroundColor: colors.surface }]} onPress={() => navigation.navigate('OrderDetail', { order: item })}>
+        <Card
+            style={[styles.card, { backgroundColor: colors.surface }]}
+            onPress={() => navigation.navigate(isRestaurant ? 'OrderDetail' : 'BookingDetail', isRestaurant ? { order: item } : { booking: item })}
+        >
             <Card.Content>
                 <View style={styles.header}>
-                    <Text variant="titleMedium">Order #{item.id.slice(0, 5)}</Text>
+                    <Text variant="titleMedium">
+                        {isRestaurant ? `Order #${item.id.slice(0, 5)}` : `Booking for ${item.room?.name || 'Room'}`}
+                    </Text>
                     <Chip style={{ backgroundColor: getStatusColor(item.status) + '20' }} textStyle={{ color: getStatusColor(item.status) }}>
                         {item.status}
                     </Chip>
                 </View>
                 <Text variant="bodyMedium" style={styles.customer}>
-                    Customer: {item.user?.name || 'Guest'}
+                    {isRestaurant ? 'Customer: ' : 'Guest: '}{item.guestName || item.user?.name || 'Guest'}
                 </Text>
                 <Text variant="bodySmall" style={styles.price}>
                     Total: GH₵{item.totalPrice}
@@ -87,7 +100,9 @@ export default function OrderList({ navigation }: any) {
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <View style={styles.content}>
-                <Text variant="headlineMedium" style={[styles.title, { color: colors.primary }]}>Orders</Text>
+                <Text variant="headlineMedium" style={[styles.title, { color: colors.primary }]}>
+                    {isRestaurant ? 'Orders' : 'Bookings'}
+                </Text>
 
                 <SegmentedButtons
                     value={filter}
@@ -102,7 +117,7 @@ export default function OrderList({ navigation }: any) {
                 />
 
                 <FlatList
-                    data={filteredOrders}
+                    data={filteredItems}
                     renderItem={renderItem}
                     keyExtractor={item => item.id}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}

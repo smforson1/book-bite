@@ -34,7 +34,13 @@ export default function ManagerTabs() {
                     title: business?.type === 'RESTAURANT' ? 'Menu' : 'Rooms'
                 }}
             />
-            <Tab.Screen name="Orders" component={OrderList} />
+            <Tab.Screen
+                name="Orders"
+                component={OrderList}
+                options={{
+                    title: (business?.type === 'HOTEL' || business?.type === 'HOSTEL') ? 'Bookings' : 'Orders'
+                }}
+            />
             <Tab.Screen
                 name="More"
                 component={ManagerMoreScreen}
