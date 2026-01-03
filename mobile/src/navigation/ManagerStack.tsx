@@ -14,6 +14,7 @@ import AnalyticsScreen from '../screens/manager/AnalyticsScreen';
 import ManagerWallet from '../screens/manager/ManagerWallet';
 import NotificationsScreen from '../screens/common/NotificationsScreen';
 import AddManualBooking from '../screens/manager/AddManualBooking';
+import ActiveGuestsScreen from '../screens/manager/ActiveGuestsScreen';
 import BookingDetail from '../screens/manager/BookingDetail';
 
 const Stack = createNativeStackNavigator();
@@ -56,6 +57,7 @@ export default function ManagerStack() {
             <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Notifications' }} />
             <Stack.Screen name="Wallet" component={ManagerWallet} options={{ title: 'My Wallet' }} />
             <Stack.Screen name="AddManualBooking" component={AddManualBooking} options={{ title: 'Manual Booking' }} />
+            <Stack.Screen name="ActiveGuests" component={ActiveGuestsScreen} options={{ title: 'Active Guests' }} />
             <Stack.Screen name="BookingDetail" component={BookingDetail} options={{ title: 'Booking Details' }} />
         </Stack.Navigator>
     );
