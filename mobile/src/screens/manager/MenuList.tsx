@@ -77,47 +77,48 @@ export default function MenuList({ navigation }: any) {
                             <Text variant="titleLarge" style={[styles.categoryTitle, { color: colors.secondary }]}>
                                 {category.name}
                             </Text>
-                            {category.items.map((item: any) => {
-                                const imageSource =
-                                    item.images && item.images.length > 0 && item.images[0] !== 'DEFAULT'
-                                        ? { uri: item.images[0] }
-                                        : { uri: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=1000' };
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={{ gap: 12, paddingBottom: 10 }}
+                            >
+                                {category.items.map((item: any) => {
+                                    const imageSource =
+                                        item.images && item.images.length > 0 && item.images[0] !== 'DEFAULT'
+                                            ? { uri: item.images[0] }
+                                            : { uri: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=1000' };
 
-                                return (
-                                    <Card key={item.id} style={[styles.card, { backgroundColor: colors.surface }]}>
-                                        <Card.Cover source={imageSource} style={{ height: 120 }} />
-                                        <Card.Content>
-                                            <View style={styles.cardHeader}>
-                                                <View style={styles.cardInfo}>
-                                                    <Text variant="titleMedium" style={{ color: colors.text, marginTop: 10 }}>
-                                                        {item.name}
-                                                    </Text>
-                                                    <Text variant="bodyMedium" style={[styles.price, { color: colors.success }]}>
-                                                        GH₵{item.price}
-                                                    </Text>
-                                                    {item.description && (
-                                                        <Text variant="bodySmall" style={[styles.description, { color: colors.textLight }]}>
-                                                            {item.description}
+                                    return (
+                                        <Card key={item.id} style={[styles.horizontalCard, { backgroundColor: colors.surface }]}>
+                                            <Card.Cover source={imageSource} style={styles.horizontalCardImage} />
+                                            <Card.Content style={{ padding: 10 }}>
+                                                <View style={styles.cardHeader}>
+                                                    <View style={styles.cardInfo}>
+                                                        <Text variant="titleMedium" numberOfLines={1} style={{ color: colors.text }}>
+                                                            {item.name}
                                                         </Text>
-                                                    )}
-                                                    {item.dietaryTags && item.dietaryTags.length > 0 && (
-                                                        <View style={styles.tags}>
-                                                            {item.dietaryTags.map((tag: string, idx: number) => (
-                                                                <Chip key={idx} style={styles.tag} compact>
-                                                                    {tag}
-                                                                </Chip>
-                                                            ))}
-                                                        </View>
-                                                    )}
+                                                        <Text variant="bodyMedium" style={[styles.price, { color: colors.success }]}>
+                                                            GH₵{item.price}
+                                                        </Text>
+                                                        {item.description && (
+                                                            <Text variant="bodySmall" numberOfLines={1} style={[styles.description, { color: colors.textLight }]}>
+                                                                {item.description}
+                                                            </Text>
+                                                        )}
+                                                    </View>
+                                                    <IconButton
+                                                        icon="delete"
+                                                        size={18}
+                                                        iconColor={colors.error}
+                                                        onPress={() => handleDelete(item.id)}
+                                                        style={{ margin: 0 }}
+                                                    />
                                                 </View>
-                                                <View style={styles.actions}>
-                                                    <IconButton icon="delete" size={20} iconColor={colors.error} onPress={() => handleDelete(item.id)} />
-                                                </View>
-                                            </View>
-                                        </Card.Content>
-                                    </Card>
-                                );
-                            })}
+                                            </Card.Content>
+                                        </Card>
+                                    );
+                                })}
+                            </ScrollView>
                         </View>
                     ))
                 )}
@@ -135,6 +136,14 @@ const styles = StyleSheet.create({
     categorySection: { marginBottom: 25 },
     categoryTitle: { marginBottom: 10, fontWeight: 'bold' },
     card: { marginBottom: 10 },
+    horizontalCard: {
+        width: 200,
+        marginRight: 2,
+        overflow: 'hidden',
+    },
+    horizontalCardImage: {
+        height: 100
+    },
     emptyCard: { marginTop: 50 },
     emptyText: { textAlign: 'center' },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between' },

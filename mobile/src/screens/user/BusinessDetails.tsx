@@ -254,54 +254,58 @@ export default function BusinessDetails({ route, navigation }: any) {
                             Menu
                         </AppText>
                         {menu.map((category) => (
-                            <View key={category.id}>
+                            <View key={category.id} style={{ marginBottom: 25 }}>
                                 <View style={[styles.categoryTitle, { backgroundColor: colors.surface }]}>
                                     <AppText variant="h3" bold>{category.name}</AppText>
                                 </View>
-                                {category.items.map((item: any) => (
-                                    <Card key={item.id} style={[styles.card, { backgroundColor: colors.surface }]}>
-                                        <Card.Content>
-                                            <View style={styles.menuItemRow}>
+                                <ScrollView
+                                    horizontal
+                                    showsHorizontalScrollIndicator={false}
+                                    contentContainerStyle={{ paddingHorizontal: 20, gap: 15 }}
+                                >
+                                    {category.items.map((item: any) => (
+                                        <Card key={item.id} style={[styles.horizontalCard, { backgroundColor: colors.surface }]}>
+                                            <Card.Content style={{ padding: 0 }}>
                                                 {item.images && (
-                                                    <View style={{ marginBottom: 15 }}>
-                                                        <ImageCarousel
-                                                            images={item.images}
-                                                            height={180}
-                                                            width={CARD_WIDTH}
-                                                            borderRadius={8}
-                                                        />
-                                                    </View>
+                                                    <Image
+                                                        source={{ uri: item.images[0] === 'DEFAULT' ? 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=1000' : item.images[0] }}
+                                                        style={styles.horizontalCardImage}
+                                                    />
                                                 )}
-                                                <View style={{ flex: 1 }}>
-                                                    <AppText variant="h3">{item.name}</AppText>
-                                                    <AppText variant="body" color={colors.textLight} numberOfLines={2}>{item.description}</AppText>
-                                                    <AppText variant="h3" color={colors.primary} style={styles.price}>
-                                                        GH₵{item.price}
+                                                <View style={{ padding: 12 }}>
+                                                    <AppText variant="h3" numberOfLines={1}>{item.name}</AppText>
+                                                    <AppText variant="body" color={colors.textLight} numberOfLines={1} style={{ fontSize: 13 }}>
+                                                        {item.description}
                                                     </AppText>
+
+                                                    <View style={[styles.menuItemRow, { marginTop: 8 }]}>
+                                                        <AppText variant="h3" color={colors.primary}>
+                                                            GH₵{item.price}
+                                                        </AppText>
+                                                        <View style={styles.actionRow}>
+                                                            <IconButton
+                                                                icon="cart-plus"
+                                                                size={20}
+                                                                iconColor={colors.primary}
+                                                                onPress={() => handleAddToCart(item)}
+                                                            />
+                                                            <Button
+                                                                mode="contained"
+                                                                onPress={() => navigation.navigate('OrderCheckout', { cart: [{ ...item, quantity: 1 }], business })}
+                                                                style={{ borderRadius: 6 }}
+                                                                labelStyle={{ fontSize: 12, marginVertical: 4 }}
+                                                                contentStyle={{ height: 32 }}
+                                                                buttonColor={colors.primary}
+                                                            >
+                                                                Order
+                                                            </Button>
+                                                        </View>
+                                                    </View>
                                                 </View>
-                                                <View style={styles.buttonRow}>
-                                                    <Button
-                                                        mode="contained"
-                                                        onPress={() => navigation.navigate('OrderCheckout', { cart: [{ ...item, quantity: 1 }], business })}
-                                                        style={[styles.flexButton, { backgroundColor: colors.primary }]}
-                                                        compact
-                                                    >
-                                                        <AppText variant="label" color={colors.white} bold>Order Now</AppText>
-                                                    </Button>
-                                                    <Button
-                                                        mode="outlined"
-                                                        onPress={() => handleAddToCart(item)}
-                                                        style={[styles.flexButton, { borderColor: colors.primary }]}
-                                                        textColor={colors.primary}
-                                                        compact
-                                                    >
-                                                        Add to Cart
-                                                    </Button>
-                                                </View>
-                                            </View>
-                                        </Card.Content>
-                                    </Card>
-                                ))}
+                                            </Card.Content>
+                                        </Card>
+                                    ))}
+                                </ScrollView>
                             </View>
                         ))}
                     </>
@@ -391,6 +395,21 @@ const styles = StyleSheet.create({
     sectionTitle: { paddingHorizontal: 20, paddingVertical: 10 },
     categoryTitle: { paddingHorizontal: 20, paddingVertical: 12 },
     card: { marginHorizontal: 20, marginBottom: 15 },
+    horizontalCard: {
+        width: 250,
+        marginBottom: 10,
+        overflow: 'hidden',
+        elevation: 2,
+    },
+    horizontalCardImage: {
+        width: '100%',
+        height: 120,
+    },
+    actionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
     price: { fontWeight: 'bold', marginTop: 5 },
     bookBtn: { marginTop: 10 },
     menuItemRow: { flexDirection: 'column', alignItems: 'stretch' },
