@@ -19,6 +19,11 @@ export default function AddMenuItem({ navigation }: any) {
     const [imageUrl, setImageUrl] = useState('');
     const [loading, setLoading] = useState(false);
 
+    // New Category states
+    const [newCategoryName, setNewCategoryName] = useState('');
+    const [isAddingCategory, setIsAddingCategory] = useState(false);
+    const [showAddCategory, setShowAddCategory] = useState(false);
+
     const token = useAuthStore((state) => state.token);
     const business = useBusinessStore((state) => state.business);
     const { colors } = useTheme();
@@ -31,7 +36,7 @@ export default function AddMenuItem({ navigation }: any) {
         try {
             const response = await axios.get(`${API_URL}/menu-items/business/${business?.id}`);
             setCategories(response.data);
-            if (response.data.length > 0) {
+            if (response.data.length > 0 && !selectedCategory) {
                 setSelectedCategory(response.data[0].id);
             }
         } catch (error) {
@@ -39,19 +44,27 @@ export default function AddMenuItem({ navigation }: any) {
         }
     };
 
-    const createCategory = async () => {
-        const categoryName = prompt('Enter category name:');
-        if (!categoryName) return;
+    const handleAddCategory = async () => {
+        if (!newCategoryName || !business?.id) {
+            Alert.alert('Error', 'Please enter a category name');
+            return;
+        }
 
+        setIsAddingCategory(true);
         try {
             await axios.post(
                 `${API_URL}/menu-items/categories`,
-                { businessId: business?.id, name: categoryName },
+                { businessId: business?.id, name: newCategoryName },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
+            setNewCategoryName('');
+            setShowAddCategory(false);
             fetchCategories();
+            Alert.alert('Success', 'Category created!');
         } catch (error: any) {
             Alert.alert('Error', error.response?.data?.message || 'Failed to create category');
+        } finally {
+            setIsAddingCategory(false);
         }
     };
 
@@ -92,12 +105,12 @@ export default function AddMenuItem({ navigation }: any) {
                     Add Menu Item
                 </Text>
 
-                {categories.length === 0 ? (
+                {categories.length === 0 && !showAddCategory ? (
                     <View style={styles.emptyState}>
                         <Text style={[styles.emptyText, { color: colors.textLight }]}>No categories yet. Create one first!</Text>
                         <Button
                             mode="contained"
-                            onPress={createCategory}
+                            onPress={() => setShowAddCategory(true)}
                             style={styles.button}
                             buttonColor={colors.primary}
                             textColor={colors.white}
@@ -107,27 +120,65 @@ export default function AddMenuItem({ navigation }: any) {
                     </View>
                 ) : (
                     <>
-                        <Text variant="titleMedium" style={[styles.label, { color: colors.text }]}>
-                            Category
-                        </Text>
-                        <SegmentedButtons
-                            value={selectedCategory}
-                            onValueChange={setSelectedCategory}
-                            buttons={categories.map((cat) => ({
-                                value: cat.id,
-                                label: cat.name,
-                            }))}
-                            style={styles.segment}
-                            theme={{ colors: { secondaryContainer: colors.primaryLight, onSecondaryContainer: colors.text, outline: colors.primary } }}
-                        />
-                        <Button
-                            mode="text"
-                            onPress={createCategory}
-                            style={styles.addCategoryBtn}
-                            textColor={colors.primary}
-                        >
-                            + Add New Category
-                        </Button>
+                        {!showAddCategory ? (
+                            <View style={{ marginBottom: 20 }}>
+                                <Text variant="titleMedium" style={[styles.label, { color: colors.text }]}>
+                                    Category
+                                </Text>
+                                <SegmentedButtons
+                                    value={selectedCategory}
+                                    onValueChange={setSelectedCategory}
+                                    buttons={categories.map((cat) => ({
+                                        value: cat.id,
+                                        label: cat.name,
+                                    }))}
+                                    style={styles.segment}
+                                    theme={{ colors: { secondaryContainer: colors.primaryLight, onSecondaryContainer: colors.text, outline: colors.primary } }}
+                                />
+                                <Button
+                                    mode="text"
+                                    onPress={() => setShowAddCategory(true)}
+                                    style={styles.addCategoryBtn}
+                                    textColor={colors.primary}
+                                >
+                                    + Add New Category
+                                </Button>
+                            </View>
+                        ) : (
+                            <View style={styles.addCategoryContainer}>
+                                <Text variant="titleMedium" style={[styles.label, { color: colors.text }]}>
+                                    New Category Name
+                                </Text>
+                                <View style={styles.inlineRow}>
+                                    <TextInput
+                                        value={newCategoryName}
+                                        onChangeText={setNewCategoryName}
+                                        style={styles.inlineInput}
+                                        placeholder="e.g., Breakfast"
+                                        mode="outlined"
+                                        activeOutlineColor={colors.primary}
+                                        outlineColor={colors.primary}
+                                    />
+                                    <Button
+                                        mode="contained"
+                                        onPress={handleAddCategory}
+                                        loading={isAddingCategory}
+                                        disabled={isAddingCategory}
+                                        style={styles.inlineButton}
+                                        buttonColor={colors.primary}
+                                    >
+                                        Add
+                                    </Button>
+                                </View>
+                                <Button
+                                    mode="text"
+                                    onPress={() => setShowAddCategory(false)}
+                                    textColor={colors.error}
+                                >
+                                    Cancel
+                                </Button>
+                            </View>
+                        )}
 
                         <TextInput
                             label="Item Name *"
@@ -174,7 +225,7 @@ export default function AddMenuItem({ navigation }: any) {
                             mode="contained"
                             onPress={handleSubmit}
                             loading={loading}
-                            disabled={loading}
+                            disabled={loading || showAddCategory}
                             style={styles.button}
                             buttonColor={colors.primary}
                             textColor={colors.white}
@@ -194,9 +245,13 @@ const styles = StyleSheet.create({
     title: { marginBottom: 20, textAlign: 'center', fontWeight: 'bold' },
     label: { marginBottom: 10, marginTop: 10 },
     segment: { marginBottom: 10 },
-    addCategoryBtn: { marginBottom: 15 },
+    addCategoryBtn: { alignSelf: 'flex-start' },
     input: { marginBottom: 15 },
     button: { marginTop: 20, paddingVertical: 5 },
     emptyState: { marginTop: 50, alignItems: 'center' },
     emptyText: { marginBottom: 20, textAlign: 'center' },
+    addCategoryContainer: { marginBottom: 20, padding: 15, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.02)' },
+    inlineRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    inlineInput: { flex: 1, height: 50 },
+    inlineButton: { height: 50, justifyContent: 'center' },
 });
