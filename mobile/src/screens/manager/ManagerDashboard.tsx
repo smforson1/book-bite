@@ -17,6 +17,7 @@ export default function ManagerDashboard({ navigation }: any) {
     const [stats, setStats] = useState({ revenue: 0, ordersCount: 0 });
     const [activity, setActivity] = useState<any[]>([]);
     const [wallet, setWallet] = useState<any>(null);
+    const [occupancy, setOccupancy] = useState({ checkInsToday: 0, checkOutsToday: 0, activeGuests: 0, occupiedUnits: 0 });
 
     const token = useAuthStore((state) => state.token);
     const business = useBusinessStore((state) => state.business);
@@ -40,16 +41,20 @@ export default function ManagerDashboard({ navigation }: any) {
 
     const fetchData = useCallback(async () => {
         try {
-            const [busRes, walletRes, activityRes] = await Promise.all([
+            const [busRes, walletRes, activityRes, occupancyRes] = await Promise.all([
                 axios.get(`${API_URL}/business/me/business`, { headers: { Authorization: `Bearer ${token}` } }),
                 axios.get(`${API_URL}/wallet`, { headers: { Authorization: `Bearer ${token}` } }),
                 business?.type === 'RESTAURANT'
                     ? axios.get(`${API_URL}/orders/manager`, { headers: { Authorization: `Bearer ${token}` } })
-                    : axios.get(`${API_URL}/bookings/manager`, { headers: { Authorization: `Bearer ${token}` } })
+                    : axios.get(`${API_URL}/bookings/manager`, { headers: { Authorization: `Bearer ${token}` } }),
+                business?.type !== 'RESTAURANT'
+                    ? axios.get(`${API_URL}/bookings/manager/occupancy`, { headers: { Authorization: `Bearer ${token}` } })
+                    : Promise.resolve({ data: null })
             ]);
 
             setBusiness(busRes.data);
             setWallet(walletRes.data);
+            if (occupancyRes.data) setOccupancy(occupancyRes.data);
 
             const rawActivity = activityRes.data || [];
             setActivity(rawActivity.slice(0, 5));
@@ -161,10 +166,24 @@ export default function ManagerDashboard({ navigation }: any) {
                         <AppText variant="h2" color={colors.primary}>GH₵{stats.revenue.toLocaleString()}</AppText>
                     </AppCard>
                     <AppCard style={styles.statBox}>
-                        <AppText variant="caption" color={colors.textLight}>{isRestaurant ? 'Orders' : 'Bookings'}</AppText>
-                        <AppText variant="h2" color={colors.secondary || '#546E7A'}>{stats.ordersCount}</AppText>
+                        <AppText variant="caption" color={colors.textLight}>{isRestaurant ? 'Orders' : 'Occupancy'}</AppText>
+                        <AppText variant="h2" color={colors.secondary || '#546E7A'}>{isRestaurant ? stats.ordersCount : `${occupancy.activeGuests} Guests`}</AppText>
                     </AppCard>
                 </View>
+
+                {/* Today's Insights (Hotels/Hostels only) */}
+                {!isRestaurant && (
+                    <View style={[styles.statsContainer, { marginTop: -12 }]}>
+                        <AppCard style={[styles.statBox, { backgroundColor: colors.primary + '05' }]}>
+                            <AppText variant="caption" color={colors.textLight}>Check-ins Today</AppText>
+                            <AppText variant="h3" color={colors.primary}>{occupancy.checkInsToday}</AppText>
+                        </AppCard>
+                        <AppCard style={[styles.statBox, { backgroundColor: colors.secondary + '05' || '#546E7A05' }]}>
+                            <AppText variant="caption" color={colors.textLight}>Check-outs Today</AppText>
+                            <AppText variant="h3" color={colors.secondary || '#546E7A'}>{occupancy.checkOutsToday}</AppText>
+                        </AppCard>
+                    </View>
+                )}
 
                 {/* Quick Actions Grid */}
                 <AppText variant="h3" style={styles.sectionTitle}>Quick Actions</AppText>
@@ -176,13 +195,23 @@ export default function ManagerDashboard({ navigation }: any) {
                             subLabel="Inventory"
                             onPress={() => navigation.navigate('Manage')}
                         />
-                        <ActionCard
-                            icon="clipboard-list-outline"
-                            label="Orders"
-                            subLabel="Active Requests"
-                            onPress={() => navigation.navigate('Orders')}
-                            color="#FB8C00"
-                        />
+                        {!isRestaurant ? (
+                            <ActionCard
+                                icon="account-group-outline"
+                                label="Active Guests"
+                                subLabel={`${occupancy.activeGuests} Now`}
+                                onPress={() => navigation.navigate('ActiveGuests')}
+                                color="#673AB7"
+                            />
+                        ) : (
+                            <ActionCard
+                                icon="clipboard-list-outline"
+                                label="Orders"
+                                subLabel="Active Requests"
+                                onPress={() => navigation.navigate('Orders')}
+                                color="#FB8C00"
+                            />
+                        )}
                     </View>
                     <View style={styles.gridRow}>
                         <ActionCard
@@ -195,8 +224,8 @@ export default function ManagerDashboard({ navigation }: any) {
                         {!isRestaurant ? (
                             <ActionCard
                                 icon="calendar-plus"
-                                label="Manual Booking"
-                                subLabel="Record Walk-in"
+                                label="Manual"
+                                subLabel="Walk-in"
                                 onPress={() => navigation.navigate('AddManualBooking')}
                                 color="#E91E63"
                             />
