@@ -16,7 +16,7 @@ import { IconButton } from 'react-native-paper';
 import axios from 'axios';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = SCREEN_WIDTH - 40; // 20 margin on each side
+const CARD_WIDTH = SCREEN_WIDTH - 40;
 
 const API_URL = 'http://10.0.2.2:5000/api';
 
@@ -33,7 +33,7 @@ export default function BusinessDetails({ route, navigation }: any) {
     const { colors, spacing } = useTheme();
 
     // Global Cart Store
-    const { items: cartItems, addItem, removeItem } = useCartStore();
+    const { items: cartItems, addItem } = useCartStore();
 
     useEffect(() => {
         fetchDetails();
@@ -106,36 +106,36 @@ export default function BusinessDetails({ route, navigation }: any) {
             : [];
 
         return (
-            <Card key={room.id} style={styles.card}>
+            <Card key={room.id} style={[styles.card, { backgroundColor: colors.surface }]}>
                 {room.images && (
                     <ImageCarousel
                         images={room.images}
                         height={180}
                         width={CARD_WIDTH}
-                        borderRadius={SIZES.radius.l}
+                        borderRadius={8}
                     />
                 )}
                 <Card.Content>
-                    <Text variant="titleMedium">{room.name}</Text>
+                    <AppText variant="h3">{room.name}</AppText>
                     <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, flexWrap: 'wrap', gap: 8 }}>
-                        <Chip icon="account-group" compact>{room.capacity} Pax</Chip>
+                        <Chip icon="account-group" compact textStyle={{ color: colors.text }}>{room.capacity} Pax</Chip>
 
                         {/* Inventory Display */}
                         {business.type === 'HOSTEL' ? (
                             <>
                                 {(room.stockMale > 0 || (!room.stockMale && !room.stockFemale)) && (
-                                    <Chip icon="gender-male" compact mode="outlined">
+                                    <Chip icon="gender-male" compact mode="outlined" textStyle={{ color: colors.text }}>
                                         {room.availableMale !== undefined ? room.availableMale : room.stockMale} Male Beds Left
                                     </Chip>
                                 )}
                                 {(room.stockFemale > 0) && (
-                                    <Chip icon="gender-female" compact mode="outlined">
+                                    <Chip icon="gender-female" compact mode="outlined" textStyle={{ color: colors.text }}>
                                         {room.availableFemale !== undefined ? room.availableFemale : room.stockFemale} Female Beds Left
                                     </Chip>
                                 )}
                             </>
                         ) : (
-                            <Chip icon="door" compact>
+                            <Chip icon="door" compact textStyle={{ color: colors.text }}>
                                 {room.availableStock !== undefined ? room.availableStock : room.totalStock} Rooms Left
                             </Chip>
                         )}
@@ -146,23 +146,23 @@ export default function BusinessDetails({ route, navigation }: any) {
                             {utilities.map((u: string, idx: number) => (
                                 <View key={idx} style={{ backgroundColor: colors.border + '50', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 }}>
                                     <View style={{ paddingHorizontal: 4 }}>
-                                        <Text variant="labelSmall" style={{ color: colors.textLight }}>{u}</Text>
+                                        <AppText variant="caption" color={colors.textLight}>{u}</AppText>
                                     </View>
                                 </View>
                             ))}
                         </View>
                     )}
 
-                    <Text variant="titleMedium" style={[styles.price, { color: colors.primary }]}>
+                    <AppText variant="h3" style={[styles.price, { color: colors.primary }]}>
                         GH₵{room.price} / {business.type === 'HOSTEL' ? 'year' : 'night'}
-                    </Text>
+                    </AppText>
                     <View style={styles.buttonRow}>
                         <Button
                             mode="contained"
                             onPress={() => navigation.navigate('BookingCheckout', { room, business })}
-                            style={[styles.flexButton, { backgroundColor: COLORS.primary }]}
+                            style={[styles.flexButton, { backgroundColor: colors.primary }]}
                         >
-                            Book Now
+                            <AppText variant="button" color={colors.white}>Book Now</AppText>
                         </Button>
                         <Button
                             mode="outlined"
@@ -181,29 +181,39 @@ export default function BusinessDetails({ route, navigation }: any) {
     const isHotel = business.type === 'HOTEL' || business.type === 'HOSTEL';
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <ScrollView contentContainerStyle={styles.content}>
                 <ImageCarousel
                     images={business.images}
                     height={250}
                 />
-                <Text variant="headlineMedium" style={styles.title}>
-                    {business.name}
-                </Text>
-                <Text variant="bodyMedium" style={styles.address}>
-                    {business.address}
-                </Text>
-                <Text variant="bodyMedium" style={styles.description}>
-                    {business.description}
-                </Text>
+                <View style={styles.headerRow}>
+                    <View style={{ flex: 1 }}>
+                        <AppText variant="h1" style={styles.title}>
+                            {business.name}
+                        </AppText>
+                        <AppText variant="body" color={colors.textLight} style={styles.address}>
+                            {business.address}
+                        </AppText>
+                    </View>
+                    <IconButton
+                        icon="share-variant"
+                        iconColor={colors.primary}
+                        onPress={handleShare}
+                    />
+                </View>
 
-                <Divider style={styles.divider} />
+                <AppText variant="body" style={styles.description}>
+                    {business.description}
+                </AppText>
+
+                <Divider style={[styles.divider, { backgroundColor: colors.border }]} />
 
                 {isHotel ? (
                     <>
-                        <Text variant="titleLarge" style={styles.sectionTitle}>
+                        <AppText variant="h2" style={styles.sectionTitle}>
                             Available {business.type === 'HOTEL' ? 'Rooms' : 'Bed Spaces'}
-                        </Text>
+                        </AppText>
 
                         {business.type === 'HOTEL' ? (
                             <>
@@ -240,47 +250,49 @@ export default function BusinessDetails({ route, navigation }: any) {
                     </>
                 ) : (
                     <>
-                        <Text variant="titleLarge" style={styles.sectionTitle}>
+                        <AppText variant="h2" style={styles.sectionTitle}>
                             Menu
-                        </Text>
+                        </AppText>
                         {menu.map((category) => (
                             <View key={category.id}>
-                                <Text variant="titleMedium" style={styles.categoryTitle}>
-                                    {category.name}
-                                </Text>
+                                <View style={[styles.categoryTitle, { backgroundColor: colors.surface }]}>
+                                    <AppText variant="h3" bold>{category.name}</AppText>
+                                </View>
                                 {category.items.map((item: any) => (
-                                    <Card key={item.id} style={styles.card}>
+                                    <Card key={item.id} style={[styles.card, { backgroundColor: colors.surface }]}>
                                         <Card.Content>
                                             <View style={styles.menuItemRow}>
                                                 {item.images && (
-                                                    <ImageCarousel
-                                                        images={item.images}
-                                                        height={180}
-                                                        width={CARD_WIDTH}
-                                                        borderRadius={8}
-                                                    />
+                                                    <View style={{ marginBottom: 15 }}>
+                                                        <ImageCarousel
+                                                            images={item.images}
+                                                            height={180}
+                                                            width={CARD_WIDTH}
+                                                            borderRadius={8}
+                                                        />
+                                                    </View>
                                                 )}
                                                 <View style={{ flex: 1 }}>
-                                                    <Text variant="titleMedium">{item.name}</Text>
-                                                    <Text variant="bodyMedium" numberOfLines={2}>{item.description}</Text>
-                                                    <Text variant="titleSmall" style={styles.price}>
+                                                    <AppText variant="h3">{item.name}</AppText>
+                                                    <AppText variant="body" color={colors.textLight} numberOfLines={2}>{item.description}</AppText>
+                                                    <AppText variant="h3" color={colors.primary} style={styles.price}>
                                                         GH₵{item.price}
-                                                    </Text>
+                                                    </AppText>
                                                 </View>
                                                 <View style={styles.buttonRow}>
                                                     <Button
                                                         mode="contained"
                                                         onPress={() => navigation.navigate('OrderCheckout', { cart: [{ ...item, quantity: 1 }], business })}
-                                                        style={[styles.flexButton, { backgroundColor: COLORS.primary }]}
+                                                        style={[styles.flexButton, { backgroundColor: colors.primary }]}
                                                         compact
                                                     >
-                                                        Order Now
+                                                        <AppText variant="button" color={colors.white}>Order Now</AppText>
                                                     </Button>
                                                     <Button
                                                         mode="outlined"
                                                         onPress={() => handleAddToCart(item)}
-                                                        style={[styles.flexButton, { borderColor: COLORS.primary }]}
-                                                        textColor={COLORS.primary}
+                                                        style={[styles.flexButton, { borderColor: colors.primary }]}
+                                                        textColor={colors.primary}
                                                         compact
                                                     >
                                                         Add to Cart
@@ -296,13 +308,13 @@ export default function BusinessDetails({ route, navigation }: any) {
                 )}
 
                 {/* Reviews Section */}
-                <Divider style={styles.divider} />
+                <Divider style={[styles.divider, { backgroundColor: colors.border }]} />
 
                 <View style={styles.reviewsHeader}>
                     <View>
-                        <Text variant="titleLarge" style={styles.sectionTitle}>
+                        <AppText variant="h2" style={styles.sectionTitle}>
                             Reviews
-                        </Text>
+                        </AppText>
                         {reviews.length > 0 && (
                             <View style={styles.ratingRow}>
                                 <RatingStars rating={Math.round(averageRating)} readonly size={18} />
@@ -327,7 +339,7 @@ export default function BusinessDetails({ route, navigation }: any) {
                         <ReviewCard key={review.id} review={review} />
                     ))
                 ) : (
-                    <AppText variant="body" color={COLORS.textLight} style={{ padding: 20, textAlign: 'center' }}>
+                    <AppText variant="body" color={colors.textLight} style={{ padding: 20, textAlign: 'center' }}>
                         No reviews yet. Be the first to review!
                     </AppText>
                 )}
@@ -335,7 +347,7 @@ export default function BusinessDetails({ route, navigation }: any) {
                 {reviews.length > 3 && (
                     <Button
                         mode="text"
-                        textColor={COLORS.primary}
+                        textColor={colors.primary}
                         onPress={() => {/* TODO: Navigate to all reviews screen */ }}
                     >
                         View All {reviews.length} Reviews
@@ -345,12 +357,12 @@ export default function BusinessDetails({ route, navigation }: any) {
 
             {!isHotel && cartItems.length > 0 && (
                 <View style={[styles.footer, { backgroundColor: colors.primary }]}>
-                    <Text variant="titleMedium" style={{ color: '#fff' }}>
+                    <AppText variant="h3" color={colors.white}>
                         {cartItems.length} items • GH₵{cartItems.reduce((sum, i) => sum + (Number(i.price) * i.quantity), 0)}
-                    </Text>
+                    </AppText>
                     <Button
                         mode="contained"
-                        buttonColor="#fff"
+                        buttonColor={colors.white}
                         textColor={colors.primary}
                         onPress={() => navigation.navigate('OrderCheckout', { cart: cartItems, business })}
                     >
@@ -367,12 +379,17 @@ const styles = StyleSheet.create({
     content: { paddingBottom: 80 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     image: { width: '100%', height: 200 },
-    title: { padding: 20, paddingBottom: 5, fontWeight: 'bold' },
-    address: { paddingHorizontal: 20, color: '#666' },
+    headerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingRight: 10,
+    },
+    title: { padding: 20, paddingBottom: 5 },
+    address: { paddingHorizontal: 20 },
     description: { padding: 20, paddingTop: 10 },
     divider: { marginVertical: 10 },
-    sectionTitle: { padding: 20, fontWeight: 'bold' },
-    categoryTitle: { paddingHorizontal: 20, paddingVertical: 10, backgroundColor: '#f5f5f5' },
+    sectionTitle: { paddingHorizontal: 20, paddingVertical: 10 },
+    categoryTitle: { paddingHorizontal: 20, paddingVertical: 12 },
     card: { marginHorizontal: 20, marginBottom: 15 },
     price: { fontWeight: 'bold', marginTop: 5 },
     bookBtn: { marginTop: 10 },
@@ -381,7 +398,6 @@ const styles = StyleSheet.create({
     flexButton: { flex: 1 },
     footer: {
         padding: 15,
-        backgroundColor: '#E65100',
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -394,7 +410,7 @@ const styles = StyleSheet.create({
     reviewsHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'flex-start',
+        alignItems: 'center',
         paddingHorizontal: 20,
         marginBottom: 15,
     },

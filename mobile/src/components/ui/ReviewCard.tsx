@@ -4,7 +4,10 @@ import { Card } from 'react-native-paper';
 import AppText from './AppText';
 import RatingStars from './RatingStars';
 import ImageCarousel from './ImageCarousel';
-import { COLORS, SPACING, SIZES } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
+import AppText from './AppText';
+import RatingStars from './RatingStars';
+import ImageCarousel from './ImageCarousel';
 
 interface ReviewCardProps {
     review: {
@@ -20,6 +23,7 @@ interface ReviewCardProps {
 }
 
 export default function ReviewCard({ review }: ReviewCardProps) {
+    const { colors } = useTheme();
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
         const now = new Date();
@@ -34,12 +38,12 @@ export default function ReviewCard({ review }: ReviewCardProps) {
     };
 
     return (
-        <Card style={styles.card}>
+        <Card style={[styles.card, { backgroundColor: colors.surface }]}>
             <Card.Content>
                 <View style={styles.header}>
                     <View style={styles.userInfo}>
                         <AppText variant="h3" bold>{review.user.name}</AppText>
-                        <AppText variant="caption" color={COLORS.textLight}>
+                        <AppText variant="caption" color={colors.textLight}>
                             {formatDate(review.createdAt)}
                         </AppText>
                     </View>
@@ -64,8 +68,8 @@ export default function ReviewCard({ review }: ReviewCardProps) {
                             <ImageCarousel
                                 images={review.images}
                                 height={200}
-                                width={SIZES.width - 80}
-                                borderRadius={SIZES.radius.m}
+                                width={SCREEN_WIDTH - 80}
+                                borderRadius={8}
                             />
                         )}
                     </View>
@@ -75,30 +79,31 @@ export default function ReviewCard({ review }: ReviewCardProps) {
     );
 }
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
 const styles = StyleSheet.create({
     card: {
-        marginBottom: SPACING.m,
-        backgroundColor: COLORS.white,
+        marginBottom: 16,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        marginBottom: SPACING.s,
+        marginBottom: 8,
     },
     userInfo: {
         flex: 1,
     },
     comment: {
-        marginTop: SPACING.s,
+        marginTop: 8,
         lineHeight: 20,
     },
     imagesContainer: {
-        marginTop: SPACING.m,
+        marginTop: 16,
     },
     singleImage: {
         width: '100%',
         height: 200,
-        borderRadius: SIZES.radius.m,
+        borderRadius: 8,
     },
 });
