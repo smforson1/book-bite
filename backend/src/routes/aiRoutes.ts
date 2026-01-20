@@ -10,4 +10,7 @@ router.post('/sync', verifyToken, requireRole(['ADMIN', 'MANAGER']), aiControlle
 // Search endpoint (Public)
 router.get('/search', aiController.semanticSearch);
 
+// BiteBot Chat endpoint (Protected)
+router.post('/chat', verifyToken, aiController.chat);
+
 export default router;

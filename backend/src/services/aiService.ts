@@ -38,5 +38,48 @@ export const aiService = {
         const magnitudeA = Math.sqrt(vecA.reduce((sum, a) => sum + a * a, 0));
         const magnitudeB = Math.sqrt(vecB.reduce((sum, b) => sum + b * b, 0));
         return dotProduct / (magnitudeA * magnitudeB);
+    },
+
+    /**
+     * Gets a conversational response from BiteBot.
+     */
+    async getChatResponse(history: any[], query: string, context: string): Promise<string> {
+        try {
+            if (!process.env.GEMINI_API_KEY) {
+                throw new Error("GEMINI_API_KEY is not set.");
+            }
+
+            const model = genAI.getGenerativeModel({
+                model: "gemini-1.5-flash",
+                systemInstruction: `
+          You are "BiteBot", the ultimate AI Concierge for the "Book Bite" app. 
+          Your goal is to help users find the best food and accommodation (hostels/hotels).
+          
+          Guidelines:
+          - Be friendly, professional, and slightly enthusiastic. 
+          - Use the provided CONTEXT to answer questions about specific businesses, menus, or rooms.
+          - If the user asks for recommendations, use the context to suggest relevant places.
+          - If you don't know the answer from the context, say you're not sure but offer to help find something else.
+          - Keep answers concise and mobile-friendly.
+          - If relevant, suggest they use the "Book Now" or "Order Now" feature in the app.
+          
+          CONTEXT:
+          ${context}
+        `.trim()
+            });
+
+            const chat = model.startChat({
+                history: history.map(h => ({
+                    role: h.role === 'user' ? 'user' : 'model',
+                    parts: [{ text: h.content }]
+                })),
+            });
+
+            const result = await chat.sendMessage(query);
+            return result.response.text();
+        } catch (error) {
+            console.error("Chat error:", error);
+            throw error;
+        }
     }
 };

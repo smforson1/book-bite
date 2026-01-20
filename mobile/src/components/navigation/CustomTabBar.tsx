@@ -45,6 +45,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
                     if (route.name === 'Places') iconName = 'map-search';
                     if (route.name === 'Activity') iconName = 'history';
                     if (route.name === 'Cart') iconName = 'cart';
+                    if (route.name === 'BiteBot') iconName = 'sparkles';
 
                     // Manager Mapping
                     if (route.name === 'Dashboard') iconName = 'view-dashboard';

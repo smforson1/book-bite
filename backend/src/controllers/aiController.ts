@@ -94,5 +94,56 @@ export const aiController = {
             console.error("Search error:", error);
             res.status(500).json({ message: "Semantic search failed", error: error.message });
         }
+    },
+
+    /**
+     * Handles chat requests from BiteBot.
+     */
+    async chat(req: Request, res: Response) {
+        try {
+            const { query, history } = req.body;
+
+            if (!query) {
+                return res.status(400).json({ message: "Query is required." });
+            }
+
+            // 1. Fetch relevant context using semantic search logic
+            const queryEmbedding = await aiService.generateEmbedding(query);
+            const businesses = await (prisma.business as any).findMany({
+                where: { aiEmbedding: { not: null } },
+                include: {
+                    menuCategories: { include: { items: true } },
+                    roomCategories: { include: { rooms: true } }
+                }
+            });
+
+            const contextResults = (businesses as any[])
+                .map(b => ({
+                    ...b,
+                    similarity: aiService.cosineSimilarity(queryEmbedding, b.aiEmbedding as number[])
+                }))
+                .sort((a, b) => b.similarity - a.similarity)
+                .filter(b => b.similarity > 0.5)
+                .slice(0, 3); // Get top 3 most relevant businesses for context
+
+            const contextText = contextResults.map(b => {
+                const menu = b.menuCategories?.flatMap((mc: any) => mc.items.map((i: any) => i.name)).join(', ');
+                const rooms = b.roomCategories?.flatMap((rc: any) => rc.rooms.map((r: any) => r.name)).join(', ');
+                return `
+          Business: ${b.name} (${b.type})
+          Description: ${b.description || ''}
+          Menu/Items: ${menu || 'None'}
+          Rooms/Units: ${rooms || 'None'}
+        `.trim();
+            }).join('\n\n');
+
+            // 2. Get AI response
+            const response = await aiService.getChatResponse(history || [], query, contextText);
+
+            res.json({ response });
+        } catch (error: any) {
+            console.error("Chat error:", error);
+            res.status(500).json({ message: "BiteBot is resting right now. Try again soon!", error: error.message });
+        }
     }
 };
