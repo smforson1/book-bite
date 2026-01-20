@@ -144,5 +144,32 @@ export const aiService = {
             console.error("Description generation error:", error);
             throw error;
         }
+    },
+
+    /**
+     * Analyzes an image and returns a textual description.
+     */
+    async analyzeImage(base64Data: string, mimeType: string): Promise<string> {
+        try {
+            if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not set.");
+
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const prompt = "What is in this image? Provide a concise description that can be used for searching. Focus on food items, room styles, or business types. (Max 10 words)";
+
+            const result = await model.generateContent([
+                prompt,
+                {
+                    inlineData: {
+                        data: base64Data,
+                        mimeType: mimeType
+                    }
+                }
+            ]);
+
+            return result.response.text().trim();
+        } catch (error) {
+            console.error("Vision error:", error);
+            throw error;
+        }
     }
 };

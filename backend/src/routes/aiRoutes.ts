@@ -19,4 +19,7 @@ router.get('/sentiment/:businessId', verifyToken, requireRole(['ADMIN', 'MANAGER
 // Content Generation (Protected, Manager or Admin)
 router.post('/generate-content', verifyToken, requireRole(['ADMIN', 'MANAGER']), aiController.generateContent);
 
+// Vision Search (Public)
+router.post('/vision-search', aiController.visionSearch);
+
 export default router;

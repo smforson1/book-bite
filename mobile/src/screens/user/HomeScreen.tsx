@@ -10,6 +10,9 @@ import AppText from '../../components/ui/AppText';
 import AppCard from '../../components/ui/AppCard';
 import CustomHeader from '../../components/navigation/CustomHeader';
 import BusinessCardSkeleton from '../../components/skeletons/BusinessCardSkeleton';
+import * as ImagePicker from 'expo-image-picker';
+import * as Haptics from 'expo-haptics';
+import { ActivityIndicator } from 'react-native-paper';
 
 const API_URL = 'http://10.0.2.2:5000/api';
 
@@ -20,6 +23,7 @@ export default function HomeScreen({ navigation }: any) {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedType, setSelectedType] = useState<string | null>(null);
     const [isAiSearch, setIsAiSearch] = useState(false);
+    const [isVisionLoading, setIsVisionLoading] = useState(false);
 
     const { user, token } = useAuthStore((state: any) => state);
     const { favorites, fetchFavorites, toggleFavorite, isFavorite } = useFavoriteStore();
@@ -56,6 +60,7 @@ export default function HomeScreen({ navigation }: any) {
             return;
         }
 
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setLoading(true);
         try {
             if (isAiSearch) {
@@ -70,6 +75,36 @@ export default function HomeScreen({ navigation }: any) {
             console.error('Search failed', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleVisionSearch = async () => {
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.5,
+            base64: true,
+        });
+
+        if (!result.canceled && result.assets[0].base64) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            setIsVisionLoading(true);
+            setLoading(true);
+            try {
+                const response = await axios.post(`${API_URL}/ai/vision-search`, {
+                    image: result.assets[0].base64,
+                    mimeType: result.assets[0].mimeType
+                });
+
+                setSearchQuery(response.data.identified);
+                setBusinesses(response.data.results);
+            } catch (error) {
+                console.error('Vision search failed', error);
+            } finally {
+                setIsVisionLoading(false);
+                setLoading(false);
+            }
         }
     };
 
@@ -139,6 +174,16 @@ export default function HomeScreen({ navigation }: any) {
                         onSubmitEditing={handleSearch}
                         returnKeyType="search"
                     />
+                    {isVisionLoading ? (
+                        <ActivityIndicator size="small" color={colors.primary} style={{ marginRight: 8 }} />
+                    ) : (
+                        <IconButton
+                            icon="camera-outline"
+                            size={20}
+                            iconColor={colors.primary}
+                            onPress={handleVisionSearch}
+                        />
+                    )}
                     {searchQuery.length > 0 && (
                         <IconButton
                             icon="close-circle"

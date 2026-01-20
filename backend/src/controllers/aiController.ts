@@ -189,5 +189,45 @@ export const aiController = {
             console.error("Content generation error:", error);
             res.status(500).json({ message: "Failed to generate description", error: error.message });
         }
+    },
+
+    /**
+     * Performs a visual search based on an uploaded image.
+     */
+    async visionSearch(req: Request, res: Response) {
+        try {
+            const { image, mimeType } = req.body;
+
+            if (!image) {
+                return res.status(400).json({ message: "Image data is required." });
+            }
+
+            // 1. Analyze image to get text description
+            const searchTerms = await aiService.analyzeImage(image, mimeType || 'image/jpeg');
+            console.log("Vision search identified:", searchTerms);
+
+            // 2. Perform semantic search using the identified terms
+            const queryEmbedding = await aiService.generateEmbedding(searchTerms);
+            const businesses = await (prisma.business as any).findMany({
+                where: { aiEmbedding: { not: null } }
+            });
+
+            const results = (businesses as any[])
+                .map(business => {
+                    const similarity = aiService.cosineSimilarity(queryEmbedding, business.aiEmbedding as number[]);
+                    return { ...business, similarity, aiEmbedding: undefined };
+                })
+                .sort((a, b) => b.similarity - a.similarity)
+                .filter(res => res.similarity > 0.5)
+                .slice(0, 10);
+
+            res.json({
+                identified: searchTerms,
+                results: results
+            });
+        } catch (error: any) {
+            console.error("Vision search error:", error);
+            res.status(500).json({ message: "Vision search failed", error: error.message });
+        }
     }
 };
