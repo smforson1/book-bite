@@ -11,7 +11,6 @@ const prisma = new PrismaClient();
 export const getManagerStats = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const userId = req.user.userId;
-
         // Get manager's business
         const manager = await prisma.managerProfile.findUnique({
             where: { userId },

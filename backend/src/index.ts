@@ -11,6 +11,7 @@ import roomCategoryRoutes from './routes/roomCategoryRoutes';
 import menuRoutes from './routes/menuRoutes';
 import bookingRoutes from './routes/bookingRoutes';
 import orderRoutes from './routes/orderRoutes';
+import aiRoutes from './routes/aiRoutes';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -46,6 +47,7 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/ai', aiRoutes);
 
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });

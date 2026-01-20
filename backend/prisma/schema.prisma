@@ -96,6 +96,7 @@ model Business {
   address     String
   images      String[]
   isFlagged   Boolean        @default(false)
+  aiEmbedding Json?          // For semantic search vectors
 
   // Relations
   rooms          Room[]

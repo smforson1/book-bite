@@ -19,6 +19,7 @@ export default function HomeScreen({ navigation }: any) {
     const [refreshing, setRefreshing] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedType, setSelectedType] = useState<string | null>(null);
+    const [isAiSearch, setIsAiSearch] = useState(false);
 
     const { user, token } = useAuthStore((state: any) => state);
     const { favorites, fetchFavorites, toggleFavorite, isFavorite } = useFavoriteStore();
@@ -47,6 +48,29 @@ export default function HomeScreen({ navigation }: any) {
     const onRefresh = () => {
         setRefreshing(true);
         fetchBusinesses();
+    };
+
+    const handleSearch = async () => {
+        if (!searchQuery.trim()) {
+            fetchBusinesses();
+            return;
+        }
+
+        setLoading(true);
+        try {
+            if (isAiSearch) {
+                const response = await axios.get(`${API_URL}/ai/search`, {
+                    params: { query: searchQuery }
+                });
+                setBusinesses(response.data);
+            } else {
+                fetchBusinesses();
+            }
+        } catch (error) {
+            console.error('Search failed', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const filteredBusinesses = businesses.filter((b) => {
@@ -100,14 +124,32 @@ export default function HomeScreen({ navigation }: any) {
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
             >
                 <View style={[styles.searchContainer, { backgroundColor: colors.surface }]}>
-                    <IconButton icon="magnify" size={20} iconColor={colors.textLight} />
+                    <IconButton
+                        icon={isAiSearch ? "auto-fix" : "magnify"}
+                        size={20}
+                        iconColor={isAiSearch ? colors.primary : colors.textLight}
+                        onPress={() => setIsAiSearch(!isAiSearch)}
+                    />
                     <TextInput
-                        placeholder="Find your next bite..."
+                        placeholder={isAiSearch ? "Ask AI (e.g. quiet student spots)..." : "Find your next bite..."}
                         placeholderTextColor={colors.textLight}
                         style={[styles.searchInput, { color: colors.text }]}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
+                        onSubmitEditing={handleSearch}
+                        returnKeyType="search"
                     />
+                    {searchQuery.length > 0 && (
+                        <IconButton
+                            icon="close-circle"
+                            size={18}
+                            iconColor={colors.textLight}
+                            onPress={() => {
+                                setSearchQuery('');
+                                fetchBusinesses();
+                            }}
+                        />
+                    )}
                 </View>
 
                 <View style={styles.filters}>
