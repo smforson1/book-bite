@@ -18,6 +18,7 @@ export default function AddMenuItem({ navigation }: any) {
     const [price, setPrice] = useState('');
     const [imageUrl, setImageUrl] = useState('');
     const [loading, setLoading] = useState(false);
+    const [aiLoading, setAiLoading] = useState(false);
 
     // New Category states
     const [newCategoryName, setNewCategoryName] = useState('');
@@ -65,6 +66,28 @@ export default function AddMenuItem({ navigation }: any) {
             Alert.alert('Error', error.response?.data?.message || 'Failed to create category');
         } finally {
             setIsAddingCategory(false);
+        }
+    };
+
+    const handleAiGenerate = async () => {
+        if (!name) {
+            Alert.alert('Inspiration Needed', 'Please enter an item name first so I know what to write about! ✨');
+            return;
+        }
+
+        setAiLoading(true);
+        try {
+            const response = await axios.post(
+                `${API_URL}/ai/generate-content`,
+                { type: 'menu', name, details: description },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setDescription(response.data.description);
+        } catch (error) {
+            console.error('AI Gen Error:', error);
+            Alert.alert('Oops', 'The AI is taking a coffee break. Please try again or write it yourself!');
+        } finally {
+            setAiLoading(false);
         }
     };
 
@@ -190,17 +213,30 @@ export default function AddMenuItem({ navigation }: any) {
                             activeOutlineColor={colors.primary}
                         />
 
-                        <TextInput
-                            label="Description"
-                            value={description}
-                            onChangeText={setDescription}
-                            style={styles.input}
-                            mode="outlined"
-                            multiline
-                            numberOfLines={3}
-                            outlineColor={colors.primary}
-                            activeOutlineColor={colors.primary}
-                        />
+                        <View style={{ position: 'relative' }}>
+                            <TextInput
+                                label="Description"
+                                value={description}
+                                onChangeText={setDescription}
+                                style={styles.input}
+                                mode="outlined"
+                                multiline
+                                numberOfLines={3}
+                                outlineColor={colors.primary}
+                                activeOutlineColor={colors.primary}
+                            />
+                            <Button
+                                icon="auto-fix"
+                                mode="text"
+                                compact
+                                onPress={handleAiGenerate}
+                                loading={aiLoading}
+                                style={styles.magicBtn}
+                                textColor={colors.primary}
+                            >
+                                Magic✨
+                            </Button>
+                        </View>
 
                         <ImageUpload
                             label="Menu Item Photo"
@@ -254,4 +290,5 @@ const styles = StyleSheet.create({
     inlineRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     inlineInput: { flex: 1, height: 50 },
     inlineButton: { height: 50, justifyContent: 'center' },
+    magicBtn: { position: 'absolute', right: 5, top: 5, zIndex: 1 },
 });

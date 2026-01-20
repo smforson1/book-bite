@@ -81,5 +81,68 @@ export const aiService = {
             console.error("Chat error:", error);
             throw error;
         }
+    },
+
+    /**
+     * Analyzes sentiment and provides a summary for a set of reviews.
+     */
+    async analyzeSentiment(reviews: any[]): Promise<{ score: number, summary: string }> {
+        try {
+            if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not set.");
+            if (reviews.length === 0) return { score: 0, summary: "No reviews yet to analyze." };
+
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const prompt = `
+                Analyze the following customer reviews for a business.
+                1. Provide a concise summary (max 3 sentences) of the overall feedback.
+                2. Provide a sentiment score between -1.0 (very negative) and 1.0 (very positive).
+                
+                Format your response STRICTORLY as a JSON object: {"score": number, "summary": "string"}
+                
+                REVIEWS:
+                ${reviews.map(r => `- Rating ${r.rating}: ${r.comment || 'No comment'}`).join('\n')}
+            `.trim();
+
+            const result = await model.generateContent(prompt);
+            const responseText = result.response.text();
+
+            // Clean markdown blocks if any
+            const jsonStr = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+            return JSON.parse(jsonStr);
+        } catch (error) {
+            console.error("Sentiment analysis error:", error);
+            return { score: 0, summary: "AI was unable to analyze reviews at this time." };
+        }
+    },
+
+    /**
+     * Generates an appetizing or inviting description for a menu item or room.
+     */
+    async generateDescription(type: 'menu' | 'room', name: string, details: string): Promise<string> {
+        try {
+            if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not set.");
+
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const prompt = `
+                Role: You are a professional copywriter for a premium booking app called "Book Bite".
+                Task: Write a ${type === 'menu' ? 'mouth-watering and creative' : 'warm and inviting'} description for a ${type}.
+                
+                ${type === 'menu' ? 'Item Name' : 'Room Name'}: ${name}
+                Details/Keywords: ${details}
+                
+                Requirements:
+                - Keep it between 2 to 4 sentences.
+                - Use vivid, sensory language.
+                - Make it sound premium and exclusive.
+                - Do not use hashtags or emojis.
+                - Respond ONLY with the description text.
+            `.trim();
+
+            const result = await model.generateContent(prompt);
+            return result.response.text().trim();
+        } catch (error) {
+            console.error("Description generation error:", error);
+            throw error;
+        }
     }
 };

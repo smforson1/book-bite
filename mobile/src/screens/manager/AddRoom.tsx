@@ -45,6 +45,7 @@ export default function AddRoom({ navigation, route }: any) {
     const [selectedUtilities, setSelectedUtilities] = useState<string[]>(initialUtilities);
     const [imageUrl, setImageUrl] = useState(editRoom?.images?.[0] !== 'DEFAULT' ? editRoom?.images?.[0] : '');
     const [loading, setLoading] = useState(false);
+    const [aiLoading, setAiLoading] = useState(false);
 
     const token = useAuthStore((state) => state.token);
     const business = useBusinessStore((state) => state.business);
@@ -94,6 +95,28 @@ export default function AddRoom({ navigation, route }: any) {
             setSelectedUtilities(selectedUtilities.filter(u => u !== utility));
         } else {
             setSelectedUtilities([...selectedUtilities, utility]);
+        }
+    };
+
+    const handleAiGenerate = async () => {
+        if (!name) {
+            Alert.alert('Inspiration Needed', 'Please enter a room name first so I know what to write about! ✨');
+            return;
+        }
+
+        setAiLoading(true);
+        try {
+            const response = await axios.post(
+                `${API_URL}/ai/generate-content`,
+                { type: 'room', name, details: description },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setDescription(response.data.description);
+        } catch (error) {
+            console.error('AI Gen Error:', error);
+            Alert.alert('Oops', 'The AI is taking a rest. Please try again later!');
+        } finally {
+            setAiLoading(false);
         }
     };
 
@@ -224,17 +247,30 @@ export default function AddRoom({ navigation, route }: any) {
                     activeOutlineColor={colors.primary}
                 />
 
-                <TextInput
-                    label="Description"
-                    value={description}
-                    onChangeText={setDescription}
-                    style={styles.input}
-                    mode="outlined"
-                    multiline
-                    numberOfLines={4}
-                    outlineColor={colors.primary}
-                    activeOutlineColor={colors.primary}
-                />
+                <View style={{ position: 'relative' }}>
+                    <TextInput
+                        label="Description"
+                        value={description}
+                        onChangeText={setDescription}
+                        style={styles.input}
+                        mode="outlined"
+                        multiline
+                        numberOfLines={4}
+                        outlineColor={colors.primary}
+                        activeOutlineColor={colors.primary}
+                    />
+                    <Button
+                        icon="auto-fix"
+                        mode="text"
+                        compact
+                        onPress={handleAiGenerate}
+                        loading={aiLoading}
+                        style={styles.magicBtn}
+                        textColor={colors.primary}
+                    >
+                        Magic✨
+                    </Button>
+                </View>
 
                 <ImageUpload
                     label={isHostel ? "Room Photo" : "Photo"}
@@ -339,6 +375,7 @@ const styles = StyleSheet.create({
     title: { marginBottom: 20, textAlign: 'center', fontWeight: 'bold' },
     input: { marginBottom: 15 },
     button: { marginTop: 20, paddingVertical: 5 },
+    magicBtn: { position: 'absolute', right: 5, top: 5, zIndex: 1 },
     row: { flexDirection: 'row' },
     chipContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     categoryContainer: { flexDirection: 'row', marginBottom: 5 },

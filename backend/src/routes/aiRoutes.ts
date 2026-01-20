@@ -13,4 +13,10 @@ router.get('/search', aiController.semanticSearch);
 // BiteBot Chat endpoint (Protected)
 router.post('/chat', verifyToken, aiController.chat);
 
+// Sentiment Analysis (Protected, Manager or Admin)
+router.get('/sentiment/:businessId', verifyToken, requireRole(['ADMIN', 'MANAGER']), aiController.analyzeReviews);
+
+// Content Generation (Protected, Manager or Admin)
+router.post('/generate-content', verifyToken, requireRole(['ADMIN', 'MANAGER']), aiController.generateContent);
+
 export default router;

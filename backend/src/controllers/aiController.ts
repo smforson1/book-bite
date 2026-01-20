@@ -145,5 +145,49 @@ export const aiController = {
             console.error("Chat error:", error);
             res.status(500).json({ message: "BiteBot is resting right now. Try again soon!", error: error.message });
         }
+    },
+
+    /**
+     * Analyzes sentiment for a business's reviews.
+     */
+    async analyzeReviews(req: Request, res: Response) {
+        try {
+            const { businessId } = req.params;
+
+            const reviews = await prisma.review.findMany({
+                where: { businessId },
+                orderBy: { createdAt: 'desc' },
+                take: 10 // Analyze last 10 reviews
+            });
+
+            if (reviews.length === 0) {
+                return res.json({ score: 0, summary: "No reviews to analyze yet." });
+            }
+
+            const analysis = await aiService.analyzeSentiment(reviews);
+            res.json(analysis);
+        } catch (error: any) {
+            console.error("Analysis error:", error);
+            res.status(500).json({ message: "Failed to analyze reviews", error: error.message });
+        }
+    },
+
+    /**
+     * Generates a description for a menu item or room.
+     */
+    async generateContent(req: Request, res: Response) {
+        try {
+            const { type, name, details } = req.body;
+
+            if (!type || !name) {
+                return res.status(400).json({ message: "Type (menu/room) and Name are required." });
+            }
+
+            const description = await aiService.generateDescription(type as any, name, details || '');
+            res.json({ description });
+        } catch (error: any) {
+            console.error("Content generation error:", error);
+            res.status(500).json({ message: "Failed to generate description", error: error.message });
+        }
     }
 };

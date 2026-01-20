@@ -22,11 +22,14 @@ export default function AnalyticsScreen() {
     const { colors, spacing, shadows } = useTheme();
 
     const [stats, setStats] = useState<Stats | null>(null);
+    const [aiInsight, setAiInsight] = useState<{ score: number, summary: string } | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [aiLoading, setAiLoading] = useState(false);
 
     useEffect(() => {
         fetchStats();
+        fetchAiInsight();
     }, []);
 
     const fetchStats = async () => {
@@ -37,15 +40,30 @@ export default function AnalyticsScreen() {
             setStats(response.data);
         } catch (error) {
             console.error('Error fetching stats:', error);
+        }
+    };
+
+    const fetchAiInsight = async () => {
+        if (!business?.id) return;
+        setAiLoading(true);
+        try {
+            const response = await axios.get(`${API_URL}/ai/sentiment/${business.id}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            setAiInsight(response.data);
+        } catch (error) {
+            console.error('Error fetching AI insight:', error);
         } finally {
-            setLoading(false);
-            setRefreshing(false);
+            setAiLoading(false);
         }
     };
 
     const onRefresh = () => {
         setRefreshing(true);
-        fetchStats();
+        Promise.all([fetchStats(), fetchAiInsight()]).finally(() => {
+            setLoading(false);
+            setRefreshing(false);
+        });
     };
 
     if (loading) {
@@ -96,6 +114,42 @@ export default function AnalyticsScreen() {
                             <AppText style={{ color: colors.textLight, fontSize: 12 }}>Total</AppText>
                             <AppText style={{ color: colors.success, fontSize: 14, marginTop: spacing.xs }}>{stats?.completedOrders || 0} Completed</AppText>
                         </View>
+                    )}
+                </View>
+
+                {/* AI Insights Section */}
+                <View style={[styles.card, cardStyle, { padding: spacing.l, marginTop: spacing.m, borderLeftWidth: 4, borderLeftColor: colors.primary }]}>
+                    <View style={[styles.row, { alignItems: 'center', marginBottom: spacing.s }]}>
+                        <AppText variant="h3" style={{ color: colors.primary, flex: 1 }}>AI Customer Insights ✨</AppText>
+                        {aiInsight && (
+                            <AppText variant="h3">
+                                {aiInsight.score > 0.5 ? '😊' : aiInsight.score > 0 ? '🙂' : aiInsight.score === 0 ? '😐' : '☹️'}
+                            </AppText>
+                        )}
+                    </View>
+
+                    {aiLoading ? (
+                        <AppText color={colors.textLight}>BiteBot is analyzing reviews...</AppText>
+                    ) : aiInsight ? (
+                        <>
+                            <AppText variant="body" style={{ lineHeight: 20, color: colors.text }}>
+                                {aiInsight.summary}
+                            </AppText>
+                            <View style={{ marginTop: spacing.s, flexDirection: 'row', alignItems: 'center' }}>
+                                <View style={{ flex: 1, height: 6, backgroundColor: colors.background, borderRadius: 3, overflow: 'hidden' }}>
+                                    <View style={{
+                                        width: `${((aiInsight.score + 1) / 2) * 100}%`,
+                                        height: '100%',
+                                        backgroundColor: aiInsight.score > 0 ? colors.success : colors.error
+                                    }} />
+                                </View>
+                                <AppText variant="caption" style={{ marginLeft: spacing.s, color: colors.textLight }}>
+                                    {Math.round(((aiInsight.score + 1) / 2) * 100)}% Positive
+                                </AppText>
+                            </View>
+                        </>
+                    ) : (
+                        <AppText color={colors.textLight}>Not enough reviews yet for AI analysis.</AppText>
                     )}
                 </View>
 
