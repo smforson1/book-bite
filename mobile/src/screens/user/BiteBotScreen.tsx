@@ -159,11 +159,25 @@ export default function BiteBotScreen() {
                     </View>
                 )}
 
-                <View style={[styles.inputArea, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+                <View style={[
+                    styles.inputArea,
+                    {
+                        backgroundColor: colors.surface,
+                        borderTopColor: colors.border,
+                        paddingBottom: Platform.OS === 'ios' ? 100 : 90 // Clear CustomTabBar
+                    }
+                ]}>
                     <TextInput
                         placeholder="Ask me anything..."
                         placeholderTextColor={colors.textLight}
-                        style={[styles.input, { color: colors.text }]}
+                        style={[
+                            styles.input,
+                            {
+                                color: colors.text,
+                                backgroundColor: colors.background,
+                                borderColor: colors.border
+                            }
+                        ]}
                         value={input}
                         onChangeText={setInput}
                         multiline
@@ -210,8 +224,8 @@ const styles = StyleSheet.create({
     inputArea: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: SPACING.s,
-        paddingVertical: SPACING.xs,
+        paddingHorizontal: SPACING.m,
+        paddingVertical: SPACING.s,
         borderTopWidth: 1,
     },
     input: {
@@ -220,6 +234,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: SPACING.m,
         paddingVertical: SPACING.s,
         fontSize: 16,
+        borderRadius: 20,
+        borderWidth: 1,
+        marginRight: SPACING.s,
     },
     loadingContainer: {
         flexDirection: 'row',

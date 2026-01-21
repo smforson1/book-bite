@@ -30,7 +30,7 @@ const TabItem = ({ route, index, state, descriptors, navigation, colors, sizes, 
     if (route.name === 'Places') iconName = 'map-search';
     if (route.name === 'Activity') iconName = 'history';
     if (route.name === 'Cart') iconName = 'cart';
-    if (route.name === 'BiteBot') iconName = 'sparkles';
+    if (route.name === 'BiteBot') iconName = 'robot';
 
     if (route.name === 'Dashboard') iconName = 'view-dashboard';
     if (route.name === 'Manage') {
