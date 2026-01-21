@@ -14,7 +14,7 @@ const getPushToken = (user: any) => user?.pushToken as string | undefined;
 // Create Order
 export const createOrder = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-        const { businessId, items, deliveryAddress, notes } = req.body;
+        const { businessId, items, deliveryAddress, deliveryLatitude, deliveryLongitude, notes } = req.body;
         const userId = req.user.userId;
 
         // Calculate total
@@ -35,6 +35,8 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
                 items: items,
                 totalPrice,
                 deliveryAddress,
+                deliveryLatitude: deliveryLatitude ? parseFloat(deliveryLatitude) : null,
+                deliveryLongitude: deliveryLongitude ? parseFloat(deliveryLongitude) : null,
                 notes,
                 status: 'PENDING',
             },

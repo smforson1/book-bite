@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation } from '../../hooks/useLocation';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Text, TextInput, Button, Card, Divider } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,8 +17,21 @@ const API_URL = 'http://10.0.2.2:5000/api';
 export default function OrderCheckout({ route, navigation }: any) {
     const { cart, business } = route.params;
     const [address, setAddress] = useState('');
+    const [deliveryLat, setDeliveryLat] = useState<number | null>(null);
+    const [deliveryLon, setDeliveryLon] = useState<number | null>(null);
     const [notes, setNotes] = useState('');
     const [loading, setLoading] = useState(false);
+
+    const { getCurrentLocation, address: fetchedAddress, location: fetchedLoc, loading: locLoading } = useLocation();
+
+    // Update fields when location is fetched
+    useEffect(() => {
+        if (fetchedAddress) setAddress(fetchedAddress);
+        if (fetchedLoc) {
+            setDeliveryLat(fetchedLoc.coords.latitude);
+            setDeliveryLon(fetchedLoc.coords.longitude);
+        }
+    }, [fetchedAddress, fetchedLoc]);
 
     // Payment State
     const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
@@ -91,6 +105,8 @@ export default function OrderCheckout({ route, navigation }: any) {
                     businessId: business.id,
                     items,
                     deliveryAddress: address,
+                    deliveryLatitude: deliveryLat,
+                    deliveryLongitude: deliveryLon,
                     notes,
                 },
                 { headers: { Authorization: `Bearer ${token}` } }
@@ -143,15 +159,29 @@ export default function OrderCheckout({ route, navigation }: any) {
                     </View>
                 </AppCard>
 
-                <TextInput
-                    label="Delivery Address *"
-                    value={address}
-                    onChangeText={setAddress}
-                    mode="outlined"
-                    style={[styles.input, { backgroundColor: colors.surface }]}
-                    multiline
-                    theme={{ colors: { primary: colors.primary, text: colors.text, placeholder: colors.textLight } }}
-                />
+                <View style={{ marginBottom: 15 }}>
+                    <TextInput
+                        label="Delivery Address *"
+                        value={address}
+                        onChangeText={setAddress}
+                        mode="outlined"
+                        style={{ backgroundColor: colors.surface }}
+                        multiline
+                        theme={{ colors: { primary: colors.primary, text: colors.text, placeholder: colors.textLight } }}
+                        right={
+                            <TextInput.Icon
+                                icon="map-marker"
+                                onPress={getCurrentLocation}
+                                disabled={locLoading}
+                            />
+                        }
+                    />
+                    {locLoading && (
+                        <AppText variant="caption" style={{ marginTop: 5, color: colors.primary }}>
+                            Detecting your location...
+                        </AppText>
+                    )}
+                </View>
 
                 <TextInput
                     label="Order Notes"

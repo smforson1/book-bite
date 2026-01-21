@@ -94,6 +94,8 @@ model Business {
   type        BusinessType
   description String?
   address     String
+  latitude    Float?
+  longitude   Float?
   images      String[]
   isFlagged   Boolean        @default(false)
   aiEmbedding Json?          // For semantic search vectors
@@ -187,8 +189,10 @@ model Order {
   status          String   @default("PENDING")
   totalPrice      Decimal
   items           Json // Snapshot of items ordered 
-  deliveryAddress String?
-  notes           String?
+  deliveryAddress   String?
+  deliveryLatitude  Float?
+  deliveryLongitude Float?
+  notes             String?
   createdAt       DateTime @default(now())
   paymentId       String?  @unique
   payment         Payment? @relation(fields: [paymentId], references: [id])

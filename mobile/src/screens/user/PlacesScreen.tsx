@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useLocation } from '../../hooks/useLocation';
 import { View, StyleSheet, FlatList, RefreshControl, ImageBackground, TextInput } from 'react-native';
 import { IconButton, ActivityIndicator } from 'react-native-paper';
 import axios from 'axios';
@@ -30,9 +31,15 @@ export default function PlacesScreen({ navigation }: any) {
     const { favorites, fetchFavorites, toggleFavorite, isFavorite } = useFavoriteStore();
     const { colors } = useTheme();
 
-    const fetchBusinesses = async () => {
+    const { getCurrentLocation, location: userLoc } = useLocation();
+
+    const fetchBusinesses = useCallback(async (lat?: number, lng?: number) => {
         try {
-            const response = await axios.get(`${API_URL}/business`);
+            const params: any = {};
+            if (lat) params.userLat = lat;
+            if (lng) params.userLng = lng;
+
+            const response = await axios.get(`${API_URL}/business`, { params });
             setBusinesses(response.data);
         } catch (error) {
             console.error('Failed to fetch businesses', error);
@@ -40,14 +47,18 @@ export default function PlacesScreen({ navigation }: any) {
             setLoading(false);
             setRefreshing(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
-        fetchBusinesses();
+        getCurrentLocation();
+    }, []);
+
+    useEffect(() => {
+        fetchBusinesses(userLoc?.coords.latitude, userLoc?.coords.longitude);
         if (token) {
             fetchFavorites(token);
         }
-    }, []);
+    }, [userLoc]);
 
     const onRefresh = () => {
         setRefreshing(true);
@@ -161,9 +172,19 @@ export default function PlacesScreen({ navigation }: any) {
                     <AppText variant="h3" style={{ flex: 1 }}>{item.name}</AppText>
                     <View style={[styles.rating, { backgroundColor: colors.background }]}>
                         <IconButton icon="star" size={14} iconColor="#FFD700" style={{ margin: 0 }} />
-                        <AppText variant="caption" bold>4.8</AppText>
+                        <AppText variant="caption" bold>{item.averageRating?.toFixed(1) || '0.0'}</AppText>
                     </View>
                 </View>
+
+                {item.distance !== null && (
+                    <View style={[styles.row, { marginTop: -4, marginBottom: 4 }]}>
+                        <AppText variant="caption" color={colors.primary} bold>
+                            {item.distance < 1 ?
+                                `${(item.distance * 1000).toFixed(0)}m away` :
+                                `${item.distance.toFixed(1)}km away`}
+                        </AppText>
+                    </View>
+                )}
 
                 <View style={styles.row}>
                     <IconButton icon="map-marker-outline" size={16} iconColor={colors.textLight} style={{ marginLeft: -4, margin: 0 }} />

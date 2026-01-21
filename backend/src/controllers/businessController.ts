@@ -10,7 +10,7 @@ interface AuthRequest extends Request {
 // Create Business
 export const createBusiness = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-        const { name, type, description, address, images } = req.body;
+        const { name, type, description, address, latitude, longitude, images } = req.body;
         const userId = req.user.userId;
 
         // Get manager profile
@@ -36,6 +36,8 @@ export const createBusiness = async (req: AuthRequest, res: Response): Promise<v
                 type,
                 description,
                 address,
+                latitude: latitude ? parseFloat(latitude) : null,
+                longitude: longitude ? parseFloat(longitude) : null,
                 images: images || [],
             },
         });
@@ -80,7 +82,7 @@ export const getMyBusiness = async (req: AuthRequest, res: Response): Promise<vo
 export const updateBusiness = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
-        const { name, description, address, images } = req.body;
+        const { name, description, address, latitude, longitude, images } = req.body;
         const userId = req.user.userId;
 
         // Verify ownership
@@ -100,6 +102,8 @@ export const updateBusiness = async (req: AuthRequest, res: Response): Promise<v
                 name,
                 description,
                 address,
+                latitude: latitude ? parseFloat(latitude) : null,
+                longitude: longitude ? parseFloat(longitude) : null,
                 images,
             },
         });
@@ -146,7 +150,7 @@ export const getBusinessById = async (req: Request, res: Response): Promise<void
 // Get All Businesses (with filters)
 export const getBusinesses = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { type, search } = req.query;
+        const { type, search, userLat, userLng } = req.query;
 
         const where: any = {};
         if (type) where.type = type;
@@ -166,14 +170,43 @@ export const getBusinesses = async (req: Request, res: Response): Promise<void> 
             },
         });
 
-        // Calculate average rating
+        // Calculate average rating and distance
         const businessesWithRating = businesses.map((business) => {
             const avgRating =
                 business.reviews.length > 0
                     ? business.reviews.reduce((sum, r) => sum + r.rating, 0) / business.reviews.length
                     : 0;
-            return { ...business, averageRating: avgRating };
+
+            let distance = null;
+            if (userLat && userLng && business.latitude && business.longitude) {
+                const lat1 = parseFloat(userLat as string);
+                const lon1 = parseFloat(userLng as string);
+                const lat2 = business.latitude;
+                const lon2 = business.longitude;
+
+                // Haversine formula
+                const R = 6371; // km
+                const dLat = (lat2 - lat1) * Math.PI / 180;
+                const dLon = (lon2 - lon1) * Math.PI / 180;
+                const a =
+                    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                distance = R * c;
+            }
+
+            return { ...business, averageRating: avgRating, distance };
         });
+
+        // Sort by distance if provided
+        if (userLat && userLng) {
+            businessesWithRating.sort((a, b) => {
+                if (a.distance === null) return 1;
+                if (b.distance === null) return -1;
+                return a.distance - b.distance;
+            });
+        }
 
         res.status(200).json(businessesWithRating);
     } catch (error) {

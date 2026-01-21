@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { useLocation } from '../../hooks/useLocation';
 import { View, StyleSheet, ScrollView, RefreshControl, Image, ImageBackground, TextInput, Pressable } from 'react-native';
 import { IconButton } from 'react-native-paper';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -55,11 +56,17 @@ export default function HomeScreen({ navigation }: any) {
     const { user, token } = useAuthStore((state: any) => state);
     const { favorites, fetchFavorites, toggleFavorite, isFavorite } = useFavoriteStore();
     const { colors } = useTheme();
+    const { getCurrentLocation, location: userLoc } = useLocation();
 
-    const fetchBusinesses = async () => {
+    const fetchBusinesses = useCallback(async (lat?: number, lng?: number) => {
         try {
             let url = `${API_URL}/business`;
-            const response = await axios.get(url);
+            const params: any = {};
+            if (lat) params.userLat = lat;
+            if (lng) params.userLng = lng;
+            if (selectedType) params.type = selectedType;
+
+            const response = await axios.get(url, { params });
             setBusinesses(response.data);
         } catch (error) {
             console.error('Failed to fetch businesses', error);
@@ -67,14 +74,18 @@ export default function HomeScreen({ navigation }: any) {
             setLoading(false);
             setRefreshing(false);
         }
-    };
+    }, [selectedType]);
 
     useEffect(() => {
-        fetchBusinesses();
+        getCurrentLocation();
+    }, []);
+
+    useEffect(() => {
+        fetchBusinesses(userLoc?.coords.latitude, userLoc?.coords.longitude);
         if (token) {
             fetchFavorites(token);
         }
-    }, []);
+    }, [userLoc, selectedType]);
 
     const onRefresh = () => {
         setRefreshing(true);
@@ -264,9 +275,19 @@ export default function HomeScreen({ navigation }: any) {
                                             <AppText variant="h3" style={{ flex: 1 }}>{business.name}</AppText>
                                             <View style={[styles.rating, { backgroundColor: colors.background }]}>
                                                 <IconButton icon="star" size={14} iconColor="#FFD700" style={{ margin: 0 }} />
-                                                <AppText variant="caption" bold>4.8</AppText>
+                                                <AppText variant="caption" bold>{business.averageRating?.toFixed(1) || '0.0'}</AppText>
                                             </View>
                                         </View>
+
+                                        {business.distance !== null && (
+                                            <View style={[styles.row, { marginTop: -4, marginBottom: 4 }]}>
+                                                <AppText variant="caption" color={colors.primary} bold>
+                                                    {business.distance < 1 ?
+                                                        `${(business.distance * 1000).toFixed(0)}m away` :
+                                                        `${business.distance.toFixed(1)}km away`}
+                                                </AppText>
+                                            </View>
+                                        )}
 
                                         <View style={styles.row}>
                                             <IconButton icon="map-marker-outline" size={16} iconColor={colors.textLight} style={{ marginLeft: -4, margin: 0 }} />

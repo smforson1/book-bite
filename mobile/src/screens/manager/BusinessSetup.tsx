@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Text, TextInput, Button, SegmentedButtons, Card, useTheme } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useBusinessStore } from '../../store/useBusinessStore';
+import { useLocation } from '../../hooks/useLocation';
 import ImageUpload from '../../components/ui/ImageUpload';
 import axios from 'axios';
 
@@ -15,11 +16,28 @@ export default function BusinessSetup({ navigation }: any) {
     const [description, setDescription] = useState('');
     const [address, setAddress] = useState('');
     const [imageUrl, setImageUrl] = useState('');
+    const [latitude, setLatitude] = useState<number | null>(null);
+    const [longitude, setLongitude] = useState<number | null>(null);
     const [loading, setLoading] = useState(false);
+
+    const { getCurrentLocation, address: fetchedAddress, location: fetchedLoc, loading: locLoading } = useLocation();
 
     const token = useAuthStore((state) => state.token);
     const setBusiness = useBusinessStore((state) => state.setBusiness);
     const theme = useTheme();
+
+    const handleGetLocation = async () => {
+        await getCurrentLocation();
+    };
+
+    // Update fields when location is fetched
+    useEffect(() => {
+        if (fetchedAddress) setAddress(fetchedAddress);
+        if (fetchedLoc) {
+            setLatitude(fetchedLoc.coords.latitude);
+            setLongitude(fetchedLoc.coords.longitude);
+        }
+    }, [fetchedAddress, fetchedLoc]);
 
     const handleSubmit = async () => {
         if (!name || !address || !description) {
@@ -36,6 +54,8 @@ export default function BusinessSetup({ navigation }: any) {
                     type,
                     description,
                     address,
+                    latitude,
+                    longitude,
                     images: imageUrl ? [imageUrl] : [],
                 },
                 { headers: { Authorization: `Bearer ${token}` } }
@@ -55,12 +75,14 @@ export default function BusinessSetup({ navigation }: any) {
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
             <ScrollView contentContainerStyle={styles.scroll}>
-                <Text variant="headlineMedium" style={[styles.title, { color: theme.colors.primary }]}>
-                    Business Setup
-                </Text>
-                <Text variant="bodyLarge" style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
-                    Provide your business details to get started.
-                </Text>
+                <View style={styles.header}>
+                    <Text variant="headlineMedium" style={[styles.title, { color: theme.colors.primary }]}>
+                        Business Setup
+                    </Text>
+                    <Text variant="bodyLarge" style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
+                        Provide your business details to get started.
+                    </Text>
+                </View>
 
                 <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
                     <Card.Content>
@@ -96,18 +118,31 @@ export default function BusinessSetup({ navigation }: any) {
                             theme={{ colors: { secondaryContainer: theme.colors.primaryContainer } }}
                         />
 
-                        <TextInput
-                            label="Address *"
-                            value={address}
-                            onChangeText={setAddress}
-                            mode="outlined"
-                            style={styles.input}
-                            multiline
-                            numberOfLines={2}
-                            activeOutlineColor={theme.colors.primary}
-                            outlineStyle={{ borderRadius: 10 }}
-                            contentStyle={{ backgroundColor: theme.colors.surface }}
-                        />
+                        <View style={{ marginBottom: 15 }}>
+                            <TextInput
+                                label="Address *"
+                                value={address}
+                                onChangeText={setAddress}
+                                mode="outlined"
+                                multiline
+                                numberOfLines={2}
+                                activeOutlineColor={theme.colors.primary}
+                                outlineStyle={{ borderRadius: 10 }}
+                                contentStyle={{ backgroundColor: theme.colors.surface }}
+                                right={
+                                    <TextInput.Icon
+                                        icon="map-marker"
+                                        onPress={handleGetLocation}
+                                        disabled={locLoading}
+                                    />
+                                }
+                            />
+                            {locLoading && (
+                                <Text variant="labelSmall" style={{ marginTop: 5, color: theme.colors.primary }}>
+                                    Fetching location...
+                                </Text>
+                            )}
+                        </View>
 
                         <TextInput
                             label="Description *"
@@ -142,8 +177,9 @@ export default function BusinessSetup({ navigation }: any) {
 const styles = StyleSheet.create({
     container: { flex: 1 },
     scroll: { padding: 20 },
-    title: { marginBottom: 5, textAlign: 'center', fontWeight: 'bold' },
-    subtitle: { marginBottom: 30, textAlign: 'center' },
+    header: { marginBottom: 10 },
+    title: { textAlign: 'center', fontWeight: 'bold' },
+    subtitle: { textAlign: 'center', marginBottom: 20 },
     label: { marginBottom: 10, marginTop: 10 },
     segment: { marginBottom: 20 },
     input: { marginBottom: 15 },
