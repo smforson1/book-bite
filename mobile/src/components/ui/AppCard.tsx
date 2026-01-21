@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, StyleSheet, ViewStyle, Pressable, StyleProp } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useTheme } from '../../context/ThemeContext';
 
 interface AppCardProps {
@@ -10,15 +9,8 @@ interface AppCardProps {
     noPadding?: boolean;
 }
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-
 export default function AppCard({ children, style, onPress, noPadding = false }: AppCardProps) {
     const { colors, sizes, shadows, spacing } = useTheme();
-    const scale = useSharedValue(1);
-
-    const animatedStyle = useAnimatedStyle(() => ({
-        transform: [{ scale: scale.value }],
-    }));
 
     const containerStyle = [
         styles.container,
@@ -33,14 +25,15 @@ export default function AppCard({ children, style, onPress, noPadding = false }:
 
     if (onPress) {
         return (
-            <AnimatedPressable
+            <Pressable
                 onPress={onPress}
-                onPressIn={() => (scale.value = withSpring(0.98))}
-                onPressOut={() => (scale.value = withSpring(1))}
-                style={[containerStyle, animatedStyle]}
+                style={({ pressed }) => [
+                    containerStyle as any,
+                    { opacity: pressed ? 0.95 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] }
+                ]}
             >
                 {children}
-            </AnimatedPressable>
+            </Pressable>
         );
     }
 
@@ -53,6 +46,6 @@ export default function AppCard({ children, style, onPress, noPadding = false }:
 
 const styles = StyleSheet.create({
     container: {
-        // Shared fallback removed, using theme values
+        width: '100%',
     },
 });

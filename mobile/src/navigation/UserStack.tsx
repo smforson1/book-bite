@@ -3,6 +3,11 @@ import MainTabs from './MainTabs';
 import BusinessDetails from '../screens/user/BusinessDetails';
 import BookingCheckout from '../screens/user/BookingCheckout';
 import OrderCheckout from '../screens/user/OrderCheckout';
+import MyBookings from '../screens/user/MyBookings';
+import MyOrders from '../screens/user/MyOrders';
+import AddReviewScreen from '../screens/user/AddReviewScreen';
+import ProfileScreen from '../screens/user/ProfileScreen';
+import WalletScreen from '../screens/user/WalletScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -31,18 +36,28 @@ export default function UserStack() {
             />
             <Stack.Screen
                 name="AddReview"
-                component={require('../screens/user/AddReviewScreen').default}
+                component={AddReviewScreen}
                 options={{ title: 'Write a Review' }}
             />
             <Stack.Screen
                 name="Profile"
-                component={require('../screens/user/ProfileScreen').default}
+                component={ProfileScreen}
                 options={{ headerShown: false }}
             />
             <Stack.Screen
                 name="Wallet"
-                component={require('../screens/user/WalletScreen').default}
+                component={WalletScreen}
                 options={{ headerShown: false }}
+            />
+            <Stack.Screen
+                name="MyBookings"
+                component={MyBookings}
+                options={{ title: 'My Bookings' }}
+            />
+            <Stack.Screen
+                name="MyOrders"
+                component={MyOrders}
+                options={{ title: 'My Orders' }}
             />
         </Stack.Navigator>
     );

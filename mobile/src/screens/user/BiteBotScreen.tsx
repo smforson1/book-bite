@@ -108,7 +108,7 @@ export default function BiteBotScreen() {
                 {isBot && (
                     <Avatar.Image
                         size={32}
-                        source={require('../../assets/icon.png')} // Fallback if no specific bitbot icon
+                        source={require('../../../assets/icon.png')} // Fallback if no specific bitbot icon
                         style={{ backgroundColor: colors.primary, marginRight: 8 }}
                     />
                 )}

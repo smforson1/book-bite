@@ -10,6 +10,69 @@ import { useCartStore } from '../../store/useCartStore';
 
 const { width } = Dimensions.get('window');
 
+const TabItem = ({ route, index, state, descriptors, navigation, colors, sizes, shadows, isManager, tabWidth, cartCount }: any) => {
+    const { options } = descriptors[route.key];
+    const isFocused = state.index === index;
+
+    const onPress = () => {
+        const event = navigation.emit({
+            type: 'tabPress',
+            target: route.key,
+            canPreventDefault: true,
+        });
+
+        if (!isFocused && !event.defaultPrevented) {
+            navigation.navigate(route.name);
+        }
+    };
+
+    let iconName = 'home';
+    if (route.name === 'Places') iconName = 'map-search';
+    if (route.name === 'Activity') iconName = 'history';
+    if (route.name === 'Cart') iconName = 'cart';
+    if (route.name === 'BiteBot') iconName = 'sparkles';
+
+    if (route.name === 'Dashboard') iconName = 'view-dashboard';
+    if (route.name === 'Manage') {
+        iconName = isManager ? 'storefront' : 'briefcase';
+    }
+    if (route.name === 'Orders') iconName = 'clipboard-list';
+    if (route.name === 'Wallet') iconName = 'wallet';
+    if (route.name === 'More') iconName = 'dots-horizontal';
+
+    return (
+        <Pressable
+            accessibilityRole="button"
+            accessibilityState={isFocused ? { selected: true } : {}}
+            accessibilityLabel={options.tabBarAccessibilityLabel}
+            testID={options.tabBarButtonTestID}
+            onPress={onPress}
+            style={[styles.tabItem, { width: tabWidth }]}
+        >
+            <View>
+                <View style={[styles.iconContainer, { opacity: isFocused ? 1 : 0.6 }]}>
+                    <IconButton
+                        icon={iconName}
+                        iconColor={isFocused ? colors.primary : colors.textLight}
+                        size={24}
+                        style={{ margin: 0 }}
+                    />
+                </View>
+                {route.name === 'Cart' && cartCount > 0 && (
+                    <View style={[styles.badge, { backgroundColor: colors.primary, borderColor: colors.surface }]}>
+                        <AppText variant="caption" style={{ fontSize: 10, color: colors.white, fontWeight: 'bold' }}>
+                            {cartCount}
+                        </AppText>
+                    </View>
+                )}
+            </View>
+            {isFocused && (
+                <View style={[styles.dot, { backgroundColor: colors.primary }]} />
+            )}
+        </Pressable>
+    );
+};
+
 export default function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     const { colors, sizes, shadows, isManager } = useTheme();
     const tabWidth = (width - 40) / state.routes.length;
@@ -18,84 +81,22 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
     return (
         <View style={[styles.container, { backgroundColor: colors.surface, borderRadius: sizes.radius.xl, ...shadows.medium }]}>
             <View style={styles.content}>
-                {state.routes.map((route, index) => {
-                    const { options } = descriptors[route.key];
-                    const label = options.tabBarLabel !== undefined
-                        ? options.tabBarLabel
-                        : options.title !== undefined
-                            ? options.title
-                            : route.name;
-
-                    const isFocused = state.index === index;
-
-                    const onPress = () => {
-                        const event = navigation.emit({
-                            type: 'tabPress',
-                            target: route.key,
-                            canPreventDefault: true,
-                        });
-
-                        if (!isFocused && !event.defaultPrevented) {
-                            navigation.navigate(route.name);
-                        }
-                    };
-
-                    let iconName = 'home';
-                    // User Mapping
-                    if (route.name === 'Places') iconName = 'map-search';
-                    if (route.name === 'Activity') iconName = 'history';
-                    if (route.name === 'Cart') iconName = 'cart';
-                    if (route.name === 'BiteBot') iconName = 'sparkles';
-
-                    // Manager Mapping
-                    if (route.name === 'Dashboard') iconName = 'view-dashboard';
-                    if (route.name === 'Manage') {
-                        iconName = isManager ? 'storefront' : 'briefcase'; // Dynamic could be better but storefront is safe
-                    }
-                    if (route.name === 'Orders') iconName = 'clipboard-list';
-                    if (route.name === 'Wallet') iconName = 'wallet';
-                    if (route.name === 'More') iconName = 'dots-horizontal';
-
-                    const animatedIconStyle = useAnimatedStyle(() => {
-                        return {
-                            transform: [{ scale: withSpring(isFocused ? 1.2 : 1) }],
-                            opacity: withTiming(isFocused ? 1 : 0.6),
-                        };
-                    });
-
-                    return (
-                        <Pressable
-                            key={index}
-                            accessibilityRole="button"
-                            accessibilityState={isFocused ? { selected: true } : {}}
-                            accessibilityLabel={options.tabBarAccessibilityLabel}
-                            testID={options.tabBarButtonTestID}
-                            onPress={onPress}
-                            style={[styles.tabItem, { width: tabWidth }]}
-                        >
-                            <View>
-                                <Animated.View style={[styles.iconContainer, animatedIconStyle]}>
-                                    <IconButton
-                                        icon={iconName}
-                                        iconColor={isFocused ? colors.primary : colors.textLight}
-                                        size={24}
-                                        style={{ margin: 0 }}
-                                    />
-                                </Animated.View>
-                                {route.name === 'Cart' && cartCount > 0 && (
-                                    <View style={[styles.badge, { backgroundColor: colors.primary, borderColor: colors.surface }]}>
-                                        <AppText variant="caption" style={{ fontSize: 10, color: colors.white, fontWeight: 'bold' }}>
-                                            {cartCount}
-                                        </AppText>
-                                    </View>
-                                )}
-                            </View>
-                            {isFocused && (
-                                <Animated.View entering={FadeIn} style={[styles.dot, { backgroundColor: colors.primary }]} />
-                            )}
-                        </Pressable>
-                    );
-                })}
+                {state.routes.map((route, index) => (
+                    <TabItem
+                        key={route.key}
+                        route={route}
+                        index={index}
+                        state={state}
+                        descriptors={descriptors}
+                        navigation={navigation}
+                        colors={colors}
+                        sizes={sizes}
+                        shadows={shadows}
+                        isManager={isManager}
+                        tabWidth={tabWidth}
+                        cartCount={cartCount}
+                    />
+                ))}
             </View>
         </View>
     );

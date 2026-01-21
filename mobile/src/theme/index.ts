@@ -1,9 +1,9 @@
 export const UserTheme = {
-    primary: '#E65100', // Burnt Orange
-    primaryLight: '#FFCC80',
-    primaryDark: '#BF360C',
-    secondary: '#263238', // Dark Charcoal
-    background: '#FFF8F6', // Very subtle warm white
+    primary: '#FF6D00', // Sunset Orange (Vibrant primary)
+    primaryLight: '#FF9E40',
+    primaryDark: '#E65100',
+    secondary: '#1A237E', // Midnight Indigo (Deep secondary)
+    background: '#F8F9FE', // Very subtle cool-tinted white
     surface: '#FFFFFF',
     text: '#263238',
     textLight: '#78909C',

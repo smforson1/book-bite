@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, Image, ImageBackground, TextInput } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, Image, ImageBackground, TextInput, Pressable } from 'react-native';
 import { IconButton } from 'react-native-paper';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useFavoriteStore } from '../../store/useFavoriteStore';
@@ -13,8 +13,35 @@ import BusinessCardSkeleton from '../../components/skeletons/BusinessCardSkeleto
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { ActivityIndicator } from 'react-native-paper';
+import { MotiView } from 'moti';
 
 const API_URL = 'http://10.0.2.2:5000/api';
+
+const FilterChip = ({ label, type, selectedType, colors, setSelectedType }: { label: string, type: string | null, selectedType: string | null, colors: any, setSelectedType: any }) => {
+    const isSelected = selectedType === type;
+    return (
+        <Pressable
+            onPress={() => setSelectedType(type)}
+            style={{
+                backgroundColor: isSelected ? colors.primary : colors.surface,
+                marginRight: 8,
+                paddingVertical: 8,
+                paddingHorizontal: 16,
+                borderRadius: 30,
+                justifyContent: 'center',
+                alignItems: 'center',
+                ...SHADOWS.light,
+            }}
+        >
+            <AppText
+                variant="label"
+                color={isSelected ? colors.white : colors.text}
+            >
+                {label}
+            </AppText>
+        </Pressable>
+    );
+};
 
 export default function HomeScreen({ navigation }: any) {
     const [businesses, setBusinesses] = useState<any[]>([]);
@@ -114,33 +141,11 @@ export default function HomeScreen({ navigation }: any) {
         return matchesSearch && matchesType;
     });
 
-    const FilterChip = ({ label, type }: { label: string, type: string | null }) => {
-        const isSelected = selectedType === type;
-        return (
-            <AppCard
-                onPress={() => setSelectedType(type)}
-                style={{
-                    backgroundColor: isSelected ? colors.primary : colors.surface,
-                    marginRight: 8,
-                    paddingVertical: 8,
-                    paddingHorizontal: 16,
-                    borderRadius: 30,
-                }}
-            >
-                <AppText
-                    variant="label"
-                    color={isSelected ? colors.white : colors.text}
-                >
-                    {label}
-                </AppText>
-            </AppCard>
-        );
-    };
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
             <CustomHeader
-                title={`Hello, ${user?.name?.split(' ')[0] || 'Guest'} 👋`}
+                title={`Book Bite 👋`}
                 rightAction={
                     <View style={{ flexDirection: 'row' }}>
                         <IconButton icon="bell-outline" size={24} iconColor={colors.text} onPress={() => { }} />
@@ -158,7 +163,9 @@ export default function HomeScreen({ navigation }: any) {
                 contentContainerStyle={styles.content}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
             >
-                <View style={[styles.searchContainer, { backgroundColor: colors.surface }]}>
+                <View
+                    style={[styles.searchContainer, { backgroundColor: colors.surface }]}
+                >
                     <IconButton
                         icon={isAiSearch ? "auto-fix" : "magnify"}
                         size={20}
@@ -199,10 +206,10 @@ export default function HomeScreen({ navigation }: any) {
 
                 <View style={styles.filters}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                        <FilterChip label="All" type={null} />
-                        <FilterChip label="Hostels" type="HOSTEL" />
-                        <FilterChip label="Hotels" type="HOTEL" />
-                        <FilterChip label="Restaurants" type="RESTAURANT" />
+                        <FilterChip label="All" type={null} selectedType={selectedType} colors={colors} setSelectedType={setSelectedType} />
+                        <FilterChip label="Hostels" type="HOSTEL" selectedType={selectedType} colors={colors} setSelectedType={setSelectedType} />
+                        <FilterChip label="Hotels" type="HOTEL" selectedType={selectedType} colors={colors} setSelectedType={setSelectedType} />
+                        <FilterChip label="Restaurants" type="RESTAURANT" selectedType={selectedType} colors={colors} setSelectedType={setSelectedType} />
                     </ScrollView>
                 </View>
 
@@ -224,53 +231,56 @@ export default function HomeScreen({ navigation }: any) {
                             </AppText>
                         </View>
                     ) : (
-                        filteredBusinesses.map((business) => (
-                            <AppCard
+                        filteredBusinesses.map((business, index) => (
+                            <View
                                 key={business.id}
-                                style={styles.card}
-                                onPress={() => navigation.navigate('BusinessDetails', { id: business.id })}
-                                noPadding
                             >
-                                <ImageBackground
-                                    source={{ uri: business.images?.[0] || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1000&auto=format&fit=crop' }}
-                                    style={styles.cardImage}
-                                    imageStyle={{ borderTopLeftRadius: SIZES.radius.l, borderTopRightRadius: SIZES.radius.l }}
+                                <AppCard
+                                    style={styles.card}
+                                    onPress={() => navigation.navigate('BusinessDetails', { id: business.id })}
+                                    noPadding
                                 >
-                                    <View style={styles.badge}>
-                                        <AppText variant="caption" color={colors.white} bold>
-                                            {business.type}
-                                        </AppText>
-                                    </View>
-                                    <IconButton
-                                        icon={isFavorite(business.id) ? 'heart' : 'heart-outline'}
-                                        iconColor={isFavorite(business.id) ? colors.primary : colors.white}
-                                        size={24}
-                                        style={styles.favoriteIcon}
-                                        onPress={() => token && toggleFavorite(business.id, token)}
-                                    />
-                                </ImageBackground>
-
-                                <View style={styles.cardContent}>
-                                    <View style={styles.row}>
-                                        <AppText variant="h3" style={{ flex: 1 }}>{business.name}</AppText>
-                                        <View style={[styles.rating, { backgroundColor: colors.background }]}>
-                                            <IconButton icon="star" size={14} iconColor="#FFD700" style={{ margin: 0 }} />
-                                            <AppText variant="caption" bold>4.8</AppText>
+                                    <ImageBackground
+                                        source={{ uri: business.images?.[0] || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1000&auto=format&fit=crop' }}
+                                        style={styles.cardImage}
+                                        imageStyle={{ borderTopLeftRadius: SIZES.radius.l, borderTopRightRadius: SIZES.radius.l }}
+                                    >
+                                        <View style={styles.badge}>
+                                            <AppText variant="caption" color={colors.white} bold>
+                                                {business.type}
+                                            </AppText>
                                         </View>
-                                    </View>
+                                        <IconButton
+                                            icon={isFavorite(business.id) ? 'heart' : 'heart-outline'}
+                                            iconColor={isFavorite(business.id) ? colors.primary : colors.white}
+                                            size={24}
+                                            style={styles.favoriteIcon}
+                                            onPress={() => token && toggleFavorite(business.id, token)}
+                                        />
+                                    </ImageBackground>
 
-                                    <View style={styles.row}>
-                                        <IconButton icon="map-marker-outline" size={16} iconColor={colors.textLight} style={{ marginLeft: -4, margin: 0 }} />
-                                        <AppText variant="caption" color={colors.textLight} style={{ flex: 1 }}>
-                                            {business.address}
+                                    <View style={styles.cardContent}>
+                                        <View style={styles.row}>
+                                            <AppText variant="h3" style={{ flex: 1 }}>{business.name}</AppText>
+                                            <View style={[styles.rating, { backgroundColor: colors.background }]}>
+                                                <IconButton icon="star" size={14} iconColor="#FFD700" style={{ margin: 0 }} />
+                                                <AppText variant="caption" bold>4.8</AppText>
+                                            </View>
+                                        </View>
+
+                                        <View style={styles.row}>
+                                            <IconButton icon="map-marker-outline" size={16} iconColor={colors.textLight} style={{ marginLeft: -4, margin: 0 }} />
+                                            <AppText variant="caption" color={colors.textLight} style={{ flex: 1 }}>
+                                                {business.address}
+                                            </AppText>
+                                        </View>
+
+                                        <AppText variant="body" numberOfLines={2} color={colors.textLight} style={styles.description}>
+                                            {business.description || 'Experience the best quality food and service in town.'}
                                         </AppText>
                                     </View>
-
-                                    <AppText variant="body" numberOfLines={2} color={colors.textLight} style={styles.description}>
-                                        {business.description || 'Experience the best quality food and service in town.'}
-                                    </AppText>
-                                </View>
-                            </AppCard>
+                                </AppCard>
+                            </View>
                         ))
                     )}
                 </View>

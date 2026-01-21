@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColorScheme } from 'react-native';
 import { UserTheme, ManagerTheme, DarkColors, LightColors, SPACING, SIZES, FONTS, SHADOWS } from '../theme';
+import { useAuthStore } from '../store/useAuthStore';
 
 type ThemeMode = 'light' | 'dark' | 'system';
 type ThemeType = typeof UserTheme;
@@ -23,7 +24,9 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 const THEME_STORAGE_KEY = '@book_bite_theme';
 
-export const ThemeProvider = ({ children, isManager = false }: { children: ReactNode; isManager?: boolean }) => {
+export const ThemeProvider = ({ children }: { children: ReactNode }) => {
+    const user = useAuthStore((state: any) => state.user);
+    const isManager = user?.role === 'MANAGER';
     const systemColorScheme = useColorScheme();
     const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
     const [isDark, setIsDark] = useState(systemColorScheme === 'dark');
