@@ -31,7 +31,9 @@ export default function App() {
   return (
     <ThemeProvider>
       <PaperProvider theme={theme}>
-        <NavigationWrapper />
+        <PaystackProvider publicKey="pk_test_ef987dc54d0c766b2cd6fc9c4fc10b794f94b99b">
+          <NavigationWrapper />
+        </PaystackProvider>
       </PaperProvider>
     </ThemeProvider>
   );
