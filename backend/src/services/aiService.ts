@@ -57,7 +57,7 @@ export const aiService = {
                 throw new Error("GEMINI_API_KEY is not set.");
             }
 
-            const modelName = "gemini-1.5-flash-latest";
+            const modelName = "gemini-2.0-flash";
             console.log(`Starting chat with model: ${modelName}`);
             const model = this.getGenAI().getGenerativeModel({
                 model: modelName,
@@ -94,8 +94,12 @@ export const aiService = {
 
             const result = await chat.sendMessage(query);
             return result.response.text();
-        } catch (error) {
-            console.error("Chat error:", error);
+        } catch (error: any) {
+            console.error("Chat error details:", error);
+            if (error.status === 404 && query === "gemini-2.0-flash") {
+                // Fallback logic could go here if needed, but for now just logging
+                console.log("Consider trying gemini-1.5-flash if 2.0 is unstable");
+            }
             throw error;
         }
     },
@@ -108,7 +112,7 @@ export const aiService = {
             if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not set.");
             if (reviews.length === 0) return { score: 0, summary: "No reviews yet to analyze." };
 
-            const model = this.getGenAI().getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+            const model = this.getGenAI().getGenerativeModel({ model: "gemini-2.0-flash" });
             const prompt = `
                 Analyze the following customer reviews for a business.
                 1. Provide a concise summary (max 3 sentences) of the overall feedback.
@@ -139,7 +143,7 @@ export const aiService = {
         try {
             if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not set.");
 
-            const model = this.getGenAI().getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+            const model = this.getGenAI().getGenerativeModel({ model: "gemini-2.0-flash" });
             const prompt = `
                 Role: You are a professional copywriter for a premium booking app called "Book Bite".
                 Task: Write a ${type === 'menu' ? 'mouth-watering and creative' : 'warm and inviting'} description for a ${type}.
@@ -170,7 +174,7 @@ export const aiService = {
         try {
             if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not set.");
 
-            const model = this.getGenAI().getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+            const model = this.getGenAI().getGenerativeModel({ model: "gemini-2.0-flash" });
             const prompt = "What is in this image? Provide a concise description that can be used for searching. Focus on food items, room styles, or business types. (Max 10 words)";
 
             const result = await model.generateContent([

@@ -132,6 +132,49 @@ export default function BiteBotScreen() {
         );
     };
 
+    // MAINTENANCE MODE: Temporary override to hide chat functionality
+    // TODO: Remove this block once the semantic embedding errors are resolved.
+    const isMaintenanceMode = true;
+
+    if (isMaintenanceMode) {
+        return (
+            <View style={[styles.container, { backgroundColor: colors.background }]}>
+                <CustomHeader title="BiteBot AI" />
+                <View style={[styles.centerContent, { paddingBottom: 100 }]}>
+                    <View style={[styles.iconContainer, { backgroundColor: colors.surface }]}>
+                        <Avatar.Icon
+                            size={80}
+                            icon="robot-confused"
+                            color={colors.primary}
+                            style={{ backgroundColor: 'transparent' }}
+                        />
+                    </View>
+
+                    <AppText variant="h2" style={{ marginTop: SPACING.l, textAlign: 'center' }}>
+                        BiteBot is Napping 😴
+                    </AppText>
+
+                    <AppText
+                        variant="body"
+                        color={colors.textLight}
+                        style={{
+                            marginTop: SPACING.m,
+                            textAlign: 'center',
+                            paddingHorizontal: SPACING.xl,
+                            lineHeight: 24
+                        }}
+                    >
+                        Our AI concierge is currently undergoing scheduled maintenance to improve its brain power.
+
+                        {"\n\n"}
+                        Please check back soon! We're making things smarter for you.
+                    </AppText>
+                </View>
+            </View>
+        );
+    }
+
+    // ORIGINAL CHAT RENDER LOGIC (Preserved but unreachable while isMaintenanceMode = true)
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
             <CustomHeader title="BiteBot AI" />
@@ -199,6 +242,21 @@ export default function BiteBotScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+    },
+    centerContent: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: SPACING.l,
+    },
+    iconContainer: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        justifyContent: 'center',
+        alignItems: 'center',
+        ...SHADOWS.medium,
+        marginBottom: SPACING.s
     },
     listContent: {
         padding: SPACING.m,
