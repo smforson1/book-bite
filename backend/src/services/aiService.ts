@@ -3,12 +3,20 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-
 /**
  * Service to handle AI-related operations like embeddings and chat.
  */
 export const aiService = {
+    /**
+     * Helper to get a fresh instance of the AI client.
+     */
+    getGenAI() {
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) {
+            throw new Error("GEMINI_API_KEY is not set in environment variables.");
+        }
+        return new GoogleGenerativeAI(apiKey);
+    },
     /**
      * Generates an embedding vector for the given text.
      * @param text The text to embed.
@@ -20,7 +28,7 @@ export const aiService = {
                 throw new Error("GEMINI_API_KEY is not set in environment variables.");
             }
 
-            const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
+            const model = this.getGenAI().getGenerativeModel({ model: "text-embedding-004" });
             const result = await model.embedContent(text);
             return result.embedding.values;
         } catch (error) {
@@ -49,8 +57,10 @@ export const aiService = {
                 throw new Error("GEMINI_API_KEY is not set.");
             }
 
-            const model = genAI.getGenerativeModel({
-                model: "gemini-1.5-flash",
+            const modelName = "gemini-1.5-flash-latest";
+            console.log(`Starting chat with model: ${modelName}`);
+            const model = this.getGenAI().getGenerativeModel({
+                model: modelName,
                 systemInstruction: `
           You are "BiteBot", the ultimate AI Concierge for the "Book Bite" app. 
           Your goal is to help users find the best food and accommodation (hostels/hotels).
@@ -68,11 +78,18 @@ export const aiService = {
         `.trim()
             });
 
+            const formattedHistory = history.map(h => ({
+                role: h.role === 'user' ? 'user' : 'model',
+                parts: [{ text: h.content }]
+            }));
+
+            // Gemini API history must start with 'user' role
+            while (formattedHistory.length > 0 && formattedHistory[0].role !== 'user') {
+                formattedHistory.shift();
+            }
+
             const chat = model.startChat({
-                history: history.map(h => ({
-                    role: h.role === 'user' ? 'user' : 'model',
-                    parts: [{ text: h.content }]
-                })),
+                history: formattedHistory,
             });
 
             const result = await chat.sendMessage(query);
@@ -91,7 +108,7 @@ export const aiService = {
             if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not set.");
             if (reviews.length === 0) return { score: 0, summary: "No reviews yet to analyze." };
 
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const model = this.getGenAI().getGenerativeModel({ model: "gemini-1.5-flash-latest" });
             const prompt = `
                 Analyze the following customer reviews for a business.
                 1. Provide a concise summary (max 3 sentences) of the overall feedback.
@@ -122,7 +139,7 @@ export const aiService = {
         try {
             if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not set.");
 
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const model = this.getGenAI().getGenerativeModel({ model: "gemini-1.5-flash-latest" });
             const prompt = `
                 Role: You are a professional copywriter for a premium booking app called "Book Bite".
                 Task: Write a ${type === 'menu' ? 'mouth-watering and creative' : 'warm and inviting'} description for a ${type}.
@@ -153,7 +170,7 @@ export const aiService = {
         try {
             if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not set.");
 
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const model = this.getGenAI().getGenerativeModel({ model: "gemini-1.5-flash-latest" });
             const prompt = "What is in this image? Provide a concise description that can be used for searching. Focus on food items, room styles, or business types. (Max 10 words)";
 
             const result = await model.generateContent([
