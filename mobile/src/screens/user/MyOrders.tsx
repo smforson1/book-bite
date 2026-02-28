@@ -4,7 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { MotiView } from 'moti';
 import axios from 'axios';
 
-import { useAuthStore } from '../../store/useAuthStore';
+import { useAuthStore, AuthState } from '../../store/useAuthStore';
 import { useTheme } from '../../context/ThemeContext';
 import AppText from '../../components/ui/AppText';
 import AppCard from '../../components/ui/AppCard';
@@ -18,7 +18,7 @@ export default function MyOrders({ navigation }: any) {
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const token = useAuthStore((state) => state.token);
+    const token = useAuthStore((state: AuthState) => state.token);
 
     const fetchOrders = async () => {
         try {

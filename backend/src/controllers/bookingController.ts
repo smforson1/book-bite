@@ -166,13 +166,22 @@ export const updateBookingStatus = async (req: AuthRequest, res: Response): Prom
         }
 
         // Permission Check: Owner or Manager of the business
-        if (role !== 'MANAGER' && booking.userId !== userId) {
-            // For non-managers, they can only update their own bookings
-            res.status(403).json({ message: 'Unauthorized' });
-            return;
+        if (role !== 'MANAGER') {
+            if (booking.userId !== userId) {
+                res.status(403).json({ message: 'Unauthorized' });
+                return;
+            }
+            if (status !== 'CANCELLED') {
+                res.status(400).json({ message: 'Users can only cancel their own bookings.' });
+                return;
+            }
+            if (booking.status === 'CANCELLED') {
+                res.status(400).json({ message: 'Booking is already cancelled.' });
+                return;
+            }
         }
 
-        // If manager, verify it's THEIR business (optional but safer)
+        // If manager, verify it's THEIR business
         if (role === 'MANAGER') {
             const manager = await prisma.managerProfile.findUnique({
                 where: { userId },
@@ -188,6 +197,23 @@ export const updateBookingStatus = async (req: AuthRequest, res: Response): Prom
             where: { id },
             data: { status },
         });
+
+        // Notify Manager if User cancelled
+        if (role !== 'MANAGER' && status === 'CANCELLED') {
+            const business = await prisma.business.findUnique({
+                where: { id: booking.businessId },
+                include: { manager: true }
+            });
+
+            if (business?.manager?.userId) {
+                await sendPushNotification({
+                    userId: business.manager.userId,
+                    title: 'Booking Cancelled ❌',
+                    body: `A user has cancelled their booking for ${booking.id.slice(0, 8)}...`,
+                    data: { bookingId: booking.id, screen: 'ManagerBookings' }
+                });
+            }
+        }
 
         res.status(200).json(updated);
     } catch (error) {

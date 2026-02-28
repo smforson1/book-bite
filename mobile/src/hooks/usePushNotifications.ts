@@ -3,7 +3,7 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
-import { useAuthStore } from '../store/useAuthStore';
+import { useAuthStore, AuthState } from '../store/useAuthStore';
 import axios from 'axios';
 
 Notifications.setNotificationHandler({
@@ -23,7 +23,7 @@ export const usePushNotifications = () => {
     const responseListener = useRef<Notifications.EventSubscription | null>(null);
 
     // Fix: Pass selector to useAuthStore
-    const { user, token } = useAuthStore((state: any) => state);
+    const { user, token } = useAuthStore((state: AuthState) => state);
 
     // Helper to register device
     async function registerForPushNotificationsAsync() {

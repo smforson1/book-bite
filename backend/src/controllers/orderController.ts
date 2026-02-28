@@ -185,8 +185,19 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
 
         // Notify Manager if User updated it (Cancelled)
         if (role !== 'MANAGER' && status === 'CANCELLED') {
-            // Logic to notify manager could go here, similar to paymentController
-            // But for now focusing on User notifications from Manager actions
+            const business = await prisma.business.findUnique({
+                where: { id: order.businessId },
+                include: { manager: true }
+            });
+
+            if (business?.manager?.userId) {
+                await sendPushNotification({
+                    userId: business.manager.userId,
+                    title: 'Order Cancelled ❌',
+                    body: `User cancelled order #${order.id.slice(0, 5)}`,
+                    data: { orderId: order.id, screen: 'ManagerOrders' },
+                });
+            }
         }
 
         res.status(200).json(updated);

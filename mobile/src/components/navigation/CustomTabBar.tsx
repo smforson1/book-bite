@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, Pressable, Dimensions } from 'react-native';
 import Animated, { useAnimatedStyle, withSpring, withTiming, FadeIn } from 'react-native-reanimated';
-import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { IconButton } from 'react-native-paper';
 import { useTheme } from '../../context/ThemeContext';
 import AppText from '../ui/AppText';
