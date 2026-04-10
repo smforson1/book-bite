@@ -9,7 +9,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useAuthStore } from '../../store/useAuthStore';
 import axios from 'axios';
 
-const API_URL = 'http://10.0.2.2:5000/api';
+import { API_URL } from '../../config/api';
 
 export default function AddReviewScreen({ route, navigation }: any) {
     const { colors, spacing } = useTheme();

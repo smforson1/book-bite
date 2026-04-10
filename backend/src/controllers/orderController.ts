@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { sendPushNotification } from '../services/notificationService';
+import { emitToRoom } from '../services/socketService';
 
 const prisma = new PrismaClient();
 
@@ -44,6 +45,9 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
                 business: true,
             },
         });
+
+        // Emit Real-Time Notification to Business Room
+        emitToRoom(businessId, 'new_order', order);
 
         res.status(201).json(order);
     } catch (error) {
@@ -199,6 +203,9 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
                 });
             }
         }
+
+        // Emit Real-Time Update
+        emitToRoom(order.businessId, 'order_updated', updated);
 
         res.status(200).json(updated);
     } catch (error) {

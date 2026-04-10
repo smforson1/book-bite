@@ -11,7 +11,7 @@ import AppCard from '../../components/ui/AppCard';
 import AppButton from '../../components/ui/AppButton';
 import CustomHeader from '../../components/navigation/CustomHeader';
 
-const API_URL = 'http://10.0.2.2:5000/api';
+import { API_URL } from '../../config/api';
 
 export default function MyOrders({ navigation }: any) {
     const { colors, spacing, sizes } = useTheme();

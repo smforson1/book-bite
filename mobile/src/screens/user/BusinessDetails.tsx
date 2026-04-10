@@ -18,7 +18,7 @@ import axios from 'axios';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - 40;
 
-const API_URL = 'http://10.0.2.2:5000/api';
+import { API_URL } from '../../config/api';
 
 export default function BusinessDetails({ route, navigation }: any) {
     const { id } = route.params;
@@ -29,6 +29,9 @@ export default function BusinessDetails({ route, navigation }: any) {
     const [menu, setMenu] = useState<any[]>([]);
     const [reviews, setReviews] = useState<any[]>([]);
     const [averageRating, setAverageRating] = useState(0);
+
+    // Deep Link Parameters
+    const { l: locationId, t: locationType } = route.params || {};
 
     const { colors, spacing } = useTheme();
 
@@ -159,7 +162,12 @@ export default function BusinessDetails({ route, navigation }: any) {
                     <View style={styles.buttonRow}>
                         <Button
                             mode="contained"
-                            onPress={() => navigation.navigate('BookingCheckout', { room, business })}
+                            onPress={() => navigation.navigate('BookingCheckout', {
+                                room,
+                                business,
+                                locationId: locationType === 'ROOM' ? room.id : locationId, // Use deep link or room ID
+                                locationType: locationType || 'ROOM'
+                            })}
                             style={[styles.flexButton, { backgroundColor: colors.primary }]}
                         >
                             <AppText variant="label" color={colors.white} bold>Book Now</AppText>
@@ -291,7 +299,12 @@ export default function BusinessDetails({ route, navigation }: any) {
                                                             />
                                                             <Button
                                                                 mode="contained"
-                                                                onPress={() => navigation.navigate('OrderCheckout', { cart: [{ ...item, quantity: 1 }], business })}
+                                                                onPress={() => navigation.navigate('OrderCheckout', {
+                                                                    cart: [{ ...item, quantity: 1 }],
+                                                                    business,
+                                                                    locationId,
+                                                                    locationType
+                                                                })}
                                                                 style={{ borderRadius: 6 }}
                                                                 labelStyle={{ fontSize: 12, marginVertical: 4 }}
                                                                 contentStyle={{ height: 32 }}
@@ -368,7 +381,12 @@ export default function BusinessDetails({ route, navigation }: any) {
                         mode="contained"
                         buttonColor={colors.white}
                         textColor={colors.primary}
-                        onPress={() => navigation.navigate('OrderCheckout', { cart: cartItems, business })}
+                        onPress={() => navigation.navigate('OrderCheckout', {
+                            cart: cartItems,
+                            business,
+                            locationId,
+                            locationType
+                        })}
                     >
                         View Cart
                     </Button>

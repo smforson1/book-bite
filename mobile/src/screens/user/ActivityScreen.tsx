@@ -9,7 +9,7 @@ import AppButton from '../../components/ui/AppButton';
 import CustomHeader from '../../components/navigation/CustomHeader';
 import SegmentedControl from '../../components/ui/SegmentedControl';
 
-const API_URL = 'http://10.0.2.2:5000/api';
+import { API_URL } from '../../config/api';
 
 export default function ActivityScreen({ navigation, route }: any) {
     const { colors, spacing, sizes } = useTheme();

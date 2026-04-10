@@ -7,7 +7,7 @@ import { useTheme } from '../../context/ThemeContext';
 import AppText from '../../components/ui/AppText';
 import axios from 'axios';
 
-const API_URL = 'http://10.0.2.2:5000/api';
+import { API_URL } from '../../config/api';
 
 export default function MyBookings() {
     const [activeTab, setActiveTab] = useState('bookings');

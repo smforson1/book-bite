@@ -1,14 +1,15 @@
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Text, Card, FAB, List, IconButton, Chip } from 'react-native-paper';
+import { Text, Card, FAB, List, IconButton, Chip, Button } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useBusinessStore } from '../../store/useBusinessStore';
 import { useTheme } from '../../context/ThemeContext';
 import axios from 'axios';
 
-const API_URL = 'http://10.0.2.2:5000/api';
+import { API_URL } from '../../config/api';
+import QRGenerationModal from '../../components/ui/QRGenerationModal';
 
 export default function MenuList({ navigation }: any) {
     const [categories, setCategories] = useState<any[]>([]);
@@ -16,6 +17,9 @@ export default function MenuList({ navigation }: any) {
     const token = useAuthStore((state) => state.token);
     const business = useBusinessStore((state) => state.business);
     const { colors, spacing } = useTheme();
+
+    const [qrVisible, setQrVisible] = useState(false);
+    const [selectedTable, setSelectedTable] = useState<{ id: string, name: string } | null>(null);
 
     useFocusEffect(
         useCallback(() => {
@@ -59,9 +63,25 @@ export default function MenuList({ navigation }: any) {
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             <ScrollView contentContainerStyle={[styles.content, { padding: spacing.m }]}>
-                <Text variant="headlineMedium" style={[styles.title, { color: colors.primary }]}>
-                    Menu
-                </Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                    <Text variant="headlineMedium" style={[styles.title, { color: colors.primary, marginBottom: 0 }]}>
+                        Menu
+                    </Text>
+                    {business?.type === 'RESTAURANT' && (
+                        <Button
+                            mode="outlined"
+                            icon="qrcode-plus"
+                            onPress={() => {
+                                setSelectedTable({ id: '', name: 'General Table' });
+                                setQrVisible(true);
+                            }}
+                            style={{ borderColor: colors.primary }}
+                            textColor={colors.primary}
+                        >
+                            Table QR
+                        </Button>
+                    )}
+                </View>
 
                 {loading ? (
                     <Text>Loading...</Text>
@@ -123,6 +143,17 @@ export default function MenuList({ navigation }: any) {
                     ))
                 )}
             </ScrollView>
+
+            {selectedTable && (
+                <QRGenerationModal
+                    visible={qrVisible}
+                    onClose={() => setQrVisible(false)}
+                    businessId={business?.id || ''}
+                    locationId={selectedTable.id || 'TBL-' + Math.random().toString(36).substr(2, 4).toUpperCase()}
+                    locationName={selectedTable.name}
+                    type="TABLE"
+                />
+            )}
 
             <FAB icon="plus" style={[styles.fab, { backgroundColor: colors.primary }]} color={colors.white} onPress={() => navigation.navigate('AddMenuItem')} />
         </SafeAreaView>

@@ -15,7 +15,7 @@ import CustomHeader from '../../components/navigation/CustomHeader';
 import SegmentedControl from '../../components/ui/SegmentedControl';
 import BusinessCardSkeleton from '../../components/skeletons/BusinessCardSkeleton';
 
-const API_URL = 'http://10.0.2.2:5000/api';
+import { API_URL } from '../../config/api';
 
 export default function PlacesScreen({ navigation }: any) {
     const [businesses, setBusinesses] = useState<any[]>([]);

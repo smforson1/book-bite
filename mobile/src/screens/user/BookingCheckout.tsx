@@ -11,15 +11,16 @@ import AppButton from '../../components/ui/AppButton';
 import PaymentWebView from '../../components/ui/PaymentWebView';
 import axios from 'axios';
 
-const API_URL = 'http://10.0.2.2:5000/api';
+import { API_URL } from '../../config/api';
 
 export default function BookingCheckout({ route, navigation }: any) {
-    const { room, business } = route.params;
+    const { room, business, locationId, locationType } = route.params;
     const [checkIn, setCheckIn] = useState(new Date());
     const [checkOut, setCheckOut] = useState(new Date(Date.now() + 86400000)); // +1 day
     const [guests, setGuests] = useState('1');
     const [roomCount, setRoomCount] = useState(1);
     const [gender, setGender] = useState<'MALE' | 'FEMALE' | null>(null);
+    const [notes, setNotes] = useState(locationId ? `[${locationType || 'ROOM'}: ${locationId}] ` : '');
     const [loading, setLoading] = useState(false);
     const [showCheckIn, setShowCheckIn] = useState(false);
     const [showCheckOut, setShowCheckOut] = useState(false);
@@ -104,7 +105,8 @@ export default function BookingCheckout({ route, navigation }: any) {
                     guests: parseInt(guests),
                     roomCount: roomCount,
                     bookingGender: isHostel ? gender : undefined,
-                    status: 'PENDING'
+                    status: 'PENDING',
+                    notes: notes || undefined
                 },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -289,6 +291,16 @@ export default function BookingCheckout({ route, navigation }: any) {
                             GH₵{amountToPay.toFixed(2)}
                         </AppText>
                     </View>
+
+                    <TextInput
+                        label="Special Requests / Notes"
+                        value={notes}
+                        onChangeText={setNotes}
+                        mode="outlined"
+                        style={[styles.input, { backgroundColor: colors.surface }]}
+                        multiline
+                        theme={{ colors: { primary: colors.primary, text: colors.text, placeholder: colors.textLight } }}
+                    />
 
                     <AppButton
                         title="Confirm & Pay"

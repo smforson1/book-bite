@@ -6,7 +6,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useTheme } from '../../context/ThemeContext';
 import axios from 'axios';
 
-const API_URL = 'http://10.0.2.2:5000/api';
+import { API_URL } from '../../config/api';
 
 export default function OrderDetail({ route, navigation }: any) {
     const { order } = route.params;

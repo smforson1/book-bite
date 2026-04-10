@@ -5,7 +5,7 @@ import { Platform } from 'react-native';
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 
-const API_URL = 'http://10.0.2.2:5000/api';
+import { API_URL } from '../config/api';
 
 // Configure notification behavior
 Notifications.setNotificationHandler({

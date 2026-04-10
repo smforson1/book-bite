@@ -18,7 +18,7 @@ import AppText from '../../components/ui/AppText';
 import CustomHeader from '../../components/navigation/CustomHeader';
 import { SPACING, SIZES, SHADOWS } from '../../theme';
 
-const API_URL = 'http://10.0.2.2:5000/api';
+import { API_URL } from '../../config/api';
 const { width } = Dimensions.get('window');
 
 interface Message {
@@ -134,7 +134,7 @@ export default function BiteBotScreen() {
 
     // MAINTENANCE MODE: Temporary override to hide chat functionality
     // TODO: Remove this block once the semantic embedding errors are resolved.
-    const isMaintenanceMode = true;
+    const isMaintenanceMode = false;
 
     if (isMaintenanceMode) {
         return (

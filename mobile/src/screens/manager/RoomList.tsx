@@ -8,7 +8,8 @@ import { useBusinessStore } from '../../store/useBusinessStore';
 import { useTheme } from '../../context/ThemeContext';
 import axios from 'axios';
 
-const API_URL = 'http://10.0.2.2:5000/api';
+import { API_URL } from '../../config/api';
+import QRGenerationModal from '../../components/ui/QRGenerationModal';
 
 export default function RoomList({ navigation }: any) {
     const [rooms, setRooms] = useState<any[]>([]);
@@ -17,6 +18,9 @@ export default function RoomList({ navigation }: any) {
     const token = useAuthStore((state) => state.token);
     const business = useBusinessStore((state) => state.business);
     const { colors, spacing } = useTheme();
+
+    const [selectedRoom, setSelectedRoom] = useState<any>(null);
+    const [qrVisible, setQrVisible] = useState(false);
 
     useFocusEffect(
         useCallback(() => {
@@ -113,6 +117,15 @@ export default function RoomList({ navigation }: any) {
                                 onPress={() => navigation.navigate('EditRoom', { room })}
                             />
                             <IconButton
+                                icon="qrcode"
+                                size={20}
+                                iconColor={colors.secondary}
+                                onPress={() => {
+                                    setSelectedRoom(room);
+                                    setQrVisible(true);
+                                }}
+                            />
+                            <IconButton
                                 icon="delete"
                                 size={20}
                                 iconColor={colors.error}
@@ -198,6 +211,17 @@ export default function RoomList({ navigation }: any) {
                     rooms.map((room) => renderRoomCard(room))
                 )}
             </ScrollView>
+
+            {selectedRoom && (
+                <QRGenerationModal
+                    visible={qrVisible}
+                    onClose={() => setQrVisible(false)}
+                    businessId={business?.id || ''}
+                    locationId={selectedRoom.id}
+                    locationName={selectedRoom.name}
+                    type="ROOM"
+                />
+            )}
 
             <FAB
                 icon="plus"

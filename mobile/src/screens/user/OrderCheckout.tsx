@@ -12,14 +12,14 @@ import AppButton from '../../components/ui/AppButton';
 import PaymentWebView from '../../components/ui/PaymentWebView';
 import axios from 'axios';
 
-const API_URL = 'http://10.0.2.2:5000/api';
+import { API_URL } from '../../config/api';
 
 export default function OrderCheckout({ route, navigation }: any) {
-    const { cart, business } = route.params;
+    const { cart, business, locationId, locationType } = route.params;
     const [address, setAddress] = useState('');
     const [deliveryLat, setDeliveryLat] = useState<number | null>(null);
     const [deliveryLon, setDeliveryLon] = useState<number | null>(null);
-    const [notes, setNotes] = useState('');
+    const [notes, setNotes] = useState(locationId ? `[${locationType || 'TABLE'}: ${locationId}] ` : '');
     const [loading, setLoading] = useState(false);
 
     const { getCurrentLocation, address: fetchedAddress, location: fetchedLoc, loading: locLoading } = useLocation();

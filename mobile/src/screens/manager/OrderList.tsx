@@ -7,8 +7,9 @@ import { useBusinessStore } from '../../store/useBusinessStore';
 import { useTheme } from '../../context/ThemeContext';
 import { useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
+import { API_URL } from '../../config/api';
+import { initSocket, joinBusinessRoom } from '../../services/socketService';
 
-const API_URL = 'http://10.0.2.2:5000/api';
 
 export default function OrderList({ navigation }: any) {
     const [items, setItems] = useState<any[]>([]);
@@ -40,7 +41,23 @@ export default function OrderList({ navigation }: any) {
     useFocusEffect(
         useCallback(() => {
             fetchData();
-        }, [])
+
+            if (business?.id) {
+                const socket = initSocket();
+                joinBusinessRoom(business.id);
+
+                const eventNew = isRestaurant ? 'new_order' : 'new_booking';
+                const eventUpdate = isRestaurant ? 'order_updated' : 'booking_updated';
+
+                socket.on(eventNew, () => fetchData());
+                socket.on(eventUpdate, () => fetchData());
+
+                return () => {
+                    socket.off(eventNew);
+                    socket.off(eventUpdate);
+                };
+            }
+        }, [business?.id, isRestaurant])
     );
 
     const onRefresh = () => {

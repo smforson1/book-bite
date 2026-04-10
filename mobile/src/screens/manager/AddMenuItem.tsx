@@ -8,7 +8,7 @@ import { useTheme } from '../../context/ThemeContext';
 import axios from 'axios';
 import ImageUpload from '../../components/ui/ImageUpload';
 
-const API_URL = 'http://10.0.2.2:5000/api';
+import { API_URL } from '../../config/api';
 
 export default function AddMenuItem({ navigation }: any) {
     const [categories, setCategories] = useState<any[]>([]);

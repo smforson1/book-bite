@@ -8,7 +8,7 @@ import { useLocation } from '../../hooks/useLocation';
 import ImageUpload from '../../components/ui/ImageUpload';
 import axios from 'axios';
 
-const API_URL = 'http://10.0.2.2:5000/api';
+import { API_URL } from '../../config/api';
 
 export default function BusinessSetup({ navigation }: any) {
     const [name, setName] = useState('');

@@ -7,7 +7,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useBusinessStore } from '../../store/useBusinessStore';
 import CustomHeader from '../../components/navigation/CustomHeader';
 
-const API_URL = 'http://10.0.2.2:5000/api';
+import { API_URL } from '../../config/api';
 
 export default function ManagerMoreScreen({ navigation }: any) {
     const { colors } = useTheme();

@@ -16,7 +16,7 @@ import * as Haptics from 'expo-haptics';
 import { ActivityIndicator } from 'react-native-paper';
 import { MotiView } from 'moti';
 
-const API_URL = 'http://10.0.2.2:5000/api';
+import { API_URL } from '../../config/api';
 
 const FilterChip = ({ label, type, selectedType, colors, setSelectedType }: { label: string, type: string | null, selectedType: string | null, colors: any, setSelectedType: any }) => {
     const isSelected = selectedType === type;

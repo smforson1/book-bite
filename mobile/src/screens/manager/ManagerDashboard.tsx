@@ -8,8 +8,9 @@ import CustomHeader from '../../components/navigation/CustomHeader';
 import AppText from '../../components/ui/AppText';
 import AppCard from '../../components/ui/AppCard';
 import axios from 'axios';
+import { API_URL } from '../../config/api';
+import { initSocket, joinBusinessRoom } from '../../services/socketService';
 
-const API_URL = 'http://10.0.2.2:5000/api';
 
 export default function ManagerDashboard({ navigation }: any) {
     const [loading, setLoading] = useState(true);
@@ -79,7 +80,24 @@ export default function ManagerDashboard({ navigation }: any) {
 
     useEffect(() => {
         fetchData();
-    }, [fetchData]);
+
+        if (business?.id) {
+            const socket = initSocket();
+            joinBusinessRoom(business.id);
+
+            socket.on('new_order', () => fetchData());
+            socket.on('order_updated', () => fetchData());
+            socket.on('new_booking', () => fetchData());
+            socket.on('booking_updated', () => fetchData());
+
+            return () => {
+                socket.off('new_order');
+                socket.off('order_updated');
+                socket.off('new_booking');
+                socket.off('booking_updated');
+            };
+        }
+    }, [fetchData, business?.id]);
 
     const onRefresh = () => {
         setRefreshing(true);

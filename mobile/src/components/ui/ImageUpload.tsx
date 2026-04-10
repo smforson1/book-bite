@@ -10,7 +10,7 @@ interface ImageUploadProps {
     label?: string;
 }
 
-const API_URL = 'http://10.0.2.2:5000/api';
+import { API_URL } from '../../config/api';
 
 export default function ImageUpload({ onImageUploaded, initialImage, label }: ImageUploadProps) {
     const [image, setImage] = useState<string | null>(initialImage || null);
